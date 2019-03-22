@@ -19,6 +19,7 @@ import os
 
 import src.detTOD as tod
 import src.loaddata as ld
+import src.mapmaker as mp
 
 class MainWindow(QTabWidget):
     
@@ -343,18 +344,60 @@ class MainWindow(QTabWidget):
         self.axis_map = self.matplotlibWidget_Map.figure.add_subplot(111)
         self.axis_map.set_axis_off()
         self.layout.addWidget(self.matplotlibWidget_Map)
-        self.plotbutton.clicked.connect(self.draw_plot)
+        self.plotbutton.clicked.connect(self.map2d)
 
         self.MapPlotGroup.setLayout(self.layout)
            
-    def draw_plot(self, data=None):
+    def map2d(self, data=None):
         data = [random.random() for i in range(25)]
+
+        self.ctype = self.coordchoice.text()
+
+        self.crpix = np.array([self.crpix1.text(),self.crpix2.text()])
+        self.cdelt = np.array([self.cdelt1.text(),self.cdelt2.text()])
+        self.crval = np.array([self.crval1.text(),self.crval2.text()])
+
+        if self.convchoice.currentText().lower() == 'gaussian':
+            self.convolution = True
+            self.std = self.GaussianSTD.text()
+        else:
+            self.convolution = False
+            self.std = 0
+
+        maps = mp.maps(self.ctype, self.crpix, self.cdelt, self.crval, \
+                       self.cleaned_data, self.coord1slice, self.coord2slice, \
+                       self.convolution, self.std)
+
+        maps.wcs_proj()
+
+        map_value = maps.map2d()
+        
         self.axis_map.set_axis_on()
         self.axis_map.clear()
-        self.axis_map.plot(data)
         self.axis_map.set_title('PyQt Matplotlib Example')
+        
+        max_index = np.where(np.abs(map_value) == np.amax((np.abs(map_value))))
+
+        interval = np.flip(np.linspace(0, 1, levels+1))
+
+        map_levels = map_value[max_index]*(1-interval)
+
+        extent = (np.amin(coord1), np.amax(coord1), np.amin(coord2), np.amax(coord2))
+        self.axis_map.imshow(map_value, extent = extent, origin='lower', cmap=plt.cm.viridis)
+        self.cbar = plt.colorbar(im)
+
+        if self.ctype.lower() == 'RA and DEC':
+            self.axis_map.set_xlabel('RA (deg)')
+            self.axis_map.set_ylabel('Dec (deg)')
+        elif self.ctype.lower() == 'AZ and EL':
+            self.axis_map.set_xlabel('Azimuth (deg)')
+            self.axis_map.set_ylabel('Elevation (deg)')
+        elif self.ctype.lower() == 'CROSS-EL and EL':
+            self.axis_map.set_xlabel('Cross Elevation (deg)')
+            self.axis_map.set_ylabel('Elevation (deg)')
+
         self.matplotlibWidget_Map.canvas.draw()
-    
+
     def TODLayout(self):
 
         self.createTODplot()

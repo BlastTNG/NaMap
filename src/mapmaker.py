@@ -5,7 +5,7 @@ from astropy.convolution import Gaussian2DKernel, convolve
 
 class maps():
 
-    def __init__(self, ctype, crpix, cdelt, crval, data, coord1, coord2):
+    def __init__(self, ctype, crpix, cdelt, crval, data, coord1, coord2, convolution, std):
 
         self.ctype = ctype
         self.crpix = crpix
@@ -14,6 +14,10 @@ class maps():
         self.coord1 = coord1
         self.coord2 = coord2
         self.data = data
+        self.w = 0.
+        self.proj = 0.
+        self.convolution = convolution
+        self.std = std
 
     def wcs_proj(self):
 
@@ -22,11 +26,14 @@ class maps():
         self.w, self.proj = wcsworld.world(np.transpose(np.array([coord1_inter,coord2_inter])))
 
     def map2d(self):
-
+        
         mapmaker = mp.mapmaking(self.data, 1., 1., 1, np.floor(self.w).astype(int))
         finalI = mapmaker.map_multidetector_Ionly()
-
-        return finalI
+        if self.convolution == False:
+            return finalI
+        elif self.convolution == True:
+            convolution_map = mapmaker.convolution(self.std, finalI)
+            return convolution_map
         # if np.size(param['file_repository']['detlist']) > 1:
         #     if param['map_parameters']['Ionly'].lower() == 'true':
         #         finalI = mapmaker.map_multidetector_Ionly()
@@ -58,9 +65,9 @@ class wcs_world():
         w.wcs.crpix = self.crpix
         w.wcs.cdelt = self.crdelt
         w.wcs.crval = self.crval
-        if self.ctype.lower() == 'radec':
+        if self.ctype.lower() == 'RA and DEC':
             w.wcs.ctype = ["RA---AIR", "DEC--AIR"]
-        elif self.ctype.lower() == 'elaz' or self.ctype.lower() == 'elxel':
+        elif self.ctype.lower() == 'AZ and EL' or self.ctype.lower() == 'CROSS-EL and EL':
             w.wcs.ctype = ["TLON-ARC", "TLAT-ARC"]
 
         world = w.wcs_world2pix(coord, 1)
@@ -229,28 +236,4 @@ class mapmaking(object):
 
         return convolved_map
 
-    def plot(self, map_value,  ctype, coord1, coord2, levels = 5):
-
-        max_index = np.where(np.abs(map_value) == np.amax((np.abs(map_value))))
-
-        interval = np.flip(np.linspace(0, 1, levels+1))
-
-        map_levels = map_value[max_index]*(1-interval)
-
-        ax = plt.subplot()
-        extent = (np.amin(coord1), np.amax(coord1), np.amin(coord2), np.amax(coord2))
-        im = ax.imshow(map_value, extent = extent, origin='lower', cmap=plt.cm.viridis)
-        cbar = plt.colorbar(im)
-        #ax.contour(map_value, levels=map_levels, colors='white', alpha=0.5)
-
-        if ctype == 'radec':
-            ax.set_xlabel('RA (deg)')
-            ax.set_ylabel('Dec (deg)')
-        elif ctype == 'elxel':
-            ax.set_xlabel('Cross Elevation (deg)')
-            ax.set_ylabel('Elevation (deg)')
-        elif ctype == 'elaz':
-            ax.set_xlabel('Azimuth (deg)')
-            ax.set_ylabel('Elevation (deg)')
-
-        return ax
+    
