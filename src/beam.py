@@ -12,10 +12,14 @@ class beam(object):
         self.data = data
         self.param = np.array([])
 
+        self.xgrid = np.arange(len(self.data[0,:]))
+        self.ygrid = np.arange(len(self.data[:,0]))
+        self.xy_mesh = np.meshgrid(self.xgrid,self.ygrid)
+
 
     def multivariate_gaussian_2d(self, params):
 
-        (x, y) = self.data
+        (x, y) = self.xy_mesh
         for i in range(np.size(params)/6):
             j = i*6
             amp = params[j]
@@ -40,13 +44,16 @@ class beam(object):
 
         return (y[index]-dat[index]) / err[index]
 
-    def peak_finder(self):
+    def peak_finder(self, map_data, mask = False):
 
         bs = 5
 
         mean, median, std = sigma_clipped_stats(self.data, sigma=3.0)
         threshold = median+(5.*std)
-        tbl = find_peaks(self.data, threshold, box_size=bs)
+        if mask == False:
+            tbl = find_peaks(map_data, threshold, box_size=bs)
+        else:
+            tbl = find_peaks(map_data, threshold, box_size=bs, mask = self.mask)
         tbl['peak_value'].info.format = '%.8g'
 
         for i in range(len(tbl['peak_value'])):
@@ -59,21 +66,54 @@ class beam(object):
             y_i = np.append(y_i, index_y)
             mask[index_y-bs:index_y+bs, index_x-bs:index_x+bs] = True
 
-        if np.size(self.param) == 0:
-            self.param = guess_temp
-            self.mask = mask 
+            if np.size(self.param) == 0:
+                self.param = guess_temp
+                self.mask = mask 
 
-        else:
-            self.param = np.append(self.param, guess_temp)
+            else:
+                self.param = np.append(self.param, guess_temp)
+                self.mask = np.logical_or(self.mask, mask)
 
-    def beam_fit(self):
+    def fit(self):
 
-        p = least_squares(residuals_val, x0=self.param, \
-                          args=(xy_mesh, np.ravel(self.data),\
+        p = least_squares(self.residuals, x0=self.param, \
+                          args=(self.xy_mesh, np.ravel(self.data),\
                                 np.ones(len(np.ravel(self.data))), np.amax(self.data)), \
                           method='lm')
+        J = p.jac
+        cov = np.linalg.inv(J.T.dot(J))
+        var = np.sqrt(np.diagonal(cov))
 
-        return p
+        return p, var
+
+    def beam_fit(self, peak_number = 0):
+
+        if peak_number == 0:
+            self.peak_finder(map_data = self.data)
+            peak_number_ini = np.size(self.param)/6
+        else:
+            self.param  = 0
+
+        while peak_found > 0:
+
+            fit_param, var = self.fit()
+
+            fit_data = multivariate_gaussian_2d(self.xy_mesh, fit_param.x)\
+                            .reshape(np.outer(self.xgrid, self.ygrid).shape)
+            res = self.data-fit_data
+
+            self.peak_finder(map_data=res)
+
+            peak_number = np.size(self.param)/6
+
+            peak_found = peak_number-peak_number_ini
+
+            peak_number_ini = peak_number
+
+        return fit_data, fit_param.x, var
+
+
+
 
 
 

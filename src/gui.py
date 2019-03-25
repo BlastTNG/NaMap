@@ -20,6 +20,7 @@ import os
 import src.detTOD as tod
 import src.loaddata as ld
 import src.mapmaker as mp
+import src.beam as bm
 
 class MainWindow(QTabWidget):
     
@@ -31,8 +32,10 @@ class MainWindow(QTabWidget):
             
         self.addTab(self.tab1,"Parameters and Maps")
         self.addTab(self.tab2,"Detector TOD")
+        self.addTab(self.tab3, "Beam")
         self.ParamMapLayout()
         self.TODLayout()
+        self.beamLayout()
         self.setWindowTitle("Naive MapMaker")
         
         self.show()
@@ -173,6 +176,9 @@ class MainWindow(QTabWidget):
 
         self.ICheckBox = QCheckBox("Map only I")
         self.ICheckBox.setChecked(True)
+
+        self.BeamCheckBox = QCheckBox("Beam Analysis")
+        self.BeamCheckBox.setChecked(False)
         
         self.convchoice.activated[str].connect(self.updateGaussian)
            
@@ -196,6 +202,7 @@ class MainWindow(QTabWidget):
         self.layout.addWidget(self.pixnum1, 6, 1)
         self.layout.addWidget(self.pixnum2, 6, 2)
         self.layout.addWidget(self.ICheckBox, 7, 0)
+        self.layout.addWidget(self.BeamCheckBox, 8, 0)
         self.GaussianSTD.setVisible(False)
         self.gaussianLabel.setVisible(False)
         
@@ -370,13 +377,13 @@ class MainWindow(QTabWidget):
 
         maps.wcs_proj()
 
-        map_value = maps.map2d()
+        self.map_value = maps.map2d()
         
         self.axis_map.set_axis_on()
         self.axis_map.clear()
-        self.axis_map.set_title('PyQt Matplotlib Example')
+        self.axis_map.set_title('Maps')
         
-        max_index = np.where(np.abs(map_value) == np.amax((np.abs(map_value))))
+        max_index = np.where(np.abs(self.map_value) == np.amax((np.abs(self.map_value))))
 
         interval = np.flip(np.linspace(0, 1, levels+1))
 
@@ -552,6 +559,40 @@ class MainWindow(QTabWidget):
         self.coord1_data = coord1_data.conversion()
         self.coord2_data = coord2_data.conversion()
 
+    def beamLayout(self):
+
+        self.createbeamplot()
+
+        mainlayout = QGridLayout()
+        mainlayout.addWidget(self.beamplot, 0, 0)
+
+        self.tab3.setLayout(mainlayout)
+
+    def createbeamplot(self, data = None):
+
+        self.beamplot = QGroupBox("Beam Map")
+        
+        self.layout = QVBoxLayout()
+
+        self.matplotlibWidget_beam = MatplotlibWidget(self)
+        self.axis_beam = self.matplotlibWidget_beam.figure.add_subplot(111)
+        self.axis_beam.set_axis_off()
+        self.layout.addWidget(self.matplotlibWidget_beam)        
+        self.plotbutton.clicked.connect(partial(self.draw_beam, data))
+
+        self.beamplot.setLayout(self.layout)
+
+    def draw_beam(self, data = None):
+        self.axis_beam.set_axis_on()
+        self.axis_beam.clear()
+        try:
+            beam = bm.beam(self.map_value)
+            self.beam_data, self.beam_param, self.beam_error = beam.beam_fit()
+            self.axis_beam.imshow(self.beam_data)
+        except AttributeError:
+            pass
+        self.axis_beam.set_title('Beam')
+        self.matplotlibWidget_beam.canvas.draw()
 
 class MatplotlibWidget(QWidget):
     def __init__(self, parent=None):
