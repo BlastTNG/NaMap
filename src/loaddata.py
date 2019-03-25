@@ -99,16 +99,16 @@ class frame_zoom_sync():
 
         self.det_data = det_data
         self.det_fs = float(det_fs)
-        self.det_sample_frame = int(det_sample_frame)
+        self.det_sample_frame = int(float(det_sample_frame))
         self.coord1_data = coord1_data
         self.coord_fs = float(coord_fs)
-        self.coord_sample_frame = int(coord_sample_frame)
+        self.coord_sample_frame = int(float(coord_sample_frame))
         self.coord2_data = coord2_data
-        self.frame1 = int(frame1)
-        self.frame2 = int(frame2)
+        self.frame1 = int(float(frame1))
+        self.frame2 = int(float(frame2))
         self.experiment = experiment
         if roach_number != None:
-            self.roach_number = int(roach_number)
+            self.roach_number = int(float(roach_number))
         else:
             self.roach_number = roach_number
         self.roach_pps_path = roach_pps_path

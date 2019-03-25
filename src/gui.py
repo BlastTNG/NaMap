@@ -155,23 +155,23 @@ class MainWindow(QTabWidget):
         self.gaussianLabel = QLabel("Convolution STD (in arcsec):")
         self.gaussianLabel.setBuddy(self.GaussianSTD)
 
-        self.crpix1 = QLineEdit('')
-        self.crpix2 = QLineEdit('')
+        self.crpix1 = QLineEdit('50')
+        self.crpix2 = QLineEdit('50')
         self.crpixlabel = QLabel("CRpix of the Map:")
         self.crpixlabel.setBuddy(self.crpix1)
 
-        self.cdelt1 = QLineEdit('')
-        self.cdelt2 = QLineEdit('')
+        self.cdelt1 = QLineEdit('0.00189')
+        self.cdelt2 = QLineEdit('0.00189')
         self.cdeltlabel = QLabel("Cdelt of the Map in deg:")
         self.cdeltlabel.setBuddy(self.cdelt1)
 
-        self.crval1 = QLineEdit('')
-        self.crval2 = QLineEdit('')
+        self.crval1 = QLineEdit('132.9')
+        self.crval2 = QLineEdit('-42.39')
         self.crvallabel = QLabel("Cval of the Map in deg:")
         self.crvallabel.setBuddy(self.crval1)
 
-        self.pixnum1 = QLineEdit('')
-        self.pixnum2 = QLineEdit('')
+        self.pixnum1 = QLineEdit('100')
+        self.pixnum2 = QLineEdit('100')
         self.pixnumlabel = QLabel("Pixel Number:")
         self.pixnumlabel.setBuddy(self.pixnum1)
 
@@ -240,7 +240,7 @@ class MainWindow(QTabWidget):
         self.acsfreqlabel = QLabel("ACS Frequency Sample")
         self.acsfreqlabel.setBuddy(self.acsfreq)
 
-        self.highpassfreq = QLineEdit('')
+        self.highpassfreq = QLineEdit('0.1')
         self.highpassfreqlabel = QLabel("High Pass Filter cutoff frequency")
         self.highpassfreqlabel.setBuddy(self.highpassfreq)
 
@@ -403,9 +403,12 @@ class MainWindow(QTabWidget):
 
         self.ctype = self.coordchoice.currentText()
 
-        self.crpix = np.array([self.crpix1.text(),self.crpix2.text()])
-        self.cdelt = np.array([self.cdelt1.text(),self.cdelt2.text()])
-        self.crval = np.array([self.crval1.text(),self.crval2.text()])
+        self.crpix = np.array([int(float(self.crpix1.text())),\
+                               int(float(self.crpix2.text()))])
+        self.cdelt = np.array([float(self.cdelt1.text()),\
+                               float(self.cdelt2.text())])
+        self.crval = np.array([float(self.crval1.text()),\
+                               float(self.crval2.text())])
 
         if self.convchoice.currentText().lower() == 'gaussian':
             self.convolution = True
