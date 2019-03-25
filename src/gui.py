@@ -16,6 +16,7 @@ import sys
 import random
 import numpy as np
 import os
+import ConfigParser
 
 import src.detTOD as tod
 import src.loaddata as ld
@@ -244,7 +245,7 @@ class MainWindow(QTabWidget):
         self.highpassfreqlabel.setBuddy(self.highpassfreq)
 
         self.detframe = QLineEdit('')
-        self.detframelabel = QLabel("Detector Samples per Frame")
+        self.detframelabel = QLabel("Detector Samples per Frame")        
         self.detframelabel.setBuddy(self.detframe)
         self.acsframe = QLineEdit('')
         self.acsframelabel = QLabel("ACS Sample Samples per Frame")
@@ -255,7 +256,7 @@ class MainWindow(QTabWidget):
         self.numberframelabel = QLabel('Starting and Ending Frames')
         self.numberframelabel.setBuddy(self.startframe)
 
-        self.dettype = QLineEdit('')
+        self.dettype = QLineEdit('')      
         self.dettypelabel = QLabel("Detector DIRFILE data type")
         self.dettypelabel.setBuddy(self.dettype)
         self.coord1type = QLineEdit('')
@@ -267,7 +268,7 @@ class MainWindow(QTabWidget):
 
 
         self.DirConvCheckBox = QCheckBox("DIRFILE Conversion factors")
-        self.DirConvCheckBox.setChecked(False)
+        self.DirConvCheckBox.setChecked(True)
 
         self.adetconv = QLineEdit('')
         self.bdetconv = QLineEdit('')
@@ -284,7 +285,9 @@ class MainWindow(QTabWidget):
         self.coord2conv = QLabel('Coordinate 2 conversion factors')
         self.coord2conv.setBuddy(self.acoord2conv)
 
-        
+        self.configuration_value()
+        self.experiment.activated[str].connect(self.configuration_value)
+
         self.DirConvCheckBox.toggled.connect(self.detconv.setVisible)
         self.DirConvCheckBox.toggled.connect(self.adetconv.setVisible)
         self.DirConvCheckBox.toggled.connect(self.bdetconv.setVisible)
@@ -330,18 +333,58 @@ class MainWindow(QTabWidget):
         self.layout.addWidget(self.coord2conv, 13, 1)
         self.layout.addWidget(self.acoord2conv, 13, 2)
         self.layout.addWidget(self.bcoord2conv, 13, 3)
-        self.detconv.setVisible(False)
-        self.adetconv.setVisible(False)
-        self.bdetconv.setVisible(False)
-        self.coord1conv.setVisible(False)
-        self.acoord1conv.setVisible(False)
-        self.bcoord1conv.setVisible(False)
-        self.coord2conv.setVisible(False)
-        self.acoord2conv.setVisible(False)
-        self.bcoord2conv.setVisible(False)
+        self.detconv.setVisible(True)
+        self.adetconv.setVisible(True)
+        self.bdetconv.setVisible(True)
+        self.coord1conv.setVisible(True)
+        self.acoord1conv.setVisible(True)
+        self.bcoord1conv.setVisible(True)
+        self.coord2conv.setVisible(True)
+        self.acoord2conv.setVisible(True)
+        self.bcoord2conv.setVisible(True)
         self.ExperimentGroup.setContentsMargins(5, 5, 5, 5)
 
         self.ExperimentGroup.setLayout(self.layout)
+
+    def configuration_value(self):
+        text = self.experiment.currentText()
+        dir_path = os.getcwd()+'/config/'
+        
+        filepath = dir_path+text.lower()+'.cfg'
+        model = ConfigParser.ConfigParser()
+
+        model.read(filepath)
+        sections = model.sections()
+
+        for section in sections:
+            if section.lower() == 'experiment parameters':
+                self.detfreq_config = float(model.get(section, 'DETFREQ').split('#')[0])
+                self.acsfreq_config = float(model.get(section, 'ACSFREQ').split('#')[0])
+                det_dir_conv = model.get(section,'DET_DIR_CONV').split('#')[0].strip()
+                self.detconv_config = np.array(det_dir_conv.split(',')).astype(float)
+                coor1_dir_conv = model.get(section,'COOR1_DIR_CONV').split('#')[0].strip()
+                self.coord1conv_config = np.array(coor1_dir_conv.split(',')).astype(float)
+                coor2_dir_conv = model.get(section,'COOR2_DIR_CONV').split('#')[0].strip()
+                self.coord2conv_config = np.array(coor2_dir_conv.split(',')).astype(float)
+                self.detframe_config = float(model.get(section, 'DET_SAMP_FRAME').split('#')[0])
+                self.acsframe_config = float(model.get(section, 'ACS_SAMP_FRAME').split('#')[0])
+                self.dettype_config = model.get(section,'DET_FILE_TYPE').split('#')[0].strip()
+                self.coord1type_config = model.get(section,'COOR1_FILE_TYPE').split('#')[0].strip()
+                self.coord2type_config = model.get(section,'COOR2_FILE_TYPE').split('#')[0].strip()
+
+        self.detfreq.setText(str(self.detfreq_config))
+        self.acsfreq.setText(str(self.acsfreq_config))
+        self.detframe.setText(str(self.detframe_config))
+        self.acsframe.setText(str(self.acsframe_config))
+        self.dettype.setText(str(self.dettype_config))
+        self.coord1type.setText(str(self.coord1type_config))
+        self.coord2type.setText(str(self.coord2type_config))
+        self.adetconv.setText(str(self.detconv_config[0]))
+        self.bdetconv.setText(str(self.detconv_config[1]))
+        self.acoord1conv.setText(str(self.coord1conv_config[0]))
+        self.bcoord1conv.setText(str(self.coord1conv_config[1]))
+        self.acoord2conv.setText(str(self.coord2conv_config[0]))
+        self.bcoord2conv.setText(str(self.coord2conv_config[1]))
 
     def createMapPlotGroup(self):
         self.MapPlotGroup = QGroupBox("Map")
