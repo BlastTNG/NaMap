@@ -23,7 +23,7 @@ class maps():
 
         wcsworld = wcs_world(self.ctype, self.crpix, self.cdelt, self.crval)
 
-        self.w, self.proj = wcsworld.world(np.transpose(np.array([coord1_inter,coord2_inter])))
+        self.w, self.proj = wcsworld.world(np.transpose(np.array([self.coord1, self.coord2])))
 
     def map2d(self):
         

@@ -34,7 +34,7 @@ class MainWindow(QTabWidget):
         self.addTab(self.tab2,"Detector TOD")
         self.addTab(self.tab3, "Beam")
         self.ParamMapLayout()
-        self.TODLayout()
+        self.TODLayout()    
         self.beamLayout()
         self.setWindowTitle("Naive MapMaker")
         
@@ -46,6 +46,8 @@ class MainWindow(QTabWidget):
         self.createExperimentGroup()
         self.createDataRepository()
         self.plotbutton = QPushButton('Plot')
+        self.plotbutton.clicked.connect(self.load_func)
+        self.plotbutton.clicked.connect(self.clean_func)
         self.createMapPlotGroup()
 
         scroll = QScrollArea()
@@ -56,9 +58,7 @@ class MainWindow(QTabWidget):
         ExperimentGroup_Scroll = QGroupBox("Experiment Parameters")
         ExperimentGroup_Scroll.setLayout(QVBoxLayout())
         ExperimentGroup_Scroll.layout().addWidget(scroll)
-
-        self.plotbutton.clicked.connect(self.load_func)
-        
+   
         mainlayout = QGridLayout()
         mainlayout.addWidget(self.DataRepository, 0, 0)
         mainlayout.addWidget(self.AstroGroup, 1, 0)
@@ -164,10 +164,10 @@ class MainWindow(QTabWidget):
         self.cdeltlabel = QLabel("Cdelt of the Map in deg:")
         self.cdeltlabel.setBuddy(self.cdelt1)
 
-        self.cval1 = QLineEdit('')
-        self.cval2 = QLineEdit('')
-        self.cvallabel = QLabel("Cval of the Map in deg:")
-        self.cvallabel.setBuddy(self.cval1)
+        self.crval1 = QLineEdit('')
+        self.crval2 = QLineEdit('')
+        self.crvallabel = QLabel("Cval of the Map in deg:")
+        self.crvallabel.setBuddy(self.crval1)
 
         self.pixnum1 = QLineEdit('')
         self.pixnum2 = QLineEdit('')
@@ -195,9 +195,9 @@ class MainWindow(QTabWidget):
         self.layout.addWidget(self.cdeltlabel, 4, 0)
         self.layout.addWidget(self.cdelt1, 4, 1)
         self.layout.addWidget(self.cdelt2, 4, 2)
-        self.layout.addWidget(self.cvallabel, 5, 0)
-        self.layout.addWidget(self.cval1, 5, 1)
-        self.layout.addWidget(self.cval2, 5, 2)
+        self.layout.addWidget(self.crvallabel, 5, 0)
+        self.layout.addWidget(self.crval1, 5, 1)
+        self.layout.addWidget(self.crval2, 5, 2)
         self.layout.addWidget(self.pixnumlabel, 6, 0)
         self.layout.addWidget(self.pixnum1, 6, 1)
         self.layout.addWidget(self.pixnum2, 6, 2)
@@ -358,7 +358,7 @@ class MainWindow(QTabWidget):
     def map2d(self, data=None):
         data = [random.random() for i in range(25)]
 
-        self.ctype = self.coordchoice.text()
+        self.ctype = self.coordchoice.currentText()
 
         self.crpix = np.array([self.crpix1.text(),self.crpix2.text()])
         self.cdelt = np.array([self.cdelt1.text(),self.cdelt2.text()])
@@ -454,9 +454,7 @@ class MainWindow(QTabWidget):
         
         self.axis_cleaned_TOD.set_axis_on()
         self.axis_cleaned_TOD.clear()
-        try:
-            det_tod = tod.data_cleaned(self.detslice, self.detfreq.text(), self.highpassfreq.text())
-            self.cleaned_data = det_tod.data_clean()
+        try:           
             self.axis_cleaned_TOD.plot(self.cleaned_data)
         except AttributeError or NameError or TypeError:
             pass
@@ -546,6 +544,10 @@ class MainWindow(QTabWidget):
                                          self.coord2slice = zoomsyncdata.sync_data()
 
             print 'tests', self.detslice
+
+    def clean_func(self):
+        det_tod = tod.data_cleaned(self.detslice, self.detfreq.text(), self.highpassfreq.text())
+        self.cleaned_data = det_tod.data_clean()
 
     def dirfile_conversion(self):
 

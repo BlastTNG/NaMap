@@ -38,7 +38,7 @@ class beam(object):
         
         return np.ravel(multivariate_gaussian)
 
-    def residuals(params, x, y, err, maxv):
+    def residuals(self, params, x, y, err, maxv):
         dat = self.multivariate_gaussian_2d(x, params)
         index, = np.where(y>=0.2*maxv)
 
