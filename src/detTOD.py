@@ -245,8 +245,8 @@ class detector():
     def polyfit(self, edge = 0, delay=0, order=6):
 
         x = np.arange(len(self.data))
-        print 'x',x
-        print 'data',self.data
+        print('x',x)
+        print('data',self.data)
         y_fin = np.array([])
         index_exclude = np.array([], dtype=int)
 
