@@ -1,4 +1,3 @@
-from kapteyn import kmpfit
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import least_squares
@@ -39,40 +38,46 @@ class beam(object):
         return np.ravel(multivariate_gaussian)
 
     def residuals(self, params, x, y, err, maxv):
-        dat = self.multivariate_gaussian_2d(x, params)
+        dat = self.multivariate_gaussian_2d(params)
         index, = np.where(y>=0.2*maxv)
 
         return (y[index]-dat[index]) / err[index]
 
-    def peak_finder(self, map_data, mask = False):
+    def peak_finder(self, map_data, mask_pf = False):
 
         bs = 5
 
         mean, median, std = sigma_clipped_stats(self.data, sigma=3.0)
         threshold = median+(5.*std)
-        if mask == False:
+        if mask_pf == False:
             tbl = find_peaks(map_data, threshold, box_size=bs)
         else:
+            self.mask = mask_pf.copy()
             tbl = find_peaks(map_data, threshold, box_size=bs, mask = self.mask)
         tbl['peak_value'].info.format = '%.8g'
 
+        guess = np.array([])
+
+        x_i = np.array([])
+        y_i = np.array([])
+
         for i in range(len(tbl['peak_value'])):
-            guess_temp = np.array([tbl['peak_value'][i], x[tbl['x_peak'][i]], \
-                                  y[tbl['y_peak'][i]], 1., 1., 0.])
+            guess_temp = np.array([tbl['peak_value'][i], self.xgrid[tbl['x_peak'][i]], \
+                                  self.ygrid[tbl['y_peak'][i]], 1., 1., 0.])
             guess = np.append(guess, guess_temp)
-            index_x = x[tbl['x_peak'][i]]
-            index_y = y[tbl['y_peak'][i]]
+            index_x = self.xgrid[tbl['x_peak'][i]]
+            index_y = self.ygrid[tbl['y_peak'][i]]
             x_i = np.append(x_i, index_x)
             y_i = np.append(y_i, index_y)
-            mask[index_y-bs:index_y+bs, index_x-bs:index_x+bs] = True
+            mask_pf[index_y-bs:index_y+bs, index_x-bs:index_x+bs] = True
 
             if np.size(self.param) == 0:
                 self.param = guess_temp
-                self.mask = mask 
+                self.mask = mask_pf 
 
             else:
                 self.param = np.append(self.param, guess_temp)
-                self.mask = np.logical_or(self.mask, mask)
+                self.mask = np.logical_or(self.mask, mask_pf)
 
     def fit(self):
 
@@ -86,11 +91,12 @@ class beam(object):
 
         return p, var
 
-    def beam_fit(self, peak_number = 0):
+    def beam_fit(self, peak_number = 0, mask_pf= False):
 
         if peak_number == 0:
-            self.peak_finder(map_data = self.data)
+            self.peak_finder(map_data = self.data, mask_pf = mask_pf)
             peak_number_ini = np.size(self.param)/6
+            peak_found = peak_number_ini
         else:
             self.param  = 0
 
@@ -98,7 +104,7 @@ class beam(object):
 
             fit_param, var = self.fit()
 
-            fit_data = multivariate_gaussian_2d(self.xy_mesh, fit_param.x)\
+            fit_data = self.multivariate_gaussian_2d(fit_param.x)\
                             .reshape(np.outer(self.xgrid, self.ygrid).shape)
             res = self.data-fit_data
 

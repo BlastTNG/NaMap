@@ -431,13 +431,16 @@ class MainWindow(QTabWidget):
         
         max_index = np.where(np.abs(self.map_value) == np.amax((np.abs(self.map_value))))
 
+        levels = 5
+
         interval = np.flip(np.linspace(0, 1, levels+1))
 
-        map_levels = map_value[max_index]*(1-interval)
+        map_levels = self.map_value[max_index]*(1-interval)
 
-        extent = (np.amin(coord1), np.amax(coord1), np.amin(coord2), np.amax(coord2))
-        self.axis_map.imshow(map_value, extent = extent, origin='lower', cmap=plt.cm.viridis)
-        self.cbar = plt.colorbar(im)
+        extent = (np.amin(self.coord1slice), np.amax(self.coord1slice), \
+                  np.amin(self.coord2slice), np.amax(self.coord2slice))
+        im = self.axis_map.imshow(self.map_value, extent = extent, origin='lower', cmap=plt.cm.viridis)
+        plt.colorbar(im)
 
         if self.ctype.lower() == 'RA and DEC':
             self.axis_map.set_xlabel('RA (deg)')
@@ -552,7 +555,6 @@ class MainWindow(QTabWidget):
 
             self.warningbox.setWindowTitle('Warning')
 
-            
             msg = 'Incorrect Path(s): \n'
             for i in range(len(label_final)): 
                 msg += (str(label_final[i][:-1])) +'\n'
@@ -569,7 +571,8 @@ class MainWindow(QTabWidget):
 
             self.det_data, self.coord1_data, self.coord2_data = dataload.values()
 
-            self.DirConvCheckBox.toggled.connect(self.dirfile_conversion)
+            if self.DirConvCheckBox.isChecked:
+                self.dirfile_conversion()
 
             if self.experiment.currentText().lower() == 'blast-tng':
                 zoomsyncdata = ld.frame_zoom_sync(self.det_data, self.detfreq.text(), \
@@ -589,23 +592,22 @@ class MainWindow(QTabWidget):
             self.timemap, self.detslice, self.coord1slice, \
                                          self.coord2slice = zoomsyncdata.sync_data()
 
-            print 'tests', self.detslice
-
     def clean_func(self):
         det_tod = tod.data_cleaned(self.detslice, self.detfreq.text(), self.highpassfreq.text())
         self.cleaned_data = det_tod.data_clean()
 
     def dirfile_conversion(self):
 
-        det_conv = ld.convert_dirfile(self.det_data, self.adetconv.text(), self.bdetconv.text())
-        coord1_conv = ld.convert_dirfile(self.coord1_data, self.acoord1conv.text(), \
-                                         self.bcoord1conv.text())
-        coord2_conv = ld.convert_dirfile(self.coord2_data, self.acoord2conv.text(), \
-                                         self.bcoord2conv.text())
+        det_conv = ld.convert_dirfile(self.det_data, float(self.adetconv.text()), \
+                                      float(self.bdetconv.text()))
+        coord1_conv = ld.convert_dirfile(self.coord1_data, float(self.acoord1conv.text()), \
+                                         float(self.bcoord1conv.text()))
+        coord2_conv = ld.convert_dirfile(self.coord2_data, float(self.acoord2conv.text()), \
+                                         float(self.bcoord2conv.text()))
 
         self.det_data = det_conv.conversion()
-        self.coord1_data = coord1_data.conversion()
-        self.coord2_data = coord2_data.conversion()
+        self.coord1_data = coord1_conv.conversion()
+        self.coord2_data = coord2_conv.conversion()
 
     def beamLayout(self):
 

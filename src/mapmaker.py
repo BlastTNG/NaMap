@@ -1,4 +1,5 @@
 import numpy as np
+import copy
 from astropy import wcs, coordinates
 from astropy.convolution import Gaussian2DKernel, convolve
 
@@ -27,8 +28,8 @@ class maps():
 
     def map2d(self):
 
-        mapmaker = self.mapmaking(self.data, 1., 1., 1, np.floor(self.w).astype(int))
-        finalI = mapmaker.map_multidetector_Ionly()
+        mapmaker = mapmaking(self.data, 1., 1., 1, np.floor(self.w).astype(int))
+        finalI = mapmaker.map_singledetector_Ionly(self.crpix)
         if self.convolution == False:
             return finalI
         elif self.convolution == True:
@@ -69,7 +70,8 @@ class wcs_world():
             w.wcs.ctype = ["RA---AIR", "DEC--AIR"]
         elif self.ctype.lower() == 'AZ and EL' or self.ctype.lower() == 'CROSS-EL and EL':
             w.wcs.ctype = ["TLON-ARC", "TLAT-ARC"]
-
+        print 'Coordinates'
+        print coord
         world = w.wcs_world2pix(coord, 1)
 
         return world, w
@@ -84,7 +86,7 @@ class mapmaking(object):
         self.number = number
         self.pixelmap = pixelmap
 
-    def map_param(self, value=None, sigma=None, angle=None):
+    def map_param(self, crpix, value=None, sigma=None, angle=None):
 
         if value == None:
             value = self.data.copy()
@@ -116,8 +118,11 @@ class mapmaking(object):
         x_len = np.amax(x_map)-np.amin(x_map)+1
         param = x_map+y_map*x_len
         param = param.astype(int)
-
+        print 'Test'
+        print 'Min', np.amin(param)
+        print param
         flux = value
+        print flux
         cos = np.cos(2.*angle)
         sin = np.sin(2.*angle)
 
@@ -174,10 +179,12 @@ class mapmaking(object):
     def map_multidetectors_Ionly(self):
 
         for i in range(self.number):
-            mapvalues = map_singledetector_Ionly(value=self.data[i],sigma=self.weight[i],\
+            mapvalues = self.map_singledetector_Ionly(value=self.data[i],sigma=self.weight[i],\
                                                  angle=self.polangle[i])
-
-            I_pixel += mapvalues[0]
+            if i == 0:
+                I_pixel = mapvalues[0].copy()
+            else:
+                I_pixel += mapvalues[0]
 
         return I_pixel 
 
@@ -194,7 +201,7 @@ class mapmaking(object):
         x_len = np.amax(self.pixelmap[:,0])-np.amin(self.pixelmap[:,0])
         y_len = np.amax(self.pixelmap[:,1])-np.amin(self.pixelmap[:,1])
 
-        if len(I) < (x_len+1)*(y_len+1):
+        if len(I_est_flat) < (x_len+1)*(y_len+1):
             valmax = (x_len+1)*(y_len+1)
             pmax = np.amax(value[-1])
             I_fin = 0.*np.arange(pmax+1, valmax)
@@ -217,12 +224,17 @@ class mapmaking(object):
 
         for i in range(self.number):
 
-            mapvalues = map_singledetector(value=self.data[i],sigma=self.weight[i],\
+            mapvalues = self.map_singledetector(value=self.data[i],sigma=self.weight[i],\
                                            angle=self.polangle[i])
             
-            I_map += mapvalues[0]
-            Q_map += mapvalues[1]
-            U_map += mapvalues[2]
+            if i == 0:
+                I_map = mapvalues[0].copy()
+                Q_map = mapvalues[1].copy()
+                U_map = mapvalues[2].copy()
+            else:
+                I_map += mapvalues[0]
+                Q_map += mapvalues[1]
+                U_map += mapvalues[2]
 
         return I_map, Q_map, U_map
 

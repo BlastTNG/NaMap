@@ -84,8 +84,6 @@ class despike():
             left_edge += (peaks[i]-window)
             right_edge += peaks[i]
 
-            #print left_edge, right_edge
-
             ledge = np.append(ledge, left_edge)
             redge = np.append(redge, right_edge)
 
@@ -245,8 +243,6 @@ class detector():
     def polyfit(self, edge = 0, delay=0, order=6):
 
         x = np.arange(len(self.data))
-        print 'x',x
-        print 'data',self.data
         y_fin = np.array([])
         index_exclude = np.array([], dtype=int)
 
