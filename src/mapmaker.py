@@ -220,7 +220,7 @@ class mapmaking(object):
 
     def map_multidetectors(self):
 
-        print 'This method gives realistic results only if the detector are calibrated'
+        print('This method gives realistic results only if the detector are calibrated')
 
         for i in range(self.number):
 

@@ -16,7 +16,7 @@ import sys
 import random
 import numpy as np
 import os
-import ConfigParser
+import configparser
 
 import src.detTOD as tod
 import src.loaddata as ld
@@ -351,7 +351,7 @@ class MainWindow(QTabWidget):
         dir_path = os.getcwd()+'/config/'
         
         filepath = dir_path+text.lower()+'.cfg'
-        model = ConfigParser.ConfigParser()
+        model = configparser.ConfigParser()
 
         model.read(filepath)
         sections = model.sections()
@@ -591,6 +591,7 @@ class MainWindow(QTabWidget):
 
             self.timemap, self.detslice, self.coord1slice, \
                                          self.coord2slice = zoomsyncdata.sync_data()
+            print('tests', self.detslice)
 
     def clean_func(self):
         det_tod = tod.data_cleaned(self.detslice, self.detfreq.text(), self.highpassfreq.text())

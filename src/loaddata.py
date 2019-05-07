@@ -35,6 +35,8 @@ class data_value():
         if np.size(file) == 1: 
             d = gd.dirfile(filepath, gd.RDONLY)
             vectors = d.field_list()
+            print(vectors)
+
             for i in range (len(vectors)):
                 if vectors[i] == file:
                     gdtype = self.conversion_type(file_type)
@@ -62,8 +64,16 @@ class data_value():
             return values
 
     def values(self):
+
         det_data = self.load(self.det_path, self.det_name, self.det_file_type)
         coord2_data = self.load(self.coord_path, self.coord2_name.lower(), self.coord2_file_type)
+
+        print('det')
+        det_data = self.load(self.det_path, self.det_name, self.det_file_type)
+        print('coord2', self.coord2_name)
+        coord2_data = self.load(self.coord_path, self.coord2_name.lower(), self.coord2_file_type)
+        print('coord1', self.coord1_name)
+
         if self.coord1_name.lower() == 'cross-el':
             coord1_data = self.load(self.coord_path, 'az', self.coord1_file_type)
             coord1_data = coord1_data*np.cos(coord2_data)
@@ -114,9 +124,11 @@ class frame_zoom_sync():
 
         frames[0] = fps[0]*sample_frame
         frames[1] = fps[1]*sample_frame+1
+
         if len(np.shape(data)) == 1:
             time = np.arange(len(data))/np.floor(fs)
             time = time[frames[0]:frames[1]]
+
             return time, data[frames[0]:frames[1]]
         else:
             time = np.arange(len(data[0, :]))/np.floor(fs)
