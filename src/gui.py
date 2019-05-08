@@ -389,7 +389,11 @@ class MainWindow(QTabWidget):
         self.bcoord2conv.setText(str(self.coord2conv_config[1]))
 
     def createMapPlotGroup(self):
-        self.MapPlotGroup = QGroupBox("Map")
+        self.MapPlotGroup = QTabWidget()
+
+        self.mapTab1 = QWidget()
+        self.mapTab2 = QWidget()
+        self.mapTab3 = QWidget()
 
         self.layout = QVBoxLayout()  
         self.matplotlibWidget_Map = MatplotlibWidget(self)
