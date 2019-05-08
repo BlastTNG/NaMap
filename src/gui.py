@@ -50,6 +50,7 @@ class MainWindow(QTabWidget):
         self.plotbutton.clicked.connect(self.load_func)
         self.plotbutton.clicked.connect(self.clean_func)
         self.createMapPlotGroup()
+        self.createOffsetGroup()
 
         scroll = QScrollArea()
         scroll.setWidget(self.ExperimentGroup)
@@ -66,6 +67,7 @@ class MainWindow(QTabWidget):
         mainlayout.addWidget(ExperimentGroup_Scroll, 2, 0)
         mainlayout.addWidget(self.plotbutton)
         mainlayout.addWidget(self.MapPlotGroup, 0, 1, 2, 1)
+        mainlayout.addWidget(self.OffsetGroup, 2, 1)
         
         self.tab1.setLayout(mainlayout)
 
@@ -417,13 +419,13 @@ class MainWindow(QTabWidget):
             self.convolution = False
             self.std = 0
 
-        maps = mp.maps(self.ctype, self.crpix, self.cdelt, self.crval, \
+        self.maps = mp.maps(self.ctype, self.crpix, self.cdelt, self.crval, \
                        self.cleaned_data, self.coord1slice, self.coord2slice, \
                        self.convolution, self.std)
 
-        maps.wcs_proj()
+        self.maps.wcs_proj()
 
-        self.map_value = maps.map2d()
+        self.map_value = self.maps.map2d()
         
         self.axis_map.set_axis_on()
         self.axis_map.clear()
@@ -442,17 +444,121 @@ class MainWindow(QTabWidget):
         im = self.axis_map.imshow(self.map_value, extent = extent, origin='lower', cmap=plt.cm.viridis)
         plt.colorbar(im)
 
-        if self.ctype.lower() == 'RA and DEC':
+        if self.ctype == 'RA and DEC':
             self.axis_map.set_xlabel('RA (deg)')
             self.axis_map.set_ylabel('Dec (deg)')
-        elif self.ctype.lower() == 'AZ and EL':
+        elif self.ctype == 'AZ and EL':
             self.axis_map.set_xlabel('Azimuth (deg)')
             self.axis_map.set_ylabel('Elevation (deg)')
-        elif self.ctype.lower() == 'CROSS-EL and EL':
+        elif self.ctype == 'CROSS-EL and EL':
             self.axis_map.set_xlabel('Cross Elevation (deg)')
             self.axis_map.set_ylabel('Elevation (deg)')
 
         self.matplotlibWidget_Map.canvas.draw()
+
+    def createOffsetGroup(self):
+
+        self.OffsetGroup = QGroupBox("Detector Offset")
+
+        self.RAoffsetlabel = QLabel('RA (deg)')
+        self.DECoffsetlabel = QLabel('Dec (deg)')
+        self.RAoffset = QLineEdit('')
+        self.DECoffset = QLineEdit('')
+
+        self.AZoffsetlabel = QLabel('Azimuth (deg)')
+        self.ELoffsetlabel = QLabel('Elevation (deg)')
+        self.AZoffset = QLineEdit('')
+        self.ELoffset = QLineEdit('')
+
+        self.CROSSELoffsetlabel = QLabel('Cross Elevation (deg)')
+        self.ELxoffsetlabel = QLabel('Elevation (deg)')
+        self.CROSSELoffset = QLineEdit('')
+        self.ELxoffset = QLineEdit('')
+
+        self.coordchoice.activated[str].connect(self.updateOffsetLabel)
+        self.plotbutton.clicked.connect(self.updateOffsetValue)
+
+        self.updateOffsetLabel()
+
+        self.layout = QGridLayout()
+        self.layout.addWidget(self.RAoffsetlabel, 0, 0)
+        self.layout.addWidget(self.RAoffset, 0, 1)
+        self.layout.addWidget(self.DECoffsetlabel, 1, 0)
+        self.layout.addWidget(self.DECoffset, 1, 1)
+        self.layout.addWidget(self.AZoffsetlabel, 0, 0)
+        self.layout.addWidget(self.AZoffset, 0, 1)
+        self.layout.addWidget(self.ELoffsetlabel, 1, 0)
+        self.layout.addWidget(self.ELoffset, 1, 1)
+        self.layout.addWidget(self.CROSSELoffsetlabel, 0, 0)
+        self.layout.addWidget(self.CROSSELoffset, 0, 1)
+        self.layout.addWidget(self.ELxoffsetlabel, 1, 0)
+        self.layout.addWidget(self.ELxoffset, 1, 1)
+
+        self.RAoffset.setEnabled(False)
+        self.DECoffset.setEnabled(False)
+
+        self.AZoffset.setEnabled(False)
+        self.ELoffset.setEnabled(False)
+
+        self.ELxoffset.setEnabled(False)
+        self.CROSSELoffset.setEnabled(False)
+        
+        self.OffsetGroup.setLayout(self.layout)
+
+    def updateOffsetLabel(self):
+
+        self.ctype = self.coordchoice.currentText()
+
+        if self.ctype == 'RA and DEC':
+            self.RADECvisibile = True
+            self.AZELvisibile = False
+            self.CROSSEL_ELvisibile = False
+
+        elif self.ctype == 'AZ and EL':
+            self.RADECvisibile = False
+            self.AZELvisibile = True
+            self.CROSSEL_ELvisibile = False
+            
+        elif self.ctype == 'CROSS-EL and EL':
+            self.RADECvisibile = False
+            self.AZELvisibile = False
+            self.CROSSEL_ELvisibile = True
+
+
+        self.RAoffset.setVisible(self.RADECvisibile)
+        self.DECoffset.setVisible(self.RADECvisibile)
+        self.RAoffsetlabel.setVisible(self.RADECvisibile)
+        self.DECoffsetlabel.setVisible(self.RADECvisibile)
+
+        self.AZoffset.setVisible(self.AZELvisibile)
+        self.ELoffset.setVisible(self.AZELvisibile)
+        self.AZoffsetlabel.setVisible(self.AZELvisibile)
+        self.ELoffsetlabel.setVisible(self.AZELvisibile)      
+
+        self.CROSSELoffset.setVisible(self.CROSSEL_ELvisibile)
+        self.ELxoffset.setVisible(self.CROSSEL_ELvisibile)
+        self.CROSSELoffsetlabel.setVisible(self.CROSSEL_ELvisibile)
+        self.ELxoffsetlabel.setVisible(self.CROSSEL_ELvisibile) 
+
+    def updateOffsetValue(self):
+        
+        ctype_map = self.coordchoice.currentText()
+
+        offset = bm.computeoffset(self.map_value, float(self.crval1.text()), float(self.crval2.text()), ctype_map)
+
+        self.offset_angle = offset.offset(self.maps.proj)
+
+        if self.ctype == 'RA and DEC':
+            self.RAoffset = QLineEdit(str(self.offset_angle[0]))
+            self.DECoffset = QLineEdit(str(self.offset_angle[1]))
+
+        elif self.ctype == 'AZ and EL':
+            self.AZoffset = QLineEdit(str(self.offset_angle[0]))
+            self.ELoffset = QLineEdit(str(self.offset_angle[1]))
+            
+        elif self.ctype == 'CROSS-EL and EL':
+            self.CROSSELoffset = QLineEdit(str(self.offset_angle[0]))
+            self.ELxoffset = QLineEdit(str(self.offset_angle[1]))
 
     def TODLayout(self):
 

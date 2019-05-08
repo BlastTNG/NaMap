@@ -70,8 +70,6 @@ class wcs_world():
             w.wcs.ctype = ["RA---AIR", "DEC--AIR"]
         elif self.ctype.lower() == 'AZ and EL' or self.ctype.lower() == 'CROSS-EL and EL':
             w.wcs.ctype = ["TLON-ARC", "TLAT-ARC"]
-        print 'Coordinates'
-        print coord
         world = w.wcs_world2pix(coord, 1)
 
         return world, w
@@ -118,11 +116,9 @@ class mapmaking(object):
         x_len = np.amax(x_map)-np.amin(x_map)+1
         param = x_map+y_map*x_len
         param = param.astype(int)
-        print 'Test'
-        print 'Min', np.amin(param)
-        print param
+
         flux = value
-        print flux
+
         cos = np.cos(2.*angle)
         sin = np.sin(2.*angle)
 
@@ -219,8 +215,6 @@ class mapmaking(object):
         return I_pixel, Q_pixel, U_pixel
 
     def map_multidetectors(self):
-
-        print('This method gives realistic results only if the detector are calibrated')
 
         for i in range(self.number):
 

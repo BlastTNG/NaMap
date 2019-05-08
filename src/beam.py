@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from scipy.optimize import least_squares
 from photutils import find_peaks
 from astropy.stats import sigma_clipped_stats
+from astropy import wcs, coordinates
 
 class beam(object):
 
@@ -118,7 +119,69 @@ class beam(object):
 
         return fit_data, fit_param.x, var
 
+class computeoffset():
 
+    def __init__(self, data, angX_center, angY_center, ctype):
+
+        self.data = data
+        self.angX_center = angX_center #coord1 center map 
+        self.angY_center = angY_center #coord2 center map
+        self.ctype = ctype
+
+    def centroid(self, threshold=0.275):
+
+        maxval = np.max(self.data)
+        minval = np.min(self.data)
+        y_max, x_max = np.where(self.data == maxval)
+
+        lt_inds = np.where(self.data < threshold*maxval)
+        gt_inds = np.where(self.data > threshold*maxval)
+
+        weight = np.zeros((self.data.shape[1], self.data.shape[0]))
+        weight[gt_inds] = 1.
+        a = self.data[gt_inds]
+        flux = np.sum(a)
+        x_range = np.arange(0, self.data.shape[0])
+        y_range = np.arange(0, self.data.shape[1])
+
+        xx, yy = np.meshgrid(x_range, y_range)
+
+        x_c = np.sum(xx*weight*self.data)/flux
+        y_c = np.sum(yy*weight*self.data)/flux
+
+        return np.rint(x_c), np.rint(y_c)
+
+    def offset(self, wcs_trans, threshold=0.275, return_pixel=False, altitude=0., lon=0., lat=0.):
+
+        x_c, y_c = self.centroid(threshold=threshold)
+
+        coord_centre = coordinates.SkyCoord(self.angX_center, self.angY_center, unit='deg')
+
+        if return_pixel == True:
+        
+            x_map, y_map = wcs.utils.skycoord_to_pixel(coord_centre, wcs_trans)
+
+            x_off = x_map-x_c
+            y_off = y_map-y_c
+
+            return x_off, y_off
+        
+        else:
+            coord = wcs.utils.pixel_to_skycoord(x_c, y_c, wcs_trans)
+                        
+            offset_angle = coord_centre.spherical_offsets_to(coord)
+
+            if self.ctype == 'AZ and EL':
+
+                return offset_angle.az, offset_angle.alt
+
+            elif self.ctype == 'RA and DEC':
+
+                return offset_angle.ra, offset_angle.dec
+
+            elif self.ctype == 'CROSS-EL and EL':
+
+                return offset_angle.az*np.cos(offset_angle.alt), offset_angle.alt
 
 
 
