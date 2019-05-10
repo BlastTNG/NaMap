@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 from PyQt5.QtCore import QDateTime, Qt, QTimer, pyqtSlot
 from PyQt5.QtWidgets import (QApplication, QCheckBox, QComboBox, QDateTimeEdit,
         QDial, QDialog, QGridLayout, QGroupBox, QHBoxLayout, QLabel, QLineEdit,
@@ -6,6 +7,10 @@ from PyQt5.QtWidgets import (QApplication, QCheckBox, QComboBox, QDateTimeEdit,
         QSlider, QSpinBox, QStyleFactory, QTableWidget, QTabWidget, QTextEdit,
         QVBoxLayout, QWidget, QMainWindow, QFormLayout, QMessageBox)
 
+=======
+from PyQt5.QtCore import *
+from PyQt5.QtWidgets import *
+>>>>>>> fbc01b1... Gui updated with polarizarion maps tabs
 from functools import partial
 =======
 from PyQt5.QtCore import *
@@ -41,22 +46,38 @@ import src.mapmaker as mp
 import src.beam as bm
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 class MainWindow(QTabWidget):
     
+=======
+
+class App(QMainWindow):
+
+    def __init__(self):
+        super().__init__()
+        self.title = 'Naive MapMaker'
+
+        self.setWindowTitle(self.title)
+        
+        self.TabLayout = MainWindowTab(self)
+        self.setCentralWidget(self.TabLayout)
+        
+        self.show()
+
+class MainWindowTab(QTabWidget):
+
+>>>>>>> fbc01b1... Gui updated with polarizarion maps tabs
     def __init__(self, parent = None):
-        super(MainWindow, self).__init__(parent)
-        self.tab1 = QWidget()
-        self.tab2 = QWidget()
-        self.tab3 = QWidget()
+        super(MainWindowTab, self).__init__(parent)
+        self.tab1 = ParamMapTab()
+        self.tab2 = TODTab()
+        self.tab3 = BeamTab()
             
         self.addTab(self.tab1,"Parameters and Maps")
         self.addTab(self.tab2,"Detector TOD")
         self.addTab(self.tab3, "Beam")
-        self.ParamMapLayout()
-        self.TODLayout()    
-        self.beamLayout()
-        self.setWindowTitle("Naive MapMaker")
         
+<<<<<<< HEAD
         self.show()
 
     def ParamMapLayout(self):
@@ -175,16 +196,24 @@ class ParamMapTab(QWidget):
         self.proj = np.array([])             #WCS projection of the map
         self.map_value = np.array([])        #Final map values
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
+=======
+class ParamMapTab(QWidget):
+>>>>>>> fbc01b1... Gui updated with polarizarion maps tabs
 
+    def __init__(self, parent=None):
+        super(QWidget, self).__init__(parent)
+        
         self.createAstroGroup()
         self.createExperimentGroup()
         self.createDataRepository()
 <<<<<<< HEAD
         self.plotbutton = QPushButton('Plot')
-        self.plotbutton.clicked.connect(self.load_func)
-        self.plotbutton.clicked.connect(self.clean_func)
-        self.createMapPlotGroup()
+        self.button = QPushButton('Test')
+        #self.plotbutton.clicked.connect(self.load_func)
+        #self.plotbutton.clicked.connect(self.clean_func)
+        #self.createMapPlotGroup()
         self.createOffsetGroup()
+<<<<<<< HEAD
 =======
         
         self.plotbutton = QPushButton('Plot')
@@ -203,6 +232,10 @@ class ParamMapTab(QWidget):
         self.fitsnamelabel = QLabel("FITS name")
         self.fitsnamelabel.setBuddy(self.fitsname)
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
+=======
+        mainlayout = QGridLayout(self)
+        self.MapPlotGroup = MapPlotsGroup(checkbox=self.ICheckBox)
+>>>>>>> fbc01b1... Gui updated with polarizarion maps tabs
 
         scroll = QScrollArea()
         scroll.setWidget(self.ExperimentGroup)
@@ -217,16 +250,20 @@ class ParamMapTab(QWidget):
         ExperimentGroup_Scroll.setLayout(QVBoxLayout())
         ExperimentGroup_Scroll.layout().addWidget(scroll)
 <<<<<<< HEAD
+<<<<<<< HEAD
    
         mainlayout = QGridLayout()
+=======
+>>>>>>> fbc01b1... Gui updated with polarizarion maps tabs
         mainlayout.addWidget(self.DataRepository, 0, 0)
         mainlayout.addWidget(self.AstroGroup, 1, 0)
         mainlayout.addWidget(ExperimentGroup_Scroll, 2, 0)
-        mainlayout.addWidget(self.plotbutton)
+        mainlayout.addWidget(self.plotbutton, 3, 0)
         mainlayout.addWidget(self.MapPlotGroup, 0, 1, 2, 1)
         mainlayout.addWidget(self.OffsetGroup, 2, 1)
+        mainlayout.addWidget(self.button, 3, 1)
         
-        self.tab1.setLayout(mainlayout)
+        self.setLayout(mainlayout)
 
     def createDataRepository(self):
         self.DataRepository = QGroupBox("Data Repository")
@@ -416,9 +453,13 @@ class ParamMapTab(QWidget):
         self.layout.addWidget(self.ICheckBox, 7, 0)
         self.layout.addWidget(self.BeamCheckBox, 8, 0)
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
+=======
+
+>>>>>>> fbc01b1... Gui updated with polarizarion maps tabs
         self.GaussianSTD.setVisible(False)
         self.gaussianLabel.setVisible(False)
         
@@ -692,6 +733,7 @@ class ParamMapTab(QWidget):
         self.acoord2conv.setText(str(self.coord2conv_config[0]))
         self.bcoord2conv.setText(str(self.coord2conv_config[1]))
 <<<<<<< HEAD
+<<<<<<< HEAD
 
     def createMapPlotGroup(self):
         self.MapPlotGroup = QTabWidget()
@@ -709,6 +751,9 @@ class ParamMapTab(QWidget):
 
         self.MapPlotGroup.setLayout(self.layout)
            
+=======
+          
+>>>>>>> fbc01b1... Gui updated with polarizarion maps tabs
     def map2d(self, data=None):
         data = [random.random() for i in range(25)]
 
@@ -897,7 +942,11 @@ class ParamMapTab(QWidget):
             self.CROSSELoffset = QLineEdit(str(self.offset_angle[0]))
             self.ELxoffset = QLineEdit(str(self.offset_angle[1]))
 
-    def TODLayout(self):
+class TODTab(QWidget):
+
+    def __init__(self, parent=None):
+
+        super(QWidget, self).__init__(parent)
 
         self.createTODplot()
         self.createTODcleanedplot()
@@ -906,55 +955,68 @@ class ParamMapTab(QWidget):
         mainlayout.addWidget(self.TODplot, 0, 0)
         mainlayout.addWidget(self.TODcleanedplot, 0, 1)
         
-        self.tab2.setLayout(mainlayout)
+        self.setLayout(mainlayout)
 
     def createTODplot(self, data = None):
         self.TODplot = QGroupBox("Detector TOD")
-        self.layout = QVBoxLayout()
+        TODlayout = QGridLayout()
 
-        self.matplotlibWidget_TOD = MatplotlibWidget(self)
-        self.axis_TOD = self.matplotlibWidget_TOD.figure.add_subplot(111)
-        self.axis_TOD.set_axis_off()
-        self.layout.addWidget(self.matplotlibWidget_TOD)        
-        self.plotbutton.clicked.connect(partial(self.draw_TOD, data))
+        # self.matplotlibWidget_TOD = MatplotlibWidget(self)
+        # self.axis_TOD = self.matplotlibWidget_TOD.figure.add_subplot(111)
+        # self.axis_TOD.set_axis_off()
+        # self.layout.addWidget(self.matplotlibWidget_TOD)        
+        # self.plotbutton.clicked.connect(partial(self.draw_TOD, data))
 
-        self.TODplot.setLayout(self.layout)
+        self.TODplot.setLayout(TODlayout)
 
-    def draw_TOD(self, data = None):
-        self.axis_TOD.set_axis_on()
-        self.axis_TOD.clear()
-        try:
-            self.axis_TOD.plot(self.detslice)
-        except AttributeError:
-            pass
-        self.axis_TOD.set_title('detTOD')
-        self.matplotlibWidget_TOD.canvas.draw()
+    # def draw_TOD(self, data = None):
+    #     self.axis_TOD.set_axis_on()
+    #     self.axis_TOD.clear()
+    #     try:
+    #         self.axis_TOD.plot(self.detslice)
+    #     except AttributeError:
+    #         pass
+    #     self.axis_TOD.set_title('detTOD')
+    #     self.matplotlibWidget_TOD.canvas.draw()
 
     def createTODcleanedplot(self, data = None):
         self.TODcleanedplot = QGroupBox("Detector Cleaned TOD")
         self.layout = QVBoxLayout()
 
-        self.matplotlibWidget_cleaned_TOD = MatplotlibWidget(self)
-        self.axis_cleaned_TOD = self.matplotlibWidget_cleaned_TOD.figure.add_subplot(111)
-        self.axis_cleaned_TOD.set_axis_off()
-        self.layout.addWidget(self.matplotlibWidget_cleaned_TOD)
-        self.plotbutton.clicked.connect(partial(self.draw_cleaned_TOD, data))
+        # self.matplotlibWidget_cleaned_TOD = MatplotlibWidget(self)
+        # self.axis_cleaned_TOD = self.matplotlibWidget_cleaned_TOD.figure.add_subplot(111)
+        # self.axis_cleaned_TOD.set_axis_off()
+        # self.layout.addWidget(self.matplotlibWidget_cleaned_TOD)
+        # self.plotbutton.clicked.connect(partial(self.draw_cleaned_TOD, data))
 
         self.TODcleanedplot.setLayout(self.layout)
 
-    def draw_cleaned_TOD(self, data = None):
+    # def draw_cleaned_TOD(self, data = None):
         
-        self.axis_cleaned_TOD.set_axis_on()
-        self.axis_cleaned_TOD.clear()
-        try:           
-            self.axis_cleaned_TOD.plot(self.cleaned_data)
-        except AttributeError or NameError or TypeError:
-            pass
-        self.axis_cleaned_TOD.set_title('Cleaned Data')
-        self.matplotlibWidget_cleaned_TOD.canvas.draw()
+    #     self.axis_cleaned_TOD.set_axis_on()
+    #     self.axis_cleaned_TOD.clear()
+    #     try:           
+    #         self.axis_cleaned_TOD.plot(self.cleaned_data)
+    #     except AttributeError or NameError or TypeError:
+    #         pass
+    #     self.axis_cleaned_TOD.set_title('Cleaned Data')
+    #     self.matplotlibWidget_cleaned_TOD.canvas.draw()
 
-    def load_func(self):
+class BeamTab(ParamMapTab):
+
+    def __init__(self, parent=None, checkbox=None):
+
+        super(QWidget, self).__init__(parent)
+        print(ParamMapTab.createAstroGroup)
+        c = ParamMapTab()
+        print('Test',c.ICheckBox)
+
+        beammaps = MapPlotsGroup(checkbox=c.ICheckBox)
+
+        mainlayout = QGridLayout()
+        mainlayout.addWidget(beammaps, 0, 0)
         
+<<<<<<< HEAD
         label_final = []
 
 =======
@@ -1043,18 +1105,45 @@ class ParamMapTab(QWidget):
             self.warningbox = QMessageBox()
             self.warningbox.setIcon(QMessageBox.Warning)
             self.warningbox.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+=======
+        self.setLayout(mainlayout)
 
-            self.warningbox.setWindowTitle('Warning')
+class MapPlotsGroup(QWidget):
+>>>>>>> fbc01b1... Gui updated with polarizarion maps tabs
 
-            msg = 'Incorrect Path(s): \n'
-            for i in range(len(label_final)): 
-                msg += (str(label_final[i][:-1])) +'\n'
-            
-            self.warningbox.setText(msg)        
+    def __init__(self, parent=None, checkbox=None):
+
+        super(QWidget, self).__init__(parent)
+
+        self.tabs = QTabWidget()
+        self.tab1 = QWidget()
+        self.tab2 = QWidget()
+        self.tab3 = QWidget()
+
+        self.checkbox = checkbox
         
-            self.warningbox.exec_()
+        self.tabvisible()
 
+        self.tabs.addTab(self.tab1,"I Map")
+        self.ImapTab()
+        self.QmapTab()
+        self.UmapTab()
+
+        self.checkbox.toggled.connect(self.tabvisible)
+
+        self.layout = QVBoxLayout()
+        self.layout.addWidget(self.tabs)
+        self.setLayout(self.layout)
+
+    def tabvisible(self):
+
+        if self.checkbox.isChecked():
+            self.Qsave = self.tabs.widget(1)
+            self.tabs.removeTab(1)
+            self.Usave = self.tabs.widget(1)
+            self.tabs.removeTab(1)
         else:
+<<<<<<< HEAD
 <<<<<<< HEAD
             dataload = ld.data_value(self.detpath.text(), self.detname.text(), self.coordpath.text(), \
                                      self.coord1, self.coord2, self.dettype.text(), \
@@ -1169,37 +1258,35 @@ class ParamMapTab(QWidget):
     def beamLayout(self):
 
         self.createbeamplot()
+=======
+            try:
+                self.tabs.insertTab(1, self.Qsave)
+                self.tabs.insertTab(2, self.Usave)
+            except:
+                self.tabs.addTab(self.tab2,"Q Map")
+                self.tabs.addTab(self.tab3,"U Map")
+>>>>>>> fbc01b1... Gui updated with polarizarion maps tabs
 
+    def ImapTab(self):
+
+        self.ImapGroup = QGroupBox("Detector Offset")
         mainlayout = QGridLayout()
-        mainlayout.addWidget(self.beamplot, 0, 0)
+
+        self.tab1.setLayout(mainlayout)
+
+    def QmapTab(self):
+
+        self.QmapGroup = QGroupBox("Detector Offset")
+        mainlayout = QGridLayout()
+
+        self.tab2.setLayout(mainlayout)
+
+    def UmapTab(self):
+
+        self.UmapGroup = QGroupBox("Detector Offset")
+        mainlayout = QGridLayout()
 
         self.tab3.setLayout(mainlayout)
-
-    def createbeamplot(self, data = None):
-
-        self.beamplot = QGroupBox("Beam Map")
-        
-        self.layout = QVBoxLayout()
-
-        self.matplotlibWidget_beam = MatplotlibWidget(self)
-        self.axis_beam = self.matplotlibWidget_beam.figure.add_subplot(111)
-        self.axis_beam.set_axis_off()
-        self.layout.addWidget(self.matplotlibWidget_beam)        
-        self.plotbutton.clicked.connect(partial(self.draw_beam, data))
-
-        self.beamplot.setLayout(self.layout)
-
-    def draw_beam(self, data = None):
-        self.axis_beam.set_axis_on()
-        self.axis_beam.clear()
-        try:
-            beam = bm.beam(self.map_value)
-            self.beam_data, self.beam_param, self.beam_error = beam.beam_fit()
-            self.axis_beam.imshow(self.beam_data)
-        except AttributeError:
-            pass
-        self.axis_beam.set_title('Beam')
-        self.matplotlibWidget_beam.canvas.draw()
 
 class MatplotlibWidget(QWidget):
 =======
@@ -1547,7 +1634,10 @@ class MatplotlibWidget(QWidget):
         self.layoutVertical.addWidget(self.canvas)
         self.layoutVertical.addWidget(self.toolbar)
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
+=======
+>>>>>>> fbc01b1... Gui updated with polarizarion maps tabs
 
 # class MainWindow(QTabWidget):
     
@@ -1567,7 +1657,49 @@ class MatplotlibWidget(QWidget):
         
 #         self.show()
 
+<<<<<<< HEAD
 
+=======
+#     def configuration_value(self):
+#         text = self.experiment.currentText()
+#         dir_path = os.getcwd()+'/config/'
+        
+#         filepath = dir_path+text.lower()+'.cfg'
+#         model = configparser.ConfigParser()
+
+#         model.read(filepath)
+#         sections = model.sections()
+
+#         for section in sections:
+#             if section.lower() == 'experiment parameters':
+#                 self.detfreq_config = float(model.get(section, 'DETFREQ').split('#')[0])
+#                 self.acsfreq_config = float(model.get(section, 'ACSFREQ').split('#')[0])
+#                 det_dir_conv = model.get(section,'DET_DIR_CONV').split('#')[0].strip()
+#                 self.detconv_config = np.array(det_dir_conv.split(',')).astype(float)
+#                 coor1_dir_conv = model.get(section,'COOR1_DIR_CONV').split('#')[0].strip()
+#                 self.coord1conv_config = np.array(coor1_dir_conv.split(',')).astype(float)
+#                 coor2_dir_conv = model.get(section,'COOR2_DIR_CONV').split('#')[0].strip()
+#                 self.coord2conv_config = np.array(coor2_dir_conv.split(',')).astype(float)
+#                 self.detframe_config = float(model.get(section, 'DET_SAMP_FRAME').split('#')[0])
+#                 self.acsframe_config = float(model.get(section, 'ACS_SAMP_FRAME').split('#')[0])
+#                 self.dettype_config = model.get(section,'DET_FILE_TYPE').split('#')[0].strip()
+#                 self.coord1type_config = model.get(section,'COOR1_FILE_TYPE').split('#')[0].strip()
+#                 self.coord2type_config = model.get(section,'COOR2_FILE_TYPE').split('#')[0].strip()
+
+#         self.detfreq.setText(str(self.detfreq_config))
+#         self.acsfreq.setText(str(self.acsfreq_config))
+#         self.detframe.setText(str(self.detframe_config))
+#         self.acsframe.setText(str(self.acsframe_config))
+#         self.dettype.setText(str(self.dettype_config))
+#         self.coord1type.setText(str(self.coord1type_config))
+#         self.coord2type.setText(str(self.coord2type_config))
+#         self.adetconv.setText(str(self.detconv_config[0]))
+#         self.bdetconv.setText(str(self.detconv_config[1]))
+#         self.acoord1conv.setText(str(self.coord1conv_config[0]))
+#         self.bcoord1conv.setText(str(self.coord1conv_config[1]))
+#         self.acoord2conv.setText(str(self.coord2conv_config[0]))
+#         self.bcoord2conv.setText(str(self.coord2conv_config[1]))
+>>>>>>> fbc01b1... Gui updated with polarizarion maps tabs
 
 #     def createMapPlotGroup(self):
 #         self.MapPlotGroup = QTabWidget()
@@ -1749,7 +1881,109 @@ class MatplotlibWidget(QWidget):
 
 #         
 
+<<<<<<< HEAD
 
+=======
+#     def load_func(self):
+        
+#         label_final = []
+
+#         coord_type = self.coordchoice.currentText()
+#         if coord_type == 'RA and DEC':
+#             self.coord1 = str('RA')
+#             self.coord2 = str('DEC')
+#         elif coord_type == 'AZ and EL':
+#             self.coord1 = str('AZ')
+#             self.coord2 = str('EL')
+#         elif coord_type == 'CROSS-EL and EL':
+#             self.coord1 = str('CROSS-EL')
+#             self.coord2 = str('EL')
+
+#         try:
+#             detfile = os.stat(self.detpath.text()+'/'+self.detname.text())
+#         except OSError:
+#             label = self.detpathlabel.text()
+#             label_final.append(label)
+#         if self.experiment.currentText().lower() == 'blast-tng':    
+#             try:
+#                 coordfile = os.stat(self.coordpath.text())
+#             except OSError:
+#                 label = self.coordpathlabel.text()
+#                 label_final.append(label)
+#         elif self.experiment.currentText().lower() == 'blastpol':
+#             try:
+#                 coordfile = os.stat(self.coordpath.text()+'/'+self.coord1.lower())
+#             except OSError:
+#                 label = self.coord1.lower()+' coordinate'
+#                 label_final.append(label)
+#             try:
+#                 coordfile = os.stat(self.coordpath.text()+'/'+self.coord2.lower())
+#             except OSError:
+#                 label = self.coord2.lower()+' coordinate'
+#                 label_final.append(label)
+
+#         if np.size(label_final) != 0:
+#             self.warningbox = QMessageBox()
+#             self.warningbox.setIcon(QMessageBox.Warning)
+#             self.warningbox.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+
+#             self.warningbox.setWindowTitle('Warning')
+
+#             msg = 'Incorrect Path(s): \n'
+#             for i in range(len(label_final)): 
+#                 msg += (str(label_final[i][:-1])) +'\n'
+            
+#             self.warningbox.setText(msg)        
+        
+#             self.warningbox.exec_()
+
+#         else:
+#             dataload = ld.data_value(self.detpath.text(), self.detname.text(), self.coordpath.text(), \
+#                                      self.coord1, self.coord2, self.dettype.text(), \
+#                                      self.coord1type.text(), self.coord2type.text(), \
+#                                      self.experiment.currentText())
+
+#             self.det_data, self.coord1_data, self.coord2_data = dataload.values()
+
+#             if self.DirConvCheckBox.isChecked:
+#                 self.dirfile_conversion()
+
+#             if self.experiment.currentText().lower() == 'blast-tng':
+#                 zoomsyncdata = ld.frame_zoom_sync(self.det_data, self.detfreq.text(), \
+#                                                   self.detframe.text(), self.coord1_data, \
+#                                                   self.coord2_data, self.acsfreq.text(), 
+#                                                   self.acsframe.text(), self.startframe.text(), \
+#                                                   self.endframe.text(), self.experiment.currentText(), \
+#                                                   roach_number = self.roachnumber.text(), \
+#                                                   roach_pps_path = self.coord_path.text())
+#             elif self.experiment.currentText().lower() == 'blastpol':
+#                 zoomsyncdata = ld.frame_zoom_sync(self.det_data, self.detfreq.text(), \
+#                                                   self.detframe.text(), self.coord1_data, \
+#                                                   self.coord2_data, self.acsfreq.text(), 
+#                                                   self.acsframe.text(), self.startframe.text(), \
+#                                                   self.endframe.text(), self.experiment.currentText())
+
+#             self.timemap, self.detslice, self.coord1slice, \
+#                                          self.coord2slice = zoomsyncdata.sync_data()
+#             print('tests', self.detslice)
+
+#     def clean_func(self):
+#         det_tod = tod.data_cleaned(self.detslice, self.detfreq.text(), self.highpassfreq.text())
+#         self.cleaned_data = det_tod.data_clean()
+
+#     def dirfile_conversion(self):
+
+#         det_conv = ld.convert_dirfile(self.det_data, float(self.adetconv.text()), \
+#                                       float(self.bdetconv.text()))
+#         coord1_conv = ld.convert_dirfile(self.coord1_data, float(self.acoord1conv.text()), \
+#                                          float(self.bcoord1conv.text()))
+#         coord2_conv = ld.convert_dirfile(self.coord2_data, float(self.acoord2conv.text()), \
+#                                          float(self.bcoord2conv.text()))
+
+#         self.det_data = det_conv.conversion()
+#         self.coord1_data = coord1_conv.conversion()
+#         self.coord2_data = coord2_conv.conversion()
+>>>>>>> fbc01b1... Gui updated with polarizarion maps tabs
 
 #     def beamLayout(self):
 
@@ -1787,4 +2021,7 @@ class MatplotlibWidget(QWidget):
 #         self.matplotlibWidget_beam.canvas.draw()
 
 
+<<<<<<< HEAD
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
+=======
+>>>>>>> fbc01b1... Gui updated with polarizarion maps tabs
