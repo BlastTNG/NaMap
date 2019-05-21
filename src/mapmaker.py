@@ -2,11 +2,12 @@ import numpy as np
 import copy
 from astropy import wcs, coordinates
 from astropy.convolution import Gaussian2DKernel, convolve
+import matplotlib.pyplot as plt
 
 
 class maps():
 
-    def __init__(self, ctype, crpix, cdelt, crval, data, coord1, coord2, convolution, std):
+    def __init__(self, ctype, crpix, cdelt, crval, data, coord1, coord2, convolution, std, Ionly=True):
 
         self.ctype = ctype
         self.crpix = crpix
@@ -19,6 +20,7 @@ class maps():
         self.proj = 0.
         self.convolution = convolution
         self.std = std
+        self.Ionly = Ionly
 
     def wcs_proj(self):
 
@@ -27,14 +29,26 @@ class maps():
         self.w, self.proj = wcsworld.world(np.transpose(np.array([self.coord1, self.coord2])))
 
     def map2d(self):
+        print(self.data)
+        mapmaker = mapmaking(self.data, 1e-5, 1.2, 1, np.floor(self.w).astype(int))
+        print('Polarization',self.Ionly)
+        if self.Ionly:
+            Imap = mapmaker.map_singledetector_Ionly(self.crpix)
 
-        mapmaker = mapmaking(self.data, 1., 1., 1, np.floor(self.w).astype(int))
-        finalI = mapmaker.map_singledetector_Ionly(self.crpix)
-        if self.convolution == False:
-            return finalI
-        elif self.convolution == True:
-            convolution_map = mapmaker.convolution(self.std, finalI)
-            return convolution_map
+            if not self.convolution:
+                return Imap
+            else:
+                return mapmaker.convolution(self.std, Imap)
+        else:        
+            Imap, Qmap, Umap = mapmaker.map_singledetector(self.crpix)
+            if not self.convolution:
+                return Imap, Qmap, Umap
+            else:
+                Imap_con = mapmaker.convolution(self.std, Imap)
+                Qmap_con = mapmaker.convolution(self.std, Qmap)
+                Umap_con = mapmaker.convolution(self.std, Umap)
+                return Imap_con, Qmap_con, Umap_con
+
         # if np.size(param['file_repository']['detlist']) > 1:
         #     if param['map_parameters']['Ionly'].lower() == 'true':
         #         finalI = mapmaker.map_multidetector_Ionly()
@@ -86,7 +100,7 @@ class mapmaking(object):
 
     def map_param(self, crpix, value=None, sigma=None, angle=None):
 
-        if value == None:
+        if value is None:
             value = self.data.copy()
             if np.size(self.weight) > 1:
                 sigma = self.weight.copy()
@@ -105,13 +119,13 @@ class mapmaking(object):
         y_map = self.pixelmap[:,1]   #DEC
         
         if np.abs(np.amin(x_map)) <= 0:
-            x_map = np.round(x_map+np.abs(np.amin(x_map)))
+            x_map = np.floor(x_map+np.abs(np.amin(x_map)))
         else:
-            x_map = np.round(x_map-np.amin(x_map))
+            x_map = np.floor(x_map-np.amin(x_map))
         if np.abs(np.amin(y_map)) <= 0:
-            y_map = np.round(y_map+np.abs(np.amin(y_map)))
+            y_map = np.floor(y_map+np.abs(np.amin(y_map)))
         else:
-            y_map = np.round(y_map-np.amin(y_map))
+            y_map = np.floor(y_map-np.amin(y_map))
 
         x_len = np.amax(x_map)-np.amin(x_map)+1
         param = x_map+y_map*x_len
@@ -122,9 +136,19 @@ class mapmaking(object):
         cos = np.cos(2.*angle)
         sin = np.sin(2.*angle)
 
+        print('Param',np.size(param))
+        print('X', np.size(x_map))
+        print('Y', np.size(y_map))
+        print('Flux',np.size(flux))
+
         I_est_flat = np.bincount(param, weights=flux)*sigma
-        Q_est_flat = np.bincount(param, weights=flux*cos)
-        U_est_flat = np.bincount(param, weights=flux*sin)
+        Q_est_flat = np.bincount(param, weights=flux*cos)*sigma
+        U_est_flat = np.bincount(param, weights=flux*sin)*sigma
+        
+        
+        print(np.amax(I_est_flat))
+        print(type(sigma), sigma)
+        print(angle)
 
         N_hits_flat = 0.5*np.bincount(param)*sigma
         c_flat = np.bincount(param, weights=0.5*cos)*sigma
@@ -133,8 +157,8 @@ class mapmaking(object):
         s2_flat = N_hits_flat-c2_flat
         m_flat = np.bincount(param, weights=0.5*cos*sin)*sigma
 
-        Delta = c_flat**2*(c2_flat-N_hits_flat)+2*s_flat*c_flat*m_flat-c2_flat*s_flat**2-\
-                N_hits_flat*(c2_flat**2+m_flat**2-c2_flat*N_hits_flat)
+        Delta = (c_flat**2*(c2_flat-N_hits_flat)+2*s_flat*c_flat*m_flat-c2_flat*s_flat**2-\
+                 N_hits_flat*(c2_flat**2+m_flat**2-c2_flat*N_hits_flat))
         A = -(c2_flat**2+m_flat**2-c2_flat*N_hits_flat)
         B = c_flat*(c2_flat-N_hits_flat)+s_flat*m_flat
         C = c_flat*m_flat-s_flat*c2_flat
@@ -142,41 +166,51 @@ class mapmaking(object):
         E = c_flat*s_flat-m_flat*N_hits_flat
         F = c2_flat*N_hits_flat-c_flat**2
 
+        print('NonZeroCos', np.nonzero(cos), cos[0])
+        print('NonZeroSin', np.nonzero(sin), sin[1])
+        print(np.size(N_hits_flat))
+        print(c_flat[593],N_hits_flat[593], c2_flat[593], s_flat[593], s2_flat[593], m_flat[593], param[593], Delta[593])
+        print('Components')
+        print(A[593],B[593], C[593], D[593], E[593], F[593], param[593], Delta[593])
+        print(c_flat[593]**2*(c2_flat[593]-N_hits_flat[593]))
+        print(2*s_flat[593]*c_flat[593]*m_flat[593])
+        print(-c2_flat[593]*s_flat[593]**2)
+        print(N_hits_flat[593]*(c2_flat[593]**2+m_flat[593]**2-c2_flat[593]*N_hits_flat[593]))
+
+        # print('NonZeroC', np.nonzero(C))
+        # print('NonZeroD', np.nonzero(D))
+        # print('NonZeroE', np.nonzero(E))
+        # print('NonZeroF', np.nonzero(F))
+
         return I_est_flat, Q_est_flat, U_est_flat, N_hits_flat, Delta, A, B, C, D, E, F, param
 
     def map_singledetector_Ionly(self, crpix, value=None, sigma=None, angle=None):
 
         value =self.map_param(crpix=crpix, value=value, sigma=sigma, angle=angle)
 
-        I = np.zeros(len(value[0]))
+        I_flat = np.zeros(len(value[0]))
 
-        I[np.nonzero(value[0])] = value[0][np.nonzero(value[0])]/value[3][np.nonzero(value[0])]
+        I_flat[np.nonzero(value[0])] = value[0][np.nonzero(value[0])]/value[3][np.nonzero(value[0])]
 
         x_len = np.amax(self.pixelmap[:,0])-np.amin(self.pixelmap[:,0])
         y_len = np.amax(self.pixelmap[:,1])-np.amin(self.pixelmap[:,1])
 
-        if len(I) < (x_len+1)*(y_len+1):
+        if len(I_flat) < (x_len+1)*(y_len+1):
             valmax = (x_len+1)*(y_len+1)
             pmax = np.amax(value[-1])
             I_fin = 0.*np.arange(pmax+1, valmax)
             
-            I = np.append(I, I_fin)
+            I_flat = np.append(I_flat, I_fin)
 
-        I_pixel = np.reshape(I, (y_len+1,x_len+1))
-        
-        x_map = self.pixelmap[:,0]
-        y_map = self.pixelmap[:,1]
-
-        x_min = np.amin(x_map)
-        y_min = np.amin(y_map)
-
+        I_pixel = np.reshape(I_flat, (y_len+1,x_len+1))
+    
         return I_pixel
 
     def map_multidetectors_Ionly(self):
 
         for i in range(self.number):
             mapvalues = self.map_singledetector_Ionly(value=self.data[i],sigma=self.weight[i],\
-                                                 angle=self.polangle[i])
+                                                      angle=self.polangle[i])
             if i == 0:
                 I_pixel = mapvalues[0].copy()
             else:
@@ -184,22 +218,50 @@ class mapmaking(object):
 
         return I_pixel 
 
-    def map_singledetector(self, value=None, sigma=None, angle=None):
+    def map_singledetector(self, crpix, value=None, sigma=None, angle=None):
 
 
-        I_est_flat, Q_est_flat, U_est_flat, N_hits_flat, Delta, \
-                    A, B, C, D, E, F, param = self.map_param(value=value, sigma=sigma,angle=angle)
+        (I_est_flat, Q_est_flat, U_est_flat, N_hits_flat, Delta, \
+         A, B, C, D, E, F, param) = self.map_param(crpix=crpix, value=value, sigma=sigma,angle=angle)
 
-        I_pixel_flat = (A*I_est_flat+B*Q_est_flat+C*U_est_flat)/Delta
-        Q_pixel_flat = (B*I_est_flat+D*Q_est_flat+E*U_est_flat)/Delta
-        U_pixel_flat = (C*I_est_flat+E*Q_est_flat+F*U_est_flat)/Delta
+        I_pixel_flat = np.zeros(len(I_est_flat))
+        Q_pixel_flat = np.zeros(len(Q_est_flat))
+        U_pixel_flat = np.zeros(len(U_est_flat))
+
+        #index = np.nonzero(I_est_flat)
+        #idx = np.nonzero(N_hits_flat)
+        #idx_delta = np.nonzero(Delta)
+        print('Test')
+        print(A[16668],B[16668], C[16668], D[16668], E[16668], F[16668], N_hits_flat[16668], Delta[16668], np.bincount(param)[16668])
+        print(I_est_flat[593])
+        print(Q_est_flat[593])
+        print(U_est_flat[593])
+        #print(index)
+        #print(idx)
+        #print(idx_delta)
+
+        index, = np.where(np.abs(Delta)>0.)
+        
+        # plt.plot(Delta)
+        # plt.show()
+        I_pixel_flat[index] = (A[index]*I_est_flat[index]+B[index]*Q_est_flat[index]+\
+                               C[index]*U_est_flat[index])/Delta[index]
+        Q_pixel_flat[index] = (B[index]*I_est_flat[index]+D[index]*Q_est_flat[index]+\
+                               E[index]*U_est_flat[index])/Delta[index]
+        U_pixel_flat[index] = (C[index]*I_est_flat[index]+E[index]*Q_est_flat[index]+\
+                               F[index]*U_est_flat[index])/Delta[index]
+
+        print('Delta', np.size(index))
+        print('I',np.size(np.nonzero(I_pixel_flat)[0]))
+        print(index)
+        print(np.nonzero(I_pixel_flat))
 
         x_len = np.amax(self.pixelmap[:,0])-np.amin(self.pixelmap[:,0])
         y_len = np.amax(self.pixelmap[:,1])-np.amin(self.pixelmap[:,1])
 
         if len(I_est_flat) < (x_len+1)*(y_len+1):
             valmax = (x_len+1)*(y_len+1)
-            pmax = np.amax(value[-1])
+            pmax = np.amax(param)
             I_fin = 0.*np.arange(pmax+1, valmax)
             Q_fin = 0.*np.arange(pmax+1, valmax)
             U_fin = 0.*np.arange(pmax+1, valmax)
@@ -207,6 +269,20 @@ class mapmaking(object):
             I_pixel_flat = np.append(I_pixel_flat, I_fin)
             Q_pixel_flat = np.append(Q_pixel_flat, Q_fin)
             U_pixel_flat = np.append(U_pixel_flat, U_fin)
+
+        ind_pol, = np.nonzero(Q_pixel_flat)
+        pol = np.sqrt(Q_pixel_flat**2+U_pixel_flat**2)
+        print('Index',np.amax(np.abs(pol[ind_pol]/I_pixel_flat[ind_pol])), np.where(np.abs(pol[ind_pol]/I_pixel_flat[ind_pol])==np.amax(np.abs(pol[ind_pol]/I_pixel_flat[ind_pol]))))
+        print(ind_pol[243], ind_pol[257])
+        # idx, = np.where(np.abs(pol[ind_pol]/I_pixel_flat[ind_pol])>=1)
+        # print('Pol Index',idx)
+        # print(pol[ind_pol][29], I_pixel_flat[ind_pol][29], Q_pixel_flat[ind_pol][29], U_pixel_flat[ind_pol][29])
+
+        plt.plot(pol[ind_pol]/I_pixel_flat[ind_pol])
+        # plt.plot(Q_pixel_flat/I_pixel_flat, label = 'Q')
+        # plt.plot(U_pixel_flat/I_pixel_flat, label='U')
+        # plt.legend()
+        plt.show()
 
         I_pixel = np.reshape(I_pixel_flat, (y_len+1,x_len+1))
         Q_pixel = np.reshape(Q_pixel_flat, (y_len+1,x_len+1))

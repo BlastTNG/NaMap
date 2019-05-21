@@ -3,7 +3,7 @@ import numpy as np
 from scipy.interpolate import interp1d
 
 class data_value():
-
+    
     def __init__(self, det_path, det_name, coord_path, coord1_name, \
                  coord2_name, det_file_type, coord1_file_type, coord2_file_type, \
                  experiment):
@@ -35,17 +35,15 @@ class data_value():
         if np.size(file) == 1: 
             d = gd.dirfile(filepath, gd.RDONLY)
             vectors = d.field_list()
-            print(vectors)
-
             for i in range (len(vectors)):
-                if vectors[i] == file:
+                if str(vectors[i])[2:-1] == file:
                     gdtype = self.conversion_type(file_type)
                     if self.experiment.lower()=='blast-tng':
                         num = d.eof('MCP_1HZ_FRAMECOUNT')
                     else:
                         num = d.nframes
                     
-                    values = d.getdata(file, num_frames = num-1, first_frame=0)
+                    values = d.getdata(file, gdtype, num_frames = num-1, first_frame=0)
             return np.asarray(values)
         else:
             d = gd.dirfile(filepath[0], gd.RDWR|gd.UNENCODED)
