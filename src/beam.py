@@ -34,10 +34,14 @@ class beam(object):
             sigma_x = params[j+3]
             sigma_y = params[j+4]
 <<<<<<< HEAD
+<<<<<<< HEAD
             theta = params[j+5]    
 =======
             theta = params[j+5]   
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
+=======
+            theta = params[j+5]   
+>>>>>>> 6c0d8b1... Solved some errors in polarization maps (still some to be corrected)
             a = (np.cos(theta)**2)/(2*sigma_x**2)+(np.sin(theta)**2)/(2*sigma_y**2)
             b = -(np.sin(2*theta))/(4*sigma_x**2)+(np.sin(2*theta))/(4*sigma_y**2)
             c = (np.sin(theta)**2)/(2*sigma_x**2)+(np.cos(theta)**2)/(2*sigma_y**2)

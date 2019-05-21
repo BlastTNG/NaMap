@@ -4,6 +4,7 @@ from scipy.interpolate import interp1d
 
 class data_value():
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
     
     '''
@@ -11,6 +12,9 @@ class data_value():
     '''
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
 
+=======
+    
+>>>>>>> 6c0d8b1... Solved some errors in polarization maps (still some to be corrected)
     def __init__(self, det_path, det_name, coord_path, coord1_name, \
                  coord2_name, det_file_type, coord1_file_type, coord2_file_type, \
                  experiment):
@@ -62,9 +66,8 @@ class data_value():
         if np.size(file) == 1: 
             d = gd.dirfile(filepath, gd.RDONLY)
             vectors = d.field_list()
-            print(vectors)
-
             for i in range (len(vectors)):
+<<<<<<< HEAD
                 if vectors[i] == file:
 =======
 
@@ -82,6 +85,9 @@ class data_value():
             for i in range (len(vectors)):
                 if str(vectors[i])[2:-1] == file:
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
+=======
+                if str(vectors[i])[2:-1] == file:
+>>>>>>> 6c0d8b1... Solved some errors in polarization maps (still some to be corrected)
                     gdtype = self.conversion_type(file_type)
                     if self.experiment.lower()=='blast-tng':
                         num = d.eof('MCP_1HZ_FRAMECOUNT')
@@ -89,10 +95,14 @@ class data_value():
                         num = d.nframes
                     
 <<<<<<< HEAD
+<<<<<<< HEAD
                     values = d.getdata(file, num_frames = num-1, first_frame=0)
 =======
                     values = d.getdata(file, gdtype, num_frames = num-1, first_frame=0)
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
+=======
+                    values = d.getdata(file, gdtype, num_frames = num-1, first_frame=0)
+>>>>>>> 6c0d8b1... Solved some errors in polarization maps (still some to be corrected)
             return np.asarray(values)
         else:
             d = gd.dirfile(filepath[0], gd.RDWR|gd.UNENCODED)
