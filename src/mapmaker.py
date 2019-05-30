@@ -24,6 +24,7 @@ class maps():
         self.Ionly = Ionly
 
     def wcs_proj(self):
+<<<<<<< HEAD
 
 =======
 from astropy import wcs
@@ -58,14 +59,19 @@ class maps():
         '''
 
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
+=======
+>>>>>>> 4ee3dbe... Fixed bug in selecting data
         wcsworld = wcs_world(self.ctype, self.crpix, self.cdelt, self.crval)
 
         self.w, self.proj = wcsworld.world(np.transpose(np.array([self.coord1, self.coord2])))
+        print('Coordinates')
+        print(np.transpose(np.array([self.coord1, self.coord2])))
+        print('XandY')
+        print(self.w)
+        print(np.amax(self.w[:,0]),np.amin(self.w[:,0]))
 
     def map2d(self):
-        print(self.data)
-        mapmaker = mapmaking(self.data, 1e-5, 1.2, 1, np.floor(self.w).astype(int))
-        print('Polarization',self.Ionly)
+        mapmaker = mapmaking(self.data, 1., 1.2, 1, np.floor(self.w).astype(int))
         if self.Ionly:
             Imap = mapmaker.map_singledetector_Ionly(self.crpix)
 
@@ -173,9 +179,15 @@ class wcs_world():
         w.wcs.cdelt = self.crdelt
         w.wcs.crval = self.crval
 <<<<<<< HEAD
+<<<<<<< HEAD
         if self.ctype.lower() == 'RA and DEC':
             w.wcs.ctype = ["RA---AIR", "DEC--AIR"]
         elif self.ctype.lower() == 'AZ and EL' or self.ctype.lower() == 'CROSS-EL and EL':
+=======
+        if self.ctype == 'RA and DEC':
+            w.wcs.ctype = ["RA---TAN", "DEC--TAN"]
+        elif self.ctype == 'AZ and EL' or self.ctype == 'CROSS-EL and EL':
+>>>>>>> 4ee3dbe... Fixed bug in selecting data
             w.wcs.ctype = ["TLON-ARC", "TLAT-ARC"]
 =======
         if self.ctype == 'RA and DEC':
@@ -246,13 +258,24 @@ class mapmaking(object):
         
         x_map = self.pixelmap[:,0]   #RA 
         y_map = self.pixelmap[:,1]   #DEC
+
+        print('Coordinates in X and Y')
+        print(x_map)
+        print(y_map)
+        print(np.amax(x_map),np.amin(x_map))
+        print(np.amin(y_map),np.amax(y_map))
         
 <<<<<<< HEAD
+<<<<<<< HEAD
         if np.abs(np.amin(x_map)) <= 0:
+=======
+        if (np.amin(x_map)) <= 0:
+            print('MIN')
+>>>>>>> 4ee3dbe... Fixed bug in selecting data
             x_map = np.floor(x_map+np.abs(np.amin(x_map)))
         else:
             x_map = np.floor(x_map-np.amin(x_map))
-        if np.abs(np.amin(y_map)) <= 0:
+        if (np.amin(y_map)) <= 0:
             y_map = np.floor(y_map+np.abs(np.amin(y_map)))
         else:
 <<<<<<< HEAD
@@ -271,7 +294,12 @@ class mapmaking(object):
             y_map = np.floor(y_map-np.amin(y_map))
 >>>>>>> 6c0d8b1... Solved some errors in polarization maps (still some to be corrected)
 
+        print('Shifted Coordinates in X and Y')
+        print(x_map)
+        print(y_map)
+
         x_len = np.amax(x_map)-np.amin(x_map)+1
+        print(x_len)
         param = x_map+y_map*x_len
         param = param.astype(int)
 
@@ -279,11 +307,6 @@ class mapmaking(object):
 
         cos = np.cos(2.*angle)
         sin = np.sin(2.*angle)
-
-        print('Param',np.size(param))
-        print('X', np.size(x_map))
-        print('Y', np.size(y_map))
-        print('Flux',np.size(flux))
 
         I_est_flat = np.bincount(param, weights=flux)*sigma
 <<<<<<< HEAD
@@ -297,12 +320,15 @@ class mapmaking(object):
 =======
         Q_est_flat = np.bincount(param, weights=flux*cos)*sigma
         U_est_flat = np.bincount(param, weights=flux*sin)*sigma
+<<<<<<< HEAD
         
         
         print(np.amax(I_est_flat))
         print(type(sigma), sigma)
         print(angle)
 >>>>>>> 6c0d8b1... Solved some errors in polarization maps (still some to be corrected)
+=======
+>>>>>>> 4ee3dbe... Fixed bug in selecting data
 
         N_hits_flat = 0.5*np.bincount(param)*sigma
         c_flat = np.bincount(param, weights=0.5*cos)*sigma
@@ -311,11 +337,14 @@ class mapmaking(object):
         s2_flat = N_hits_flat-c2_flat
         m_flat = np.bincount(param, weights=0.5*cos*sin)*sigma
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 <<<<<<< HEAD
         Delta = c_flat**2*(c2_flat-N_hits_flat)+2*s_flat*c_flat*m_flat-c2_flat*s_flat**2-\
                 N_hits_flat*(c2_flat**2+m_flat**2-c2_flat*N_hits_flat)
 =======
+=======
+>>>>>>> 4ee3dbe... Fixed bug in selecting data
         Delta = (c_flat**2*(c2_flat-N_hits_flat)+2*s_flat*c_flat*m_flat-c2_flat*s_flat**2-\
                  N_hits_flat*(c2_flat**2+m_flat**2-c2_flat*N_hits_flat))
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
@@ -329,22 +358,6 @@ class mapmaking(object):
         D = -((c2_flat-N_hits_flat)*N_hits_flat+s_flat**2)
         E = c_flat*s_flat-m_flat*N_hits_flat
         F = c2_flat*N_hits_flat-c_flat**2
-
-        print('NonZeroCos', np.nonzero(cos), cos[0])
-        print('NonZeroSin', np.nonzero(sin), sin[1])
-        print(np.size(N_hits_flat))
-        print(c_flat[593],N_hits_flat[593], c2_flat[593], s_flat[593], s2_flat[593], m_flat[593], param[593], Delta[593])
-        print('Components')
-        print(A[593],B[593], C[593], D[593], E[593], F[593], param[593], Delta[593])
-        print(c_flat[593]**2*(c2_flat[593]-N_hits_flat[593]))
-        print(2*s_flat[593]*c_flat[593]*m_flat[593])
-        print(-c2_flat[593]*s_flat[593]**2)
-        print(N_hits_flat[593]*(c2_flat[593]**2+m_flat[593]**2-c2_flat[593]*N_hits_flat[593]))
-
-        # print('NonZeroC', np.nonzero(C))
-        # print('NonZeroD', np.nonzero(D))
-        # print('NonZeroE', np.nonzero(E))
-        # print('NonZeroF', np.nonzero(F))
 
         return I_est_flat, Q_est_flat, U_est_flat, N_hits_flat, Delta, A, B, C, D, E, F, param
 
@@ -470,6 +483,7 @@ class mapmaking(object):
         U_pixel_flat = np.zeros(len(U_est_flat))
 
 <<<<<<< HEAD
+<<<<<<< HEAD
         index, = np.where(np.abs(Delta)>0.)
         
 =======
@@ -490,6 +504,10 @@ class mapmaking(object):
         # plt.plot(Delta)
         # plt.show()
 >>>>>>> 6c0d8b1... Solved some errors in polarization maps (still some to be corrected)
+=======
+        index, = np.where(np.abs(Delta)>0.)
+        
+>>>>>>> 4ee3dbe... Fixed bug in selecting data
         I_pixel_flat[index] = (A[index]*I_est_flat[index]+B[index]*Q_est_flat[index]+\
                                C[index]*U_est_flat[index])/Delta[index]
         Q_pixel_flat[index] = (B[index]*I_est_flat[index]+D[index]*Q_est_flat[index]+\
@@ -500,12 +518,15 @@ class mapmaking(object):
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
 =======
 
+<<<<<<< HEAD
         print('Delta', np.size(index))
         print('I',np.size(np.nonzero(I_pixel_flat)[0]))
         print(index)
         print(np.nonzero(I_pixel_flat))
 >>>>>>> 6c0d8b1... Solved some errors in polarization maps (still some to be corrected)
 
+=======
+>>>>>>> 4ee3dbe... Fixed bug in selecting data
         x_len = np.amax(self.pixelmap[:,0])-np.amin(self.pixelmap[:,0])
         y_len = np.amax(self.pixelmap[:,1])-np.amin(self.pixelmap[:,1])
 
@@ -538,17 +559,6 @@ class mapmaking(object):
 =======
         ind_pol, = np.nonzero(Q_pixel_flat)
         pol = np.sqrt(Q_pixel_flat**2+U_pixel_flat**2)
-        print('Index',np.amax(np.abs(pol[ind_pol]/I_pixel_flat[ind_pol])), np.where(np.abs(pol[ind_pol]/I_pixel_flat[ind_pol])==np.amax(np.abs(pol[ind_pol]/I_pixel_flat[ind_pol]))))
-        print(ind_pol[243], ind_pol[257])
-        # idx, = np.where(np.abs(pol[ind_pol]/I_pixel_flat[ind_pol])>=1)
-        # print('Pol Index',idx)
-        # print(pol[ind_pol][29], I_pixel_flat[ind_pol][29], Q_pixel_flat[ind_pol][29], U_pixel_flat[ind_pol][29])
-
-        plt.plot(pol[ind_pol]/I_pixel_flat[ind_pol])
-        # plt.plot(Q_pixel_flat/I_pixel_flat, label = 'Q')
-        # plt.plot(U_pixel_flat/I_pixel_flat, label='U')
-        # plt.legend()
-        plt.show()
 
 >>>>>>> 6c0d8b1... Solved some errors in polarization maps (still some to be corrected)
         I_pixel = np.reshape(I_pixel_flat, (y_len+1,x_len+1))

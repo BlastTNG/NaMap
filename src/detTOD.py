@@ -1,8 +1,11 @@
 import numpy as np
 <<<<<<< HEAD
+<<<<<<< HEAD
 import os
+=======
+
+>>>>>>> 4ee3dbe... Fixed bug in selecting data
 import scipy.signal as sgn
-from scipy.interpolate import interp1d
 from scipy.optimize import curve_fit
 
 class data_cleaned():
@@ -14,6 +17,7 @@ class data_cleaned():
         self.cutoff = float(cutoff)
 
     def data_clean(self):
+<<<<<<< HEAD
         
 =======
 import scipy.signal as sgn
@@ -38,6 +42,8 @@ class data_cleaned():
         Function to return the cleaned TOD as numpy array
         '''
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
+=======
+>>>>>>> 4ee3dbe... Fixed bug in selecting data
         det_data = detector(self.data, 0, 0)
         residual_data = det_data.fit_residual()
 
@@ -99,10 +105,14 @@ class despike():
         elif hthres != 0 and pthres != 0:
             index, param = sgn.find_peaks(np.abs(self.data), height = y_mean + hthres*y_std, \
 <<<<<<< HEAD
+<<<<<<< HEAD
                                             prominence = pthres*y_std)
 =======
                                           prominence = pthres*y_std)
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
+=======
+                                          prominence = pthres*y_std)
+>>>>>>> 4ee3dbe... Fixed bug in selecting data
 
         ledget = sgn.peak_widths(np.abs(self.data),index)[2]
         redget = sgn.peak_widths(np.abs(self.data),index)[3]
@@ -412,10 +422,14 @@ class detector():
                 
                 p = np.polyfit(x[index1:index2], \
 <<<<<<< HEAD
+<<<<<<< HEAD
                             self.data[index1:index2], order)
 =======
                                self.data[index1:index2], order)
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
+=======
+                               self.data[index1:index2], order)
+>>>>>>> 4ee3dbe... Fixed bug in selecting data
 
                 poly = np.poly1d(p)
                 y = poly(x[index1:index2])

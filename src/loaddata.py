@@ -1,6 +1,7 @@
 import pygetdata as gd
 import numpy as np
 from scipy.interpolate import interp1d
+import matplotlib.pyplot as plt
 
 class data_value():
 <<<<<<< HEAD
@@ -185,7 +186,7 @@ class frame_zoom_sync():
         self.frame1 = int(float(frame1))
         self.frame2 = int(float(frame2))
         self.experiment = experiment
-        if roach_number != None:
+        if roach_number is not None:
             self.roach_number = int(float(roach_number))
         else:
             self.roach_number = roach_number
@@ -245,8 +246,14 @@ class frame_zoom_sync():
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
         frames = fps.copy()
 
+        print('PARAM_ZOOM')
+        print(sample_frame, fs, fps)
+        print(len(data))
+
         frames[0] = fps[0]*sample_frame
         frames[1] = fps[1]*sample_frame+1
+
+        print(frames)
 
         if len(np.shape(data)) == 1:
 <<<<<<< HEAD
@@ -312,6 +319,7 @@ class frame_zoom_sync():
             
             for i in range(len(index_bins)):
 <<<<<<< HEAD
+<<<<<<< HEAD
                  temp = index_bins[i]+np.arange(0., bins_temp[index_bins[i]], \
                                                 1.)/bins_temp[index_bins[i]] 
                     
@@ -322,6 +330,12 @@ class frame_zoom_sync():
                     
                 time = np.append(time, temp)
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
+=======
+                temp = index_bins[i]+np.arange(0., bins_temp[index_bins[i]], \
+                                               1.)/bins_temp[index_bins[i]] 
+                    
+                time = np.append(time, temp)
+>>>>>>> 4ee3dbe... Fixed bug in selecting data
 
         return time
 
@@ -343,14 +357,21 @@ class frame_zoom_sync():
 <<<<<<< HEAD
         if self.experiment.lower() == 'blast-tng':
             dettime = self.det_time()
+
+            frames0 = self.frame1*self.det_sample_frame
+            frames1 = self.frame2*self.det_sample_frame+1
+
+            detTOD = self.det_data.copy()[frames[0]:frames[1]]
         elif self.experiment.lower() == 'blastpol':
             dettime, detTOD = self.frame_zoom(self.det_data, self.det_sample_frame, \
-                                          self.det_fs, np.array([self.frame1,self.frame2]))
+                                              self.det_fs, np.array([self.frame1,self.frame2]))
 
+        # print(dettime)
         coord1time, coord1 = self.frame_zoom(self.coord1_data, self.coord_sample_frame, \
-                                          self.coord_fs, np.array([self.frame1,self.frame2]))
+                                             self.coord_fs, np.array([self.frame1,self.frame2]))
 
         coord2time, coord2 = self.frame_zoom(self.coord2_data, self.coord_sample_frame, \
+<<<<<<< HEAD
                                           self.coord_fs, np.array([self.frame1,self.frame2]))
 =======
 
@@ -378,12 +399,20 @@ class frame_zoom_sync():
                                              self.coord_fs, np.array([self.startframe,self.endframe]))
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
 
+=======
+                                             self.coord_fs, np.array([self.frame1,self.frame2]))
+        # print('COORD')
+        # print(self.coord1_data)
+        # print(self.coord2_data)
+        # print(coord1time)
+>>>>>>> 4ee3dbe... Fixed bug in selecting data
         index1, = np.where(np.abs(dettime-coord1time[0]) == np.amin(np.abs(dettime-coord1time[0])))
         index2, = np.where(np.abs(dettime-coord1time[-1]) == np.amin(np.abs(dettime-coord1time[-1])))
 
         coord1_inter, coord2_inter = self.coord_int(coord1, coord2, \
                                                     coord1time, dettime[index1[0]+10:index2[0]-10])
         
+<<<<<<< HEAD
 <<<<<<< HEAD
         detTOD = self.det_data.copy()
 
@@ -398,4 +427,13 @@ class frame_zoom_sync():
         return (dettime[index1[0]+10:index2[0]-10], self.det_data[index1[0]+10:index2[0]-10], \
                 coord1_inter, coord2_inter)
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
+=======
+        
+        # print('INDICES')
+        # print(index1[0],index2[0])
+        # plt.plot(detTOD[index1[0]:index2[0]])
+        # plt.show()
+        return (dettime[index1[0]+10:index2[0]-10], detTOD[index1[0]+10:index2[0]-10], \
+                coord1_inter, coord2_inter)
+>>>>>>> 4ee3dbe... Fixed bug in selecting data
 

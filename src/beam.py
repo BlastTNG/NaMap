@@ -20,9 +20,12 @@ class beam(object):
         self.xy_mesh = np.meshgrid(self.xgrid,self.ygrid)
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
+=======
+>>>>>>> 4ee3dbe... Fixed bug in selecting data
     def multivariate_gaussian_2d(self, params):
 
         (x, y) = self.xy_mesh
@@ -65,10 +68,14 @@ class beam(object):
         mean, median, std = sigma_clipped_stats(self.data, sigma=3.0)
         threshold = median+(5.*std)
 <<<<<<< HEAD
+<<<<<<< HEAD
         if mask_pf == False:
 =======
         if mask_pf is False:
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
+=======
+        if mask_pf is False:
+>>>>>>> 4ee3dbe... Fixed bug in selecting data
             tbl = find_peaks(map_data, threshold, box_size=bs)
         else:
             self.mask = mask_pf.copy()
@@ -167,10 +174,14 @@ class computeoffset():
         gt_inds = np.where(self.data > threshold*maxval)
 
 <<<<<<< HEAD
+<<<<<<< HEAD
         weight = np.zeros((self.data.shape[1], self.data.shape[0]))
 =======
         weight = np.zeros((self.data.shape[0], self.data.shape[1]))
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
+=======
+        weight = np.zeros((self.data.shape[0], self.data.shape[1]))
+>>>>>>> 4ee3dbe... Fixed bug in selecting data
         weight[gt_inds] = 1.
         a = self.data[gt_inds]
         flux = np.sum(a)
@@ -178,10 +189,14 @@ class computeoffset():
         y_range = np.arange(0, self.data.shape[1])
 
 <<<<<<< HEAD
+<<<<<<< HEAD
         xx, yy = np.meshgrid(x_range, y_range)
 =======
         yy, xx = np.meshgrid(y_range, x_range)
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
+=======
+        yy, xx = np.meshgrid(y_range, x_range)
+>>>>>>> 4ee3dbe... Fixed bug in selecting data
 
         x_c = np.sum(xx*weight*self.data)/flux
         y_c = np.sum(yy*weight*self.data)/flux
@@ -198,10 +213,14 @@ class computeoffset():
         coord_centre = coordinates.SkyCoord(self.angX_center, self.angY_center, unit='deg')
 
 <<<<<<< HEAD
+<<<<<<< HEAD
         if return_pixel == True:
 =======
         if return_pixel is True:
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
+=======
+        if return_pixel is True:
+>>>>>>> 4ee3dbe... Fixed bug in selecting data
         
             x_map, y_map = wcs.utils.skycoord_to_pixel(coord_centre, wcs_trans)
 
@@ -212,6 +231,10 @@ class computeoffset():
         
         else:
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+            print
+>>>>>>> 4ee3dbe... Fixed bug in selecting data
             coord = wcs.utils.pixel_to_skycoord(x_c, y_c, wcs_trans)
                         
             offset_angle = coord_centre.spherical_offsets_to(coord)
