@@ -23,15 +23,17 @@ class maps():
         self.Ionly = Ionly
 
     def wcs_proj(self):
-
         wcsworld = wcs_world(self.ctype, self.crpix, self.cdelt, self.crval)
 
         self.w, self.proj = wcsworld.world(np.transpose(np.array([self.coord1, self.coord2])))
+        print('Coordinates')
+        print(np.transpose(np.array([self.coord1, self.coord2])))
+        print('XandY')
+        print(self.w)
+        print(np.amax(self.w[:,0]),np.amin(self.w[:,0]))
 
     def map2d(self):
-        print(self.data)
-        mapmaker = mapmaking(self.data, 1e-5, 1.2, 1, np.floor(self.w).astype(int))
-        print('Polarization',self.Ionly)
+        mapmaker = mapmaking(self.data, 1., 1.2, 1, np.floor(self.w).astype(int))
         if self.Ionly:
             Imap = mapmaker.map_singledetector_Ionly(self.crpix)
 
@@ -80,9 +82,9 @@ class wcs_world():
         w.wcs.crpix = self.crpix
         w.wcs.cdelt = self.crdelt
         w.wcs.crval = self.crval
-        if self.ctype.lower() == 'RA and DEC':
-            w.wcs.ctype = ["RA---AIR", "DEC--AIR"]
-        elif self.ctype.lower() == 'AZ and EL' or self.ctype.lower() == 'CROSS-EL and EL':
+        if self.ctype == 'RA and DEC':
+            w.wcs.ctype = ["RA---TAN", "DEC--TAN"]
+        elif self.ctype == 'AZ and EL' or self.ctype == 'CROSS-EL and EL':
             w.wcs.ctype = ["TLON-ARC", "TLAT-ARC"]
         world = w.wcs_world2pix(coord, 1)
 
@@ -117,17 +119,29 @@ class mapmaking(object):
         
         x_map = self.pixelmap[:,0]   #RA 
         y_map = self.pixelmap[:,1]   #DEC
+
+        print('Coordinates in X and Y')
+        print(x_map)
+        print(y_map)
+        print(np.amax(x_map),np.amin(x_map))
+        print(np.amin(y_map),np.amax(y_map))
         
-        if np.abs(np.amin(x_map)) <= 0:
+        if (np.amin(x_map)) <= 0:
+            print('MIN')
             x_map = np.floor(x_map+np.abs(np.amin(x_map)))
         else:
             x_map = np.floor(x_map-np.amin(x_map))
-        if np.abs(np.amin(y_map)) <= 0:
+        if (np.amin(y_map)) <= 0:
             y_map = np.floor(y_map+np.abs(np.amin(y_map)))
         else:
             y_map = np.floor(y_map-np.amin(y_map))
 
+        print('Shifted Coordinates in X and Y')
+        print(x_map)
+        print(y_map)
+
         x_len = np.amax(x_map)-np.amin(x_map)+1
+        print(x_len)
         param = x_map+y_map*x_len
         param = param.astype(int)
 
@@ -136,19 +150,9 @@ class mapmaking(object):
         cos = np.cos(2.*angle)
         sin = np.sin(2.*angle)
 
-        print('Param',np.size(param))
-        print('X', np.size(x_map))
-        print('Y', np.size(y_map))
-        print('Flux',np.size(flux))
-
         I_est_flat = np.bincount(param, weights=flux)*sigma
         Q_est_flat = np.bincount(param, weights=flux*cos)*sigma
         U_est_flat = np.bincount(param, weights=flux*sin)*sigma
-        
-        
-        print(np.amax(I_est_flat))
-        print(type(sigma), sigma)
-        print(angle)
 
         N_hits_flat = 0.5*np.bincount(param)*sigma
         c_flat = np.bincount(param, weights=0.5*cos)*sigma
@@ -156,7 +160,6 @@ class mapmaking(object):
         s_flat = np.bincount(param, weights=0.5*sin)*sigma
         s2_flat = N_hits_flat-c2_flat
         m_flat = np.bincount(param, weights=0.5*cos*sin)*sigma
-
         Delta = (c_flat**2*(c2_flat-N_hits_flat)+2*s_flat*c_flat*m_flat-c2_flat*s_flat**2-\
                  N_hits_flat*(c2_flat**2+m_flat**2-c2_flat*N_hits_flat))
         A = -(c2_flat**2+m_flat**2-c2_flat*N_hits_flat)
@@ -165,22 +168,6 @@ class mapmaking(object):
         D = -((c2_flat-N_hits_flat)*N_hits_flat+s_flat**2)
         E = c_flat*s_flat-m_flat*N_hits_flat
         F = c2_flat*N_hits_flat-c_flat**2
-
-        print('NonZeroCos', np.nonzero(cos), cos[0])
-        print('NonZeroSin', np.nonzero(sin), sin[1])
-        print(np.size(N_hits_flat))
-        print(c_flat[593],N_hits_flat[593], c2_flat[593], s_flat[593], s2_flat[593], m_flat[593], param[593], Delta[593])
-        print('Components')
-        print(A[593],B[593], C[593], D[593], E[593], F[593], param[593], Delta[593])
-        print(c_flat[593]**2*(c2_flat[593]-N_hits_flat[593]))
-        print(2*s_flat[593]*c_flat[593]*m_flat[593])
-        print(-c2_flat[593]*s_flat[593]**2)
-        print(N_hits_flat[593]*(c2_flat[593]**2+m_flat[593]**2-c2_flat[593]*N_hits_flat[593]))
-
-        # print('NonZeroC', np.nonzero(C))
-        # print('NonZeroD', np.nonzero(D))
-        # print('NonZeroE', np.nonzero(E))
-        # print('NonZeroF', np.nonzero(F))
 
         return I_est_flat, Q_est_flat, U_est_flat, N_hits_flat, Delta, A, B, C, D, E, F, param
 
@@ -228,33 +215,14 @@ class mapmaking(object):
         Q_pixel_flat = np.zeros(len(Q_est_flat))
         U_pixel_flat = np.zeros(len(U_est_flat))
 
-        #index = np.nonzero(I_est_flat)
-        #idx = np.nonzero(N_hits_flat)
-        #idx_delta = np.nonzero(Delta)
-        print('Test')
-        print(A[16668],B[16668], C[16668], D[16668], E[16668], F[16668], N_hits_flat[16668], Delta[16668], np.bincount(param)[16668])
-        print(I_est_flat[593])
-        print(Q_est_flat[593])
-        print(U_est_flat[593])
-        #print(index)
-        #print(idx)
-        #print(idx_delta)
-
         index, = np.where(np.abs(Delta)>0.)
         
-        # plt.plot(Delta)
-        # plt.show()
         I_pixel_flat[index] = (A[index]*I_est_flat[index]+B[index]*Q_est_flat[index]+\
                                C[index]*U_est_flat[index])/Delta[index]
         Q_pixel_flat[index] = (B[index]*I_est_flat[index]+D[index]*Q_est_flat[index]+\
                                E[index]*U_est_flat[index])/Delta[index]
         U_pixel_flat[index] = (C[index]*I_est_flat[index]+E[index]*Q_est_flat[index]+\
                                F[index]*U_est_flat[index])/Delta[index]
-
-        print('Delta', np.size(index))
-        print('I',np.size(np.nonzero(I_pixel_flat)[0]))
-        print(index)
-        print(np.nonzero(I_pixel_flat))
 
         x_len = np.amax(self.pixelmap[:,0])-np.amin(self.pixelmap[:,0])
         y_len = np.amax(self.pixelmap[:,1])-np.amin(self.pixelmap[:,1])
@@ -272,17 +240,6 @@ class mapmaking(object):
 
         ind_pol, = np.nonzero(Q_pixel_flat)
         pol = np.sqrt(Q_pixel_flat**2+U_pixel_flat**2)
-        print('Index',np.amax(np.abs(pol[ind_pol]/I_pixel_flat[ind_pol])), np.where(np.abs(pol[ind_pol]/I_pixel_flat[ind_pol])==np.amax(np.abs(pol[ind_pol]/I_pixel_flat[ind_pol]))))
-        print(ind_pol[243], ind_pol[257])
-        # idx, = np.where(np.abs(pol[ind_pol]/I_pixel_flat[ind_pol])>=1)
-        # print('Pol Index',idx)
-        # print(pol[ind_pol][29], I_pixel_flat[ind_pol][29], Q_pixel_flat[ind_pol][29], U_pixel_flat[ind_pol][29])
-
-        plt.plot(pol[ind_pol]/I_pixel_flat[ind_pol])
-        # plt.plot(Q_pixel_flat/I_pixel_flat, label = 'Q')
-        # plt.plot(U_pixel_flat/I_pixel_flat, label='U')
-        # plt.legend()
-        plt.show()
 
         I_pixel = np.reshape(I_pixel_flat, (y_len+1,x_len+1))
         Q_pixel = np.reshape(Q_pixel_flat, (y_len+1,x_len+1))

@@ -16,7 +16,6 @@ class beam(object):
         self.ygrid = np.arange(len(self.data[:,0]))
         self.xy_mesh = np.meshgrid(self.xgrid,self.ygrid)
 
-
     def multivariate_gaussian_2d(self, params):
 
         (x, y) = self.xy_mesh
@@ -50,7 +49,7 @@ class beam(object):
 
         mean, median, std = sigma_clipped_stats(self.data, sigma=3.0)
         threshold = median+(5.*std)
-        if mask_pf == False:
+        if mask_pf is False:
             tbl = find_peaks(map_data, threshold, box_size=bs)
         else:
             self.mask = mask_pf.copy()
@@ -137,14 +136,14 @@ class computeoffset():
         lt_inds = np.where(self.data < threshold*maxval)
         gt_inds = np.where(self.data > threshold*maxval)
 
-        weight = np.zeros((self.data.shape[1], self.data.shape[0]))
+        weight = np.zeros((self.data.shape[0], self.data.shape[1]))
         weight[gt_inds] = 1.
         a = self.data[gt_inds]
         flux = np.sum(a)
         x_range = np.arange(0, self.data.shape[0])
         y_range = np.arange(0, self.data.shape[1])
 
-        xx, yy = np.meshgrid(x_range, y_range)
+        yy, xx = np.meshgrid(y_range, x_range)
 
         x_c = np.sum(xx*weight*self.data)/flux
         y_c = np.sum(yy*weight*self.data)/flux
@@ -157,7 +156,7 @@ class computeoffset():
 
         coord_centre = coordinates.SkyCoord(self.angX_center, self.angY_center, unit='deg')
 
-        if return_pixel == True:
+        if return_pixel is True:
         
             x_map, y_map = wcs.utils.skycoord_to_pixel(coord_centre, wcs_trans)
 
@@ -167,6 +166,7 @@ class computeoffset():
             return x_off, y_off
         
         else:
+            print
             coord = wcs.utils.pixel_to_skycoord(x_c, y_c, wcs_trans)
                         
             offset_angle = coord_centre.spherical_offsets_to(coord)

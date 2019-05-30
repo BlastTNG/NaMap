@@ -1,6 +1,7 @@
 import pygetdata as gd
 import numpy as np
 from scipy.interpolate import interp1d
+import matplotlib.pyplot as plt
 
 class data_value():
     
@@ -110,7 +111,7 @@ class frame_zoom_sync():
         self.frame1 = int(float(frame1))
         self.frame2 = int(float(frame2))
         self.experiment = experiment
-        if roach_number != None:
+        if roach_number is not None:
             self.roach_number = int(float(roach_number))
         else:
             self.roach_number = roach_number
@@ -120,8 +121,14 @@ class frame_zoom_sync():
 
         frames = fps.copy()
 
+        print('PARAM_ZOOM')
+        print(sample_frame, fs, fps)
+        print(len(data))
+
         frames[0] = fps[0]*sample_frame
         frames[1] = fps[1]*sample_frame+1
+
+        print(frames)
 
         if len(np.shape(data)) == 1:
             time = np.arange(len(data))/np.floor(fs)
@@ -175,10 +182,10 @@ class frame_zoom_sync():
             index_bins, = np.where(bins_temp != 0)
             
             for i in range(len(index_bins)):
-                 temp = index_bins[i]+np.arange(0., bins_temp[index_bins[i]], \
-                                                1.)/bins_temp[index_bins[i]] 
+                temp = index_bins[i]+np.arange(0., bins_temp[index_bins[i]], \
+                                               1.)/bins_temp[index_bins[i]] 
                     
-                 time = np.append(time, temp)
+                time = np.append(time, temp)
 
         return time
 
@@ -192,24 +199,36 @@ class frame_zoom_sync():
     def sync_data(self):
         if self.experiment.lower() == 'blast-tng':
             dettime = self.det_time()
+
+            frames0 = self.frame1*self.det_sample_frame
+            frames1 = self.frame2*self.det_sample_frame+1
+
+            detTOD = self.det_data.copy()[frames[0]:frames[1]]
         elif self.experiment.lower() == 'blastpol':
             dettime, detTOD = self.frame_zoom(self.det_data, self.det_sample_frame, \
-                                          self.det_fs, np.array([self.frame1,self.frame2]))
+                                              self.det_fs, np.array([self.frame1,self.frame2]))
 
+        # print(dettime)
         coord1time, coord1 = self.frame_zoom(self.coord1_data, self.coord_sample_frame, \
-                                          self.coord_fs, np.array([self.frame1,self.frame2]))
+                                             self.coord_fs, np.array([self.frame1,self.frame2]))
 
         coord2time, coord2 = self.frame_zoom(self.coord2_data, self.coord_sample_frame, \
-                                          self.coord_fs, np.array([self.frame1,self.frame2]))
-
+                                             self.coord_fs, np.array([self.frame1,self.frame2]))
+        # print('COORD')
+        # print(self.coord1_data)
+        # print(self.coord2_data)
+        # print(coord1time)
         index1, = np.where(np.abs(dettime-coord1time[0]) == np.amin(np.abs(dettime-coord1time[0])))
         index2, = np.where(np.abs(dettime-coord1time[-1]) == np.amin(np.abs(dettime-coord1time[-1])))
 
         coord1_inter, coord2_inter = self.coord_int(coord1, coord2, \
                                                     coord1time, dettime[index1[0]+10:index2[0]-10])
         
-        detTOD = self.det_data.copy()
-
-        return dettime[index1[0]+10:index2[0]-10], detTOD[index1[0]+10:index2[0]-10], \
-               coord1_inter, coord2_inter
+        
+        # print('INDICES')
+        # print(index1[0],index2[0])
+        # plt.plot(detTOD[index1[0]:index2[0]])
+        # plt.show()
+        return (dettime[index1[0]+10:index2[0]-10], detTOD[index1[0]+10:index2[0]-10], \
+                coord1_inter, coord2_inter)
 

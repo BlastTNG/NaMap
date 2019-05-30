@@ -1,7 +1,6 @@
 import numpy as np
-import os
+
 import scipy.signal as sgn
-from scipy.interpolate import interp1d
 from scipy.optimize import curve_fit
 
 class data_cleaned():
@@ -13,7 +12,6 @@ class data_cleaned():
         self.cutoff = float(cutoff)
 
     def data_clean(self):
-        
         det_data = detector(self.data, 0, 0)
         residual_data = det_data.fit_residual()
 
@@ -53,7 +51,7 @@ class despike():
             index, param = sgn.find_peaks(np.abs(self.data), prominence = pthres*y_std)
         elif hthres != 0 and pthres != 0:
             index, param = sgn.find_peaks(np.abs(self.data), height = y_mean + hthres*y_std, \
-                                            prominence = pthres*y_std)
+                                          prominence = pthres*y_std)
 
         ledget = sgn.peak_widths(np.abs(self.data),index)[2]
         redget = sgn.peak_widths(np.abs(self.data),index)[3]
@@ -264,7 +262,7 @@ class detector():
                 index2 = int((i+1)*edge)
                 
                 p = np.polyfit(x[index1:index2], \
-                            self.data[index1:index2], order)
+                               self.data[index1:index2], order)
 
                 poly = np.poly1d(p)
                 y = poly(x[index1:index2])

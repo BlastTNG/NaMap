@@ -1,14 +1,11 @@
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
-from functools import partial
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
 
-import sys
-import random
 import numpy as np
 import os
 import configparser
@@ -57,18 +54,22 @@ class MainWindowTab(QTabWidget):
         self.data = self.tab1.detslice
         self.cleandata = self.tab1.cleaned_data
 
-        self.tab1.mapvalues(self.cleandata)
-
-        maps = self.tab1.map_value
-
-        mp_ini = self.tab1.createMapPlotGroup
-        print('MAPS', maps)
-        mp_ini.updateTab(data=maps)
-
-        #self.tab1.createMapPlotGroup(data=self.tab1.map_value,button=self.tab1.plotbutton)
-        
         self.tab2.draw_TOD(self.data)
         self.tab2.draw_cleaned_TOD(self.cleandata)
+
+        try:
+            self.tab1.mapvalues(self.cleandata)
+
+            #Update Maps
+            maps = self.tab1.map_value
+            mp_ini = self.tab1.createMapPlotGroup
+            mp_ini.updateTab(data=maps)
+
+            #Update Offset
+            self.tab1.updateOffsetValue()
+
+        except AttributeError:
+            pass
         
 class ParamMapTab(QWidget):
 
@@ -226,6 +227,7 @@ class ParamMapTab(QWidget):
         self.BeamCheckBox.setChecked(False)
         
         self.convchoice.activated[str].connect(self.updateGaussian)
+        self.coordchoice.activated[str].connect(self.configuration_update)
            
         self.layout = QGridLayout()
         self.layout.addWidget(coordLabel, 0, 0)
@@ -330,8 +332,8 @@ class ParamMapTab(QWidget):
         self.coord2conv = QLabel('Coordinate 2 conversion factors')
         self.coord2conv.setBuddy(self.acoord2conv)
 
-        self.configuration_value()
-        self.experiment.activated[str].connect(self.configuration_value)
+        self.configuration_update()
+        self.experiment.activated[str].connect(self.configuration_update)
 
         self.DirConvCheckBox.toggled.connect(self.detconv.setVisible)
         self.DirConvCheckBox.toggled.connect(self.adetconv.setVisible)
@@ -391,8 +393,14 @@ class ParamMapTab(QWidget):
 
         self.ExperimentGroup.setLayout(self.layout)
 
-    def configuration_value(self):
+    def configuration_update(self):
         text = self.experiment.currentText()
+        coord_text = self.coordchoice.currentText()
+
+        self.configuration_value(text, coord_text)
+
+    def configuration_value(self, text, coord_text):
+        
         dir_path = os.getcwd()+'/config/'
         
         filepath = dir_path+text.lower()+'.cfg'
@@ -404,19 +412,38 @@ class ParamMapTab(QWidget):
         for section in sections:
             if section.lower() == 'experiment parameters':
                 self.detfreq_config = float(model.get(section, 'DETFREQ').split('#')[0])
-                self.acsfreq_config = float(model.get(section, 'ACSFREQ').split('#')[0])
                 det_dir_conv = model.get(section,'DET_DIR_CONV').split('#')[0].strip()
                 self.detconv_config = np.array(det_dir_conv.split(',')).astype(float)
-                coor1_dir_conv = model.get(section,'COOR1_DIR_CONV').split('#')[0].strip()
-                self.coord1conv_config = np.array(coor1_dir_conv.split(',')).astype(float)
-                coor2_dir_conv = model.get(section,'COOR2_DIR_CONV').split('#')[0].strip()
-                self.coord2conv_config = np.array(coor2_dir_conv.split(',')).astype(float)
                 self.detframe_config = float(model.get(section, 'DET_SAMP_FRAME').split('#')[0])
-                self.acsframe_config = float(model.get(section, 'ACS_SAMP_FRAME').split('#')[0])
                 self.dettype_config = model.get(section,'DET_FILE_TYPE').split('#')[0].strip()
-                self.coord1type_config = model.get(section,'COOR1_FILE_TYPE').split('#')[0].strip()
-                self.coord2type_config = model.get(section,'COOR2_FILE_TYPE').split('#')[0].strip()
 
+            elif section.lower() == 'ra_dec parameters':
+                if coord_text.lower() == 'ra and dec':
+                    self.acsfreq_config = float(model.get(section, 'ACSFREQ').split('#')[0])
+                    coor1_dir_conv = model.get(section,'COOR1_DIR_CONV').split('#')[0].strip()
+                    self.coord1conv_config = np.array(coor1_dir_conv.split(',')).astype(float)
+                    coor2_dir_conv = model.get(section,'COOR2_DIR_CONV').split('#')[0].strip()
+                    self.coord2conv_config = np.array(coor2_dir_conv.split(',')).astype(float)
+                    self.acsframe_config = float(model.get(section, 'ACS_SAMP_FRAME').split('#')[0])
+                    self.coord1type_config = model.get(section,'COOR1_FILE_TYPE').split('#')[0].strip()
+                    self.coord2type_config = model.get(section,'COOR2_FILE_TYPE').split('#')[0].strip()
+                else:
+                    pass
+
+            elif section.lower() == 'az_el parameters':
+                if coord_text.lower() == 'ra and dec':
+                    pass
+                else:
+                    self.acsfreq_config = float(model.get(section, 'ACSFREQ').split('#')[0])
+                    coor1_dir_conv = model.get(section,'COOR1_DIR_CONV').split('#')[0].strip()
+                    self.coord1conv_config = np.array(coor1_dir_conv.split(',')).astype(float)
+                    coor2_dir_conv = model.get(section,'COOR2_DIR_CONV').split('#')[0].strip()
+                    self.coord2conv_config = np.array(coor2_dir_conv.split(',')).astype(float)
+                    self.acsframe_config = float(model.get(section, 'ACS_SAMP_FRAME').split('#')[0])
+                    self.coord1type_config = model.get(section,'COOR1_FILE_TYPE').split('#')[0].strip()
+                    self.coord2type_config = model.get(section,'COOR2_FILE_TYPE').split('#')[0].strip()
+
+            
         self.detfreq.setText(str(self.detfreq_config))
         self.acsfreq.setText(str(self.acsfreq_config))
         self.detframe.setText(str(self.detframe_config))
@@ -451,7 +478,6 @@ class ParamMapTab(QWidget):
         self.ELxoffset = QLineEdit('')
 
         self.coordchoice.activated[str].connect(self.updateOffsetLabel)
-        #self.plotbutton.clicked.connect(self.updateOffsetValue)
 
         self.updateOffsetLabel()
 
@@ -518,9 +544,9 @@ class ParamMapTab(QWidget):
     def updateOffsetValue(self):
         
         ctype_map = self.coordchoice.currentText()
-
+        print('MapValues', self.map_value)
         offset = bm.computeoffset(self.map_value, float(self.crval1.text()), float(self.crval2.text()), ctype_map)
-
+        print('Offset_Proj',self.maps.proj)
         self.offset_angle = offset.offset(self.maps.proj)
 
         if self.ctype == 'RA and DEC':
@@ -563,7 +589,10 @@ class ParamMapTab(QWidget):
                 label_final.append(label)
         elif self.experiment.currentText().lower() == 'blastpol':
             try:
-                os.stat(self.coordpath.text()+'/'+self.coord1.lower())
+                if self.coord1 == 'RA':
+                    os.stat(self.coordpath.text()+'/'+self.coord1.lower())
+                else:
+                    os.stat(self.coordpath.text()+'/az')
             except OSError:
                 label = self.coord1.lower()+' coordinate'
                 label_final.append(label)
@@ -596,6 +625,7 @@ class ParamMapTab(QWidget):
 
             self.det_data, self.coord1_data, self.coord2_data = dataload.values()
 
+            
             if self.DirConvCheckBox.isChecked:
                 self.dirfile_conversion()
 
@@ -614,8 +644,8 @@ class ParamMapTab(QWidget):
                                                   self.acsframe.text(), self.startframe.text(), \
                                                   self.endframe.text(), self.experiment.currentText())
 
-            self.timemap, self.detslice, self.coord1slice, \
-                                         self.coord2slice = zoomsyncdata.sync_data()
+            (self.timemap, self.detslice, self.coord1slice, \
+             self.coord2slice) = zoomsyncdata.sync_data()
 
             self.clean_func()
 
@@ -664,7 +694,6 @@ class ParamMapTab(QWidget):
 
         self.map_value = self.maps.map2d()
 
-
 class TODTab(QWidget):
 
     def __init__(self, parent=None):
@@ -697,6 +726,7 @@ class TODTab(QWidget):
         
         self.axis_TOD.set_axis_on()
         self.axis_TOD.clear()
+        print('TOD_DATA', data)
         try:
             self.axis_TOD.plot(data)
         except AttributeError:
