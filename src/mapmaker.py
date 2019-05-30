@@ -19,7 +19,7 @@ class maps():
         self.w = 0.
         self.proj = 0.
         self.convolution = convolution
-        self.std = std
+        self.std = float(std)
         self.Ionly = Ionly
 
     def wcs_proj(self):
@@ -263,7 +263,7 @@ class mapmaking(object):
 
         #The standard deviation is in pixel value
 
-        kernel = Gaussian2DKernel(stddev=std)
+        kernel = Gaussian2DKernel(x_stddev=std)
 
         convolved_map = convolve(map_value, kernel)
 
