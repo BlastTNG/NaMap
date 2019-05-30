@@ -3,6 +3,9 @@ import numpy as np
 from scipy.interpolate import interp1d
 import matplotlib.pyplot as plt
 
+import os
+import psutil
+
 class data_value():
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -168,7 +171,7 @@ class convert_dirfile():
 
     def conversion(self):
 
-        return self.param1*self.data+self.param2
+        self.data = self.param1*self.data+self.param2
 
 class frame_zoom_sync():
 
@@ -193,6 +196,7 @@ class frame_zoom_sync():
         self.roach_pps_path = roach_pps_path
 
     def frame_zoom(self, data, sample_frame, fs, fps):
+<<<<<<< HEAD
 
 =======
     '''
@@ -244,6 +248,8 @@ class frame_zoom_sync():
         '''
 
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
+=======
+>>>>>>> fa75c3a... Reduced memory consumption
         frames = fps.copy()
 
         frames[0] = fps[0]*sample_frame
@@ -251,12 +257,16 @@ class frame_zoom_sync():
 
         if len(np.shape(data)) == 1:
 <<<<<<< HEAD
+<<<<<<< HEAD
             time = np.arange(len(data))/np.floor(fs)
             time = time[frames[0]:frames[1]]
 
 =======
             time = (np.arange(np.diff(frames))+frames[0])/np.floor(fs)
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
+=======
+            time = (np.arange(np.diff(frames))+frames[0])/np.floor(fs)
+>>>>>>> fa75c3a... Reduced memory consumption
             return time, data[frames[0]:frames[1]]
         else:
             time = np.arange(len(data[0, :]))/np.floor(fs)
@@ -355,11 +365,10 @@ class frame_zoom_sync():
             frames0 = self.frame1*self.det_sample_frame
             frames1 = self.frame2*self.det_sample_frame+1
 
-            detTOD = self.det_data.copy()[frames0:frames1]
+            self.det_data = self.det_data[frames0:frames1]
         elif self.experiment.lower() == 'blastpol':
             dettime, self.det_data = self.frame_zoom(self.det_data, self.det_sample_frame, \
-                                                    self.det_fs, np.array([self.frame1,self.frame2]))
-
+                                                     self.det_fs, np.array([self.frame1,self.frame2]))
         # print(dettime)
         coord1time, coord1 = self.frame_zoom(self.coord1_data, self.coord_sample_frame, \
                                              self.coord_fs, np.array([self.frame1,self.frame2]))

@@ -20,7 +20,7 @@ class maps():
         self.w = 0.
         self.proj = 0.
         self.convolution = convolution
-        self.std = std
+        self.std = float(std)
         self.Ionly = Ionly
 
     def wcs_proj(self):
@@ -592,6 +592,7 @@ class mapmaking(object):
 <<<<<<< HEAD
         #The standard deviation is in pixel value
 
+<<<<<<< HEAD
         kernel = Gaussian2DKernel(stddev=std)
 =======
         '''
@@ -601,6 +602,9 @@ class mapmaking(object):
 
         kernel = Gaussian2DKernel(x_stddev=std)
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
+=======
+        kernel = Gaussian2DKernel(x_stddev=std)
+>>>>>>> fa75c3a... Reduced memory consumption
 
         convolved_map = convolve(map_value, kernel)
 

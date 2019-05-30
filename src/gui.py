@@ -1151,11 +1151,6 @@ class ParamMapTab(QWidget):
             process = psutil.Process(os.getpid())
             print('MEM01',process.memory_info().rss/1e9)
             
-            if self.DirConvCheckBox.isChecked:
-                self.dirfile_conversion()
-
-            process = psutil.Process(os.getpid())
-            print('MEM01_CONV',process.memory_info().rss/1e9)
 
             if self.experiment.currentText().lower() == 'blast-tng':
                 zoomsyncdata = ld.frame_zoom_sync(self.det_data, self.detfreq.text(), \
@@ -1177,6 +1172,12 @@ class ParamMapTab(QWidget):
 
             (self.timemap, self.detslice, self.coord1slice, \
              self.coord2slice) = zoomsyncdata.sync_data()
+
+            if self.DirConvCheckBox.isChecked:
+                self.dirfile_conversion()
+
+            process = psutil.Process(os.getpid())
+            print('MEM01_CONV',process.memory_info().rss/1e9)
             
             del self.det_data
             del self.coord1_data
@@ -1200,21 +1201,23 @@ class ParamMapTab(QWidget):
 
     def dirfile_conversion(self):
 
-        det_conv = ld.convert_dirfile(self.det_data, float(self.adetconv.text()), \
+        det_conv = ld.convert_dirfile(self.detslice, float(self.adetconv.text()), \
                                       float(self.bdetconv.text()))
-        coord1_conv = ld.convert_dirfile(self.coord1_data, float(self.acoord1conv.text()), \
+        coord1_conv = ld.convert_dirfile(self.coord1slice, float(self.acoord1conv.text()), \
                                          float(self.bcoord1conv.text()))
-        coord2_conv = ld.convert_dirfile(self.coord2_data, float(self.acoord2conv.text()), \
+        coord2_conv = ld.convert_dirfile(self.coord2slice, float(self.acoord2conv.text()), \
                                          float(self.bcoord2conv.text()))
+                                         
+        process = psutil.Process(os.getpid())
+        print('MEM04',process.memory_info().rss/1e9)
 
-        self.det_data = det_conv.conversion()
-        self.coord1_data = coord1_conv.conversion()
-        self.coord2_data = coord2_conv.conversion()
+        det_conv.conversion()
+        coord1_conv.conversion()
+        coord2_conv.conversion()
 
-        del det_conv
-        del coord1_conv
-        del coord2_conv
-        gc.collect()
+        self.detslice = det_conv.data
+        self.coord1slice = coord1_conv.data
+        self.coord2slice = coord2_conv.data
 
     def mapvalues(self, data):
 
