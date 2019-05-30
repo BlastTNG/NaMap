@@ -8,7 +8,10 @@ import matplotlib.pyplot as plt
 
 import numpy as np
 import os
+import pickle
 import configparser
+import psutil
+import gc
 
 import src.detTOD as tod
 import src.loaddata as ld
@@ -26,8 +29,25 @@ class App(QMainWindow):
         
         self.TabLayout = MainWindowTab(self)
         self.setCentralWidget(self.TabLayout)
-        
-        self.show()
+
+    def closeEvent(self,event):
+        result = QMessageBox.question(self,
+                                      "Confirm Exit...",
+                                      "Are you sure you want to exit ?",
+                                      QMessageBox.Yes| QMessageBox.No)
+        event.ignore()
+
+        if result == QMessageBox.Yes:
+            
+            directory = 'pickles_object/'
+            pkl_list = os.listdir(directory)
+
+            if np.size(pkl_list) > 0:
+                for i in range(len(pkl_list)):
+                    path = directory+pkl_list[i]
+                    os.remove(path)
+
+            event.accept()
 
 class MainWindowTab(QTabWidget):
 
@@ -50,12 +70,21 @@ class MainWindowTab(QTabWidget):
 
         #functions to compute the updated values
         self.tab1.load_func()
+        process = psutil.Process(os.getpid())
+        print('MEM0',process.memory_info().rss/1e9)
 
         self.data = self.tab1.detslice
+
         self.cleandata = self.tab1.cleaned_data
+
+        process = psutil.Process(os.getpid())
+        print('MEM1',process.memory_info().rss/1e9)
 
         self.tab2.draw_TOD(self.data)
         self.tab2.draw_cleaned_TOD(self.cleandata)
+
+        process = psutil.Process(os.getpid())
+        print('MEM2',process.memory_info().rss/1e9)
 
         try:
             self.tab1.mapvalues(self.cleandata)
@@ -66,10 +95,14 @@ class MainWindowTab(QTabWidget):
             mp_ini.updateTab(data=maps)
 
             #Update Offset
-            self.tab1.updateOffsetValue()
+            #self.tab1.updateOffsetValue()
 
         except AttributeError:
             pass
+
+        process = psutil.Process(os.getpid())
+        print('MEM3',process.memory_info().rss/1e9)
+        print('END CYCLE')
         
 class ParamMapTab(QWidget):
 
@@ -618,16 +651,50 @@ class ParamMapTab(QWidget):
             self.warningbox.exec_()
 
         else:
-            dataload = ld.data_value(self.detpath.text(), self.detname.text(), self.coordpath.text(), \
-                                     self.coord1, self.coord2, self.dettype.text(), \
-                                     self.coord1type.text(), self.coord2type.text(), \
-                                     self.experiment.currentText())
+            
+            os.makedirs(os.path.dirname('pickles_object/'), exist_ok=True)
 
-            self.det_data, self.coord1_data, self.coord2_data = dataload.values()
+            det_path_pickle = 'pickles_object/'+self.detname.text()
+            coord1_path_pickle = 'pickles_object/'+self.coord1
+            coord2_path_pickle = 'pickles_object/'+self.coord2
 
+            try:               
+                self.det_data = pickle.load(open(det_path_pickle, 'rb'))  
+                self.coord1_data = pickle.load(open(coord1_path_pickle, 'rb'))
+                self.coord2_data = pickle.load(open(coord2_path_pickle, 'rb'))
+
+            except FileNotFoundError:               
+                dataload = ld.data_value(self.detpath.text(), self.detname.text(), self.coordpath.text(), \
+                                         self.coord1, self.coord2, self.dettype.text(), \
+                                         self.coord1type.text(), self.coord2type.text(), \
+                                         self.experiment.currentText())
+
+                process = psutil.Process(os.getpid())
+                print('MEM01_LOAD',process.memory_info().rss/1e9)
+
+                self.det_data, self.coord1_data, self.coord2_data = dataload.values()
+
+                process = psutil.Process(os.getpid())
+                print('MEM015_LOAD',process.memory_info().rss/1e9)
+
+                pickle.dump(self.det_data, open(det_path_pickle, 'wb'))  
+                pickle.dump(self.coord1_data, open(coord1_path_pickle, 'wb'))
+                pickle.dump(self.coord2_data, open(coord2_path_pickle, 'wb'))
+
+                process = psutil.Process(os.getpid())
+                print('MEM02_LOAD',process.memory_info().rss/1e9)
+
+                del dataload
+                gc.collect()
+
+            process = psutil.Process(os.getpid())
+            print('MEM01',process.memory_info().rss/1e9)
             
             if self.DirConvCheckBox.isChecked:
                 self.dirfile_conversion()
+
+            process = psutil.Process(os.getpid())
+            print('MEM01_CONV',process.memory_info().rss/1e9)
 
             if self.experiment.currentText().lower() == 'blast-tng':
                 zoomsyncdata = ld.frame_zoom_sync(self.det_data, self.detfreq.text(), \
@@ -644,10 +711,25 @@ class ParamMapTab(QWidget):
                                                   self.acsframe.text(), self.startframe.text(), \
                                                   self.endframe.text(), self.experiment.currentText())
 
+            process = psutil.Process(os.getpid())
+            print('MEM02',process.memory_info().rss/1e9)
+
             (self.timemap, self.detslice, self.coord1slice, \
              self.coord2slice) = zoomsyncdata.sync_data()
+            
+            del self.det_data
+            del self.coord1_data
+            del self.coord2_data
+            del zoomsyncdata
+            gc.collect()
+
+            process = psutil.Process(os.getpid())
+            print('MEM03',process.memory_info().rss/1e9)
 
             self.clean_func()
+
+            process = psutil.Process(os.getpid())
+            print('MEM04',process.memory_info().rss/1e9)
 
             print('DataLoaded')
 
@@ -667,6 +749,11 @@ class ParamMapTab(QWidget):
         self.det_data = det_conv.conversion()
         self.coord1_data = coord1_conv.conversion()
         self.coord2_data = coord2_conv.conversion()
+
+        del det_conv
+        del coord1_conv
+        del coord2_conv
+        gc.collect()
 
     def mapvalues(self, data):
 
@@ -726,7 +813,6 @@ class TODTab(QWidget):
         
         self.axis_TOD.set_axis_on()
         self.axis_TOD.clear()
-        print('TOD_DATA', data)
         try:
             self.axis_TOD.plot(data)
         except AttributeError:
@@ -853,7 +939,6 @@ class MapPlotsGroup(QWidget):
         self.tab3.setLayout(mainlayout)
 
     def updateTab(self, data):
-        print('Size', np.size(np.shape(data)))
         if np.size(np.shape(data)) > 2:
             idx_list = ['I', 'Q', 'U']
 
@@ -875,8 +960,6 @@ class MapPlotsGroup(QWidget):
         if np.size(img) > 0:
             cb = img[-1].colorbar
             cb.remove()
-
-        print(idx)
 
         axis.set_axis_on()
         axis.clear()

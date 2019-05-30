@@ -1,0 +1,3 @@
+# Ignore pickles related files/folders
+*.pkl
+/pickles_object
