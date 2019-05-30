@@ -246,14 +246,8 @@ class frame_zoom_sync():
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
         frames = fps.copy()
 
-        print('PARAM_ZOOM')
-        print(sample_frame, fs, fps)
-        print(len(data))
-
         frames[0] = fps[0]*sample_frame
         frames[1] = fps[1]*sample_frame+1
-
-        print(frames)
 
         if len(np.shape(data)) == 1:
 <<<<<<< HEAD
@@ -361,10 +355,10 @@ class frame_zoom_sync():
             frames0 = self.frame1*self.det_sample_frame
             frames1 = self.frame2*self.det_sample_frame+1
 
-            detTOD = self.det_data.copy()[frames[0]:frames[1]]
+            detTOD = self.det_data.copy()[frames0:frames1]
         elif self.experiment.lower() == 'blastpol':
-            dettime, detTOD = self.frame_zoom(self.det_data, self.det_sample_frame, \
-                                              self.det_fs, np.array([self.frame1,self.frame2]))
+            dettime, self.det_data = self.frame_zoom(self.det_data, self.det_sample_frame, \
+                                                    self.det_fs, np.array([self.frame1,self.frame2]))
 
         # print(dettime)
         coord1time, coord1 = self.frame_zoom(self.coord1_data, self.coord_sample_frame, \
@@ -414,26 +408,32 @@ class frame_zoom_sync():
         
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
         detTOD = self.det_data.copy()
 
         return dettime[index1[0]+10:index2[0]-10], detTOD[index1[0]+10:index2[0]-10], \
                coord1_inter, coord2_inter
 =======
+=======
+>>>>>>> 6acdf4e... Solved a memory leak when trying to replot with different parameters
         del coord1time
         del coord2time
         del coord1
         del coord2
 
+<<<<<<< HEAD
         return (dettime[index1[0]+10:index2[0]-10], self.det_data[index1[0]+10:index2[0]-10], \
                 coord1_inter, coord2_inter)
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
 =======
         
+=======
+>>>>>>> 6acdf4e... Solved a memory leak when trying to replot with different parameters
         # print('INDICES')
         # print(index1[0],index2[0])
         # plt.plot(detTOD[index1[0]:index2[0]])
         # plt.show()
-        return (dettime[index1[0]+10:index2[0]-10], detTOD[index1[0]+10:index2[0]-10], \
+        return (dettime[index1[0]+10:index2[0]-10], self.det_data[index1[0]+10:index2[0]-10], \
                 coord1_inter, coord2_inter)
 >>>>>>> 4ee3dbe... Fixed bug in selecting data
 

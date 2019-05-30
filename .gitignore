@@ -1,5 +1,8 @@
 # Ignore pickles related files/folders
 *.pkl
 /pickles_object
+<<<<<<< HEAD
 #Ignore .pyc file
 *.pyc
+=======
+>>>>>>> 6acdf4e... Solved a memory leak when trying to replot with different parameters

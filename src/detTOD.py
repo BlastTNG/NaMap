@@ -391,6 +391,7 @@ class detector():
     def polyfit(self, edge = 0, delay=0, order=6):
 
         x = np.arange(len(self.data))
+<<<<<<< HEAD
         print('x',x)
         print('data',self.data)
 =======
@@ -402,6 +403,8 @@ class detector():
 
         x = np.arange(len(self.data))
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
+=======
+>>>>>>> 6acdf4e... Solved a memory leak when trying to replot with different parameters
 
         y_fin = np.array([])
         index_exclude = np.array([], dtype=int)

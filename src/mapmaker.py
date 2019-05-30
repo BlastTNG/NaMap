@@ -64,11 +64,11 @@ class maps():
         wcsworld = wcs_world(self.ctype, self.crpix, self.cdelt, self.crval)
 
         self.w, self.proj = wcsworld.world(np.transpose(np.array([self.coord1, self.coord2])))
-        print('Coordinates')
-        print(np.transpose(np.array([self.coord1, self.coord2])))
-        print('XandY')
-        print(self.w)
-        print(np.amax(self.w[:,0]),np.amin(self.w[:,0]))
+        # print('Coordinates')
+        # print(np.transpose(np.array([self.coord1, self.coord2])))
+        # print('XandY')
+        # print(self.w)
+        # print(np.amax(self.w[:,0]),np.amin(self.w[:,0]))
 
     def map2d(self):
         mapmaker = mapmaking(self.data, 1., 1.2, 1, np.floor(self.w).astype(int))
@@ -259,17 +259,18 @@ class mapmaking(object):
         x_map = self.pixelmap[:,0]   #RA 
         y_map = self.pixelmap[:,1]   #DEC
 
-        print('Coordinates in X and Y')
-        print(x_map)
-        print(y_map)
-        print(np.amax(x_map),np.amin(x_map))
-        print(np.amin(y_map),np.amax(y_map))
+        # print('Coordinates in X and Y')
+        # print(x_map)
+        # print(y_map)
+        # print(np.amax(x_map),np.amin(x_map))
+        # print(np.amin(y_map),np.amax(y_map))
         
 <<<<<<< HEAD
 <<<<<<< HEAD
         if np.abs(np.amin(x_map)) <= 0:
 =======
         if (np.amin(x_map)) <= 0:
+<<<<<<< HEAD
             print('MIN')
 >>>>>>> 4ee3dbe... Fixed bug in selecting data
             x_map = np.floor(x_map+np.abs(np.amin(x_map)))
@@ -282,6 +283,8 @@ class mapmaking(object):
             y_map = np.round(y_map-np.amin(y_map))
 =======
         if (np.amin(x_map)) <= 0:
+=======
+>>>>>>> 6acdf4e... Solved a memory leak when trying to replot with different parameters
             x_map = np.floor(x_map+np.abs(np.amin(x_map)))
         else:
             x_map = np.floor(x_map-np.amin(x_map))
@@ -294,12 +297,7 @@ class mapmaking(object):
             y_map = np.floor(y_map-np.amin(y_map))
 >>>>>>> 6c0d8b1... Solved some errors in polarization maps (still some to be corrected)
 
-        print('Shifted Coordinates in X and Y')
-        print(x_map)
-        print(y_map)
-
         x_len = np.amax(x_map)-np.amin(x_map)+1
-        print(x_len)
         param = x_map+y_map*x_len
         param = param.astype(int)
 
