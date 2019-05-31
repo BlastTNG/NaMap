@@ -76,6 +76,7 @@ class MainWindowTab(QTabWidget):
         self.cleandata = np.array([])
 
         self.tab1.plotbutton.clicked.connect(self.updatedata)
+        self.tab1.fitsbutton.clicked.connect(self.save2fits)
 
         self.addTab(self.tab1,"Parameters and Maps")
         self.addTab(self.tab2,"Detector TOD")
@@ -109,10 +110,8 @@ class MainWindowTab(QTabWidget):
 
             #Update Maps
             maps = self.tab1.map_value
-            print(self.tab1.proj)
             mp_ini = self.tab1.createMapPlotGroup
             mp_ini.updateTab(data=maps)
-            print(self.tab1.map_value)
             #Update Offset
             #self.tab1.updateOffsetValue()
 
@@ -123,7 +122,12 @@ class MainWindowTab(QTabWidget):
         print('MEM3',process.memory_info().rss/1e9)
         print('END CYCLE')
     
-    # def save2fits(self): #function to save the map as a FITS file
+    def save2fits(self): #function to save the map as a FITS file
+        hdr = self.tab1.proj.to_header() #grabs the projection information for header
+        maps = self.tab1.map_value #grabs the actual map for the fits img
+        hdu = fits.PrimaryHDU(maps, header = hdr)
+        hdu.writeto('./'+self.tab1.fitsname.text())
+
         
 class ParamMapTab(QWidget):
 
@@ -193,11 +197,11 @@ class ParamMapTab(QWidget):
 
         self.DataRepository = QGroupBox("Data Repository")
         
-        self.detpath = QLineEdit('')
+        self.detpath = QLineEdit('/Users/ian/AnacondaProjects/BLASTpolData/bolo_data/')
         self.detpathlabel = QLabel("Detector Path:")
         self.detpathlabel.setBuddy(self.detpath)
 
-        self.detname = QLineEdit('')
+        self.detname = QLineEdit('n31c04')
         self.detnamelabel = QLabel("Detector Name:")
         self.detnamelabel.setBuddy(self.detname)
 
@@ -207,7 +211,7 @@ class ParamMapTab(QWidget):
         self.roachnumberlabel = QLabel("Roach Number:")
         self.roachnumberlabel.setBuddy(self.roachnumber)
 
-        self.coordpath = QLineEdit('')
+        self.coordpath = QLineEdit('/Users/ian/AnacondaProjects/BLASTpolData/')
         self.coordpathlabel = QLabel("Coordinate Path:")
         self.coordpathlabel.setBuddy(self.coordpath)
 
@@ -402,8 +406,8 @@ class ParamMapTab(QWidget):
         self.acsframelabel = QLabel("ACS Sample Samples per Frame")
         self.acsframelabel.setBuddy(self.acsframe)
 
-        self.startframe = QLineEdit('')
-        self.endframe = QLineEdit('')
+        self.startframe = QLineEdit('1918381')
+        self.endframe = QLineEdit('1922092')
         self.numberframelabel = QLabel('Starting and Ending Frames')
         self.numberframelabel.setBuddy(self.startframe)
 
