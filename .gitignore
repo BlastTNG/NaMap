@@ -1,3 +1,5 @@
 # Ignore pickles related files/folders
 *.pkl
 /pickles_object
+#Ignore .pyc file
+*.pyc
