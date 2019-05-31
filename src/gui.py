@@ -1346,6 +1346,8 @@ class ParamMapTab(QWidget):
 
         print('PROJ', self.maps.proj)
 
+        self.proj = self.maps.proj
+
         self.map_value = self.maps.map2d()
 
 class TODTab(QWidget):
