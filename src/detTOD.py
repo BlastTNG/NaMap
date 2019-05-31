@@ -89,7 +89,11 @@ class despike():
         self.data = data
 
 <<<<<<< HEAD
+<<<<<<< HEAD
     def findpeak(self, hthres=0, pthres=0):
+=======
+    def findpeak(self, hthres=5, pthres=0):
+>>>>>>> cafb487... Solved a bug in passing the WCS to the gui
 
         '''
 <<<<<<< HEAD
@@ -107,12 +111,15 @@ class despike():
         the mean of the signal        
         '''
 <<<<<<< HEAD
+<<<<<<< HEAD
         index = np.ones(1)
         ledge = np.array([], dtype = 'int')
         redge = np.array([], dtype = 'int')
 <<<<<<< HEAD
         count = 0
 =======
+=======
+>>>>>>> cafb487... Solved a bug in passing the WCS to the gui
 
         index = np.ones(1)
         ledge = np.array([], dtype = 'int')
@@ -148,7 +155,7 @@ class despike():
 
         return index
 
-    def peak_width(self, hthres=0, pthres=0, window = 100):
+    def peak_width(self, hthres=5, pthres=0, window = 100):
 
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -204,7 +211,7 @@ class despike():
 
         return param[0].copy(), ledge, redge
 
-    def replace_peak(self, hthres=0, pthres = 0, peaks = np.array([]), widths = np.array([])):
+    def replace_peak(self, hthres=5, pthres = 0, peaks = np.array([]), widths = np.array([])):
 
         '''
         This function replaces the spikes data with noise realization. Noise can be gaussian
