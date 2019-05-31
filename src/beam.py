@@ -205,9 +205,12 @@ class computeoffset():
 
     def offset(self, wcs_trans, threshold=0.275, return_pixel=False, altitude=0., lon=0., lat=0.):
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 =======
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
+=======
+>>>>>>> ccf3a8f... Added output for offset calculation
         x_c, y_c = self.centroid(threshold=threshold)
 
         coord_centre = coordinates.SkyCoord(self.angX_center, self.angY_center, unit='deg')
@@ -232,23 +235,29 @@ class computeoffset():
         else:
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
             print
 >>>>>>> 4ee3dbe... Fixed bug in selecting data
+=======
+>>>>>>> ccf3a8f... Added output for offset calculation
             coord = wcs.utils.pixel_to_skycoord(x_c, y_c, wcs_trans)
                         
             offset_angle = coord_centre.spherical_offsets_to(coord)
 
-            if self.ctype == 'AZ and EL':
+            return offset_angle[0].degree, offset_angle[1].degree
 
-                return offset_angle.az, offset_angle.alt
+            # if self.ctype == 'AZ and EL':
 
-            elif self.ctype == 'RA and DEC':
+            #     return offset_angle.az, offset_angle.alt
 
-                return offset_angle.ra, offset_angle.dec
+            # elif self.ctype == 'RA and DEC':
+            #     print('ANGLE', offset_angle[0].degree)
+            #     return offset_angle.ra, offset_angle.dec
 
-            elif self.ctype == 'CROSS-EL and EL':
+            # elif self.ctype == 'CROSS-EL and EL':
 
+<<<<<<< HEAD
                 return offset_angle.az*np.cos(offset_angle.alt), offset_angle.alt
 =======
 
@@ -263,6 +272,9 @@ class computeoffset():
 
                 return coord[0]-self.angX_center, coord[1]-self.angY_center
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
+=======
+            #     return offset_angle.az*np.cos(offset_angle.alt), offset_angle.alt
+>>>>>>> ccf3a8f... Added output for offset calculation
 
 
 

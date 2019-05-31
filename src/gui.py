@@ -148,12 +148,11 @@ class MainWindowTab(QTabWidget):
 
             #Update Maps
             maps = self.tab1.map_value
-            print(self.tab1.proj)
             mp_ini = self.tab1.createMapPlotGroup
             mp_ini.updateTab(data=maps)
 
             #Update Offset
-            #self.tab1.updateOffsetValue()
+            self.tab1.updateOffsetValue()
 
         except AttributeError:
             pass
@@ -1115,23 +1114,28 @@ class ParamMapTab(QWidget):
 >>>>>>> 651e1e6... Commented files
         
         ctype_map = self.coordchoice.currentText()
-        print('MapValues', self.map_value)
+
         offset = bm.computeoffset(self.map_value, float(self.crval1.text()), float(self.crval2.text()), ctype_map)
-        print('Offset_Proj',self.maps.proj)
+
         self.offset_angle = offset.offset(self.maps.proj)
 
         if self.ctype == 'RA and DEC':
 <<<<<<< HEAD
+<<<<<<< HEAD
             self.RAoffset = QLineEdit(str(self.offset_angle[0]))
             self.DECoffset = QLineEdit(str(self.offset_angle[1]))
+=======
+            self.RAoffset.setText(str(self.offset_angle[0]))
+            self.DECoffset.setText(str(self.offset_angle[1]))
+>>>>>>> ccf3a8f... Added output for offset calculation
 
         elif self.ctype == 'AZ and EL':
-            self.AZoffset = QLineEdit(str(self.offset_angle[0]))
-            self.ELoffset = QLineEdit(str(self.offset_angle[1]))
+            self.AZoffset.setText(str(self.offset_angle[0]))
+            self.ELoffset.setText(str(self.offset_angle[1]))
             
         elif self.ctype == 'CROSS-EL and EL':
-            self.CROSSELoffset = QLineEdit(str(self.offset_angle[0]))
-            self.ELxoffset = QLineEdit(str(self.offset_angle[1]))
+            self.CROSSELoffset.setText(str(self.offset_angle[0]))
+            self.ELxoffset.setText(str(self.offset_angle[1]))
 
     def load_func(self):
 
@@ -1343,8 +1347,6 @@ class ParamMapTab(QWidget):
                             self.convolution, self.std, self.ICheckBox.isChecked())
 
         self.maps.wcs_proj()
-
-        print('PROJ', self.maps.proj)
 
         self.proj = self.maps.proj
 
