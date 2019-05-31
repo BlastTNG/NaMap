@@ -5,6 +5,7 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
+from astropy.io import fits
 
 import numpy as np
 import os
@@ -91,9 +92,11 @@ class MainWindowTab(QTabWidget):
 
             #Update Maps
             maps = self.tab1.map_value
+            wcs = self.tab1.proj
+            print(wcs)
             mp_ini = self.tab1.createMapPlotGroup
             mp_ini.updateTab(data=maps)
-
+            print(self.tab1.map_value)
             #Update Offset
             #self.tab1.updateOffsetValue()
 
@@ -103,6 +106,8 @@ class MainWindowTab(QTabWidget):
         process = psutil.Process(os.getpid())
         print('MEM3',process.memory_info().rss/1e9)
         print('END CYCLE')
+    
+    # def save2fits(self): #function to save the map as a FITS file
         
 class ParamMapTab(QWidget):
 
@@ -120,6 +125,7 @@ class ParamMapTab(QWidget):
         
         self.plotbutton = QPushButton('Plot')
         self.button = QPushButton('Test')
+        self.fitsbutton = QPushButton('Save as Fits')
         
         #self.plotbutton.clicked.connect(self.load_func)
         #self.plotbutton.clicked.connect(self.mapvalues)
@@ -128,6 +134,10 @@ class ParamMapTab(QWidget):
         self.createOffsetGroup()
         mainlayout = QGridLayout(self)
         self.createMapPlotGroup = MapPlotsGroup(checkbox=self.ICheckBox, data=self.map_value)
+
+        self.fitsname = QLineEdit('')
+        self.fitsnamelabel = QLabel("FITS name")
+        self.fitsnamelabel.setBuddy(self.fitsname)
 
         scroll = QScrollArea()
         scroll.setWidget(self.ExperimentGroup)
@@ -143,7 +153,9 @@ class ParamMapTab(QWidget):
         mainlayout.addWidget(self.plotbutton, 3, 0)
         mainlayout.addWidget(self.createMapPlotGroup, 0, 1, 2, 1)
         mainlayout.addWidget(self.OffsetGroup, 2, 1)
-        mainlayout.addWidget(self.button, 3, 1)
+        mainlayout.addWidget(self.fitsbutton,3,1)
+        mainlayout.addWidget(self.fitsname)
+        mainlayout.addWidget(self.fitsnamelabel)
         
         self.setLayout(mainlayout)        
 
@@ -597,7 +609,6 @@ class ParamMapTab(QWidget):
     def load_func(self):
         
         label_final = []
-
         coord_type = self.coordchoice.currentText()
         if coord_type == 'RA and DEC':
             self.coord1 = str('RA')
