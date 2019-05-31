@@ -22,6 +22,10 @@ import src.beam as bm
 
 class App(QMainWindow):
 
+    '''
+    Class to create the app
+    '''
+
     def __init__(self):
         super().__init__()
         self.title = 'Naive MapMaker'
@@ -32,6 +36,12 @@ class App(QMainWindow):
         self.setCentralWidget(self.TabLayout)
 
     def closeEvent(self,event):
+
+        '''
+        This function contains the code that is run when the application is closed.
+        In this case, deleting the pickles file created.
+        '''
+
         result = QMessageBox.question(self,
                                       "Confirm Exit...",
                                       "Are you sure you want to exit ?",
@@ -52,6 +62,10 @@ class App(QMainWindow):
 
 class MainWindowTab(QTabWidget):
 
+    '''
+    General layout of the application 
+    '''
+
     def __init__(self, parent = None):
         super(MainWindowTab, self).__init__(parent)
         self.tab1 = ParamMapTab()
@@ -68,13 +82,16 @@ class MainWindowTab(QTabWidget):
         #self.addTab(self.tab3, "Beam")
 
     def updatedata(self):
+        '''
+        This function updates the map values everytime that the plot button is pushed
+        '''
 
         #functions to compute the updated values
         self.tab1.load_func()
         process = psutil.Process(os.getpid())
         print('MEM0',process.memory_info().rss/1e9)
 
-        self.data = self.tab1.detslice
+        self.data = self.tab1.detslice 
 
         self.cleandata = self.tab1.cleaned_data
 
@@ -92,8 +109,7 @@ class MainWindowTab(QTabWidget):
 
             #Update Maps
             maps = self.tab1.map_value
-            wcs = self.tab1.proj
-            print(wcs)
+            print(self.tab1.proj)
             mp_ini = self.tab1.createMapPlotGroup
             mp_ini.updateTab(data=maps)
             print(self.tab1.map_value)
@@ -111,13 +127,18 @@ class MainWindowTab(QTabWidget):
         
 class ParamMapTab(QWidget):
 
+    '''
+    Create the layout of the first tab containing the various input parameters and 
+    the final maps
+    '''
+
     def __init__(self, parent=None):
         super(QWidget, self).__init__(parent)
 
-        self.detslice = np.array([])
-        self.cleaned_data = np.array([])
-        self.proj = np.array([])
-        self.map_value = np.array([])
+        self.detslice = np.array([])         #Detector TOD between the frames of interest
+        self.cleaned_data = np.array([])     #Detector TOD cleaned (despiked and highpassed) between the frame of interest
+        self.proj = np.array([])             #WCS projection of the map
+        self.map_value = np.array([])        #Final map values
 
         self.createAstroGroup()
         self.createExperimentGroup()
@@ -160,6 +181,16 @@ class ParamMapTab(QWidget):
         self.setLayout(mainlayout)        
 
     def createDataRepository(self):
+
+        '''
+        Function for the layout and input of the Data Repository group.
+        This includes:
+        - Paths to the data
+        - Name of the detectors
+        - Possibility to use pointing offset and detectortables
+        - Roach Number
+        '''
+
         self.DataRepository = QGroupBox("Data Repository")
         
         self.detpath = QLineEdit('')
@@ -226,6 +257,15 @@ class ParamMapTab(QWidget):
         self.DataRepository.setLayout(self.layout)
 
     def createAstroGroup(self):
+
+        '''
+        Function for the layout and input of the Astronometry parameters group.
+        This includes:
+        - Coordinates system
+        - Standard WCS parameters to create a map
+        - If the maps need to be convolved
+        '''
+
         self.AstroGroup = QGroupBox("Astronomy Parameters")
     
         self.coordchoice = QComboBox()
@@ -302,6 +342,13 @@ class ParamMapTab(QWidget):
         self.AstroGroup.setLayout(self.layout)
 
     def updateGaussian(self, text=None):
+
+        '''
+        Function to update the layout of the group, to add a line 
+        to input the std of the gaussian convolution if the convolution parameter
+        is set to gaussian
+        '''
+
         if text is None:
             text = self.convchoice.currentText()
 
@@ -317,6 +364,18 @@ class ParamMapTab(QWidget):
             self.gaussianLabel.setEnabled(False)
 
     def createExperimentGroup(self):
+
+        '''
+        Function for the layout and input of the Experiment parameters group.
+        This includes:
+        - Frequency sampling of detectors and ACSs 
+        - Experiment to be analyzed 
+        - Frames of interests
+        - High pass filter cutoff frequency
+        - If DIRFILE conversion needs to be performed. If so, the parameters to 
+          use for the conversion
+        '''
+
         self.ExperimentGroup = QGroupBox()
 
         self.experiment = QComboBox()
@@ -439,12 +498,22 @@ class ParamMapTab(QWidget):
         self.ExperimentGroup.setLayout(self.layout)
 
     def configuration_update(self):
+
+        '''
+        Function to update the experiment parameters based on some templates.
+        It requires the coordinates system and the experiment name
+        '''
+
         text = self.experiment.currentText()
         coord_text = self.coordchoice.currentText()
 
         self.configuration_value(text, coord_text)
 
     def configuration_value(self, text, coord_text):
+
+        '''
+        Function to read the experiment parameters from the template
+        '''
         
         dir_path = os.getcwd()+'/config/'
         
@@ -505,6 +574,12 @@ class ParamMapTab(QWidget):
           
     def createOffsetGroup(self):
 
+        '''
+        Function to create the layout and the output of the offset group.
+        Check the beam.py for offset calculation
+        '''
+
+
         self.OffsetGroup = QGroupBox("Detector Offset")
 
         self.RAoffsetlabel = QLabel('RA (deg)')
@@ -553,6 +628,10 @@ class ParamMapTab(QWidget):
 
     def updateOffsetLabel(self):
 
+        '''
+        Update the offset labels based on the coordinate system choice
+        '''
+
         self.ctype = self.coordchoice.currentText()
 
         if self.ctype == 'RA and DEC':
@@ -587,6 +666,10 @@ class ParamMapTab(QWidget):
         self.ELxoffsetlabel.setVisible(self.CROSSEL_ELvisibile) 
 
     def updateOffsetValue(self):
+
+        '''
+        Calculate and update the offset value based on the coordinate system choice
+        '''
         
         ctype_map = self.coordchoice.currentText()
         print('MapValues', self.map_value)
@@ -607,6 +690,15 @@ class ParamMapTab(QWidget):
             self.ELxoffset = QLineEdit(str(self.offset_angle[1]))
 
     def load_func(self):
+
+
+        '''
+        Wrapper function to loaddata.py to read the DIRFILEs.
+        If the paths are not correct a warning is generated. To reduce the time to 
+        re-run the code everytime, a new DIRFILE is loaded a pickle object is created so it can be 
+        loaded again when the plot button is pushed. The pickles object are deleted when
+        the software is closed
+        '''
         
         label_final = []
         coord_type = self.coordchoice.currentText()
@@ -647,6 +739,7 @@ class ParamMapTab(QWidget):
                 label_final.append(label)
 
         if np.size(label_final) != 0:
+
             self.warningbox = QMessageBox()
             self.warningbox.setIcon(QMessageBox.Warning)
             self.warningbox.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
@@ -746,10 +839,19 @@ class ParamMapTab(QWidget):
             print('DataLoaded')
 
     def clean_func(self):
+
+        '''
+        Function to compute the cleaned detector TOD
+        '''
+
         det_tod = tod.data_cleaned(self.detslice, self.detfreq.text(), self.highpassfreq.text())
         self.cleaned_data = det_tod.data_clean()
 
     def dirfile_conversion(self):
+
+        '''
+        Function to convert the DIRFILE data.
+        '''
 
         det_conv = ld.convert_dirfile(self.detslice, float(self.adetconv.text()), \
                                       float(self.bdetconv.text()))
@@ -771,6 +873,10 @@ class ParamMapTab(QWidget):
 
     def mapvalues(self, data):
 
+        '''
+        Function to compute the maps
+        '''
+
         self.ctype = self.coordchoice.currentText()
 
         self.crpix = np.array([int(float(self.crpix1.text())),\
@@ -791,11 +897,19 @@ class ParamMapTab(QWidget):
                             data, self.coord1slice, self.coord2slice, \
                             self.convolution, self.std, self.ICheckBox.isChecked())
 
-        self.proj = self.maps.wcs_proj()
+        self.maps.wcs_proj()
+
+        print('PROJ', self.maps.proj)
+
+        self.proj = self.maps.proj
 
         self.map_value = self.maps.map2d()
 
 class TODTab(QWidget):
+
+    '''
+    Layout Class for the TOD tab
+    '''
 
     def __init__(self, parent=None):
 
@@ -813,6 +927,11 @@ class TODTab(QWidget):
         self.setLayout(mainlayout)
 
     def createTODplot(self, data = None):
+
+        '''
+        Function to create the TOD empty plot
+        '''
+
         self.TODplot = QGroupBox("Detector TOD")
         TODlayout = QGridLayout()
 
@@ -824,6 +943,11 @@ class TODTab(QWidget):
         self.TODplot.setLayout(TODlayout)
 
     def draw_TOD(self, data = None):
+
+        '''
+        Function to draw the TOD when the plot button is pushed.
+        The plotted TOD is the one between the frame of interest
+        '''
         
         self.axis_TOD.set_axis_on()
         self.axis_TOD.clear()
@@ -835,6 +959,11 @@ class TODTab(QWidget):
         self.matplotlibWidget_TOD.canvas.draw()
 
     def createTODcleanedplot(self, data = None):
+
+        '''
+        Same of createTODPlot but for the cleanedTOD
+        '''
+
         self.TODcleanedplot = QGroupBox("Detector Cleaned TOD")
         self.layout = QVBoxLayout()
 
@@ -846,6 +975,10 @@ class TODTab(QWidget):
         self.TODcleanedplot.setLayout(self.layout)
 
     def draw_cleaned_TOD(self, data = None):
+
+        '''
+        Same of draw_TOD but for the cleaned TOD
+        '''
         
         self.axis_cleaned_TOD.set_axis_on()
         self.axis_cleaned_TOD.clear()
@@ -857,6 +990,11 @@ class TODTab(QWidget):
         self.matplotlibWidget_cleaned_TOD.canvas.draw()
 
 class BeamTab(ParamMapTab):
+
+    '''
+    Layout for the tab used to show the calculated beams
+    '''
+
 
     def __init__(self, parent=None, checkbox=None):
 
@@ -872,6 +1010,13 @@ class BeamTab(ParamMapTab):
         self.setLayout(mainlayout)
         
 class MapPlotsGroup(QWidget):
+
+    '''
+    Generic layout to create a tabbed plot layout for maps
+    in case only I is requested or also polarization maps
+    are requested as output.
+    This class is used for plotting both the maps and the beams 
+    '''
 
     def __init__(self, data, checkbox, parent=None):
 
@@ -901,6 +1046,10 @@ class MapPlotsGroup(QWidget):
 
     def tabvisible(self):
 
+        '''
+        Function to update the visibility of the polarization maps.
+        '''
+
         if self.checkbox.isChecked():
             self.Qsave = self.tabs.widget(1)
             self.tabs.removeTab(1)
@@ -915,6 +1064,10 @@ class MapPlotsGroup(QWidget):
                 self.tabs.addTab(self.tab3,"U Map")
 
     def ImapTab(self, button=None):
+
+        '''
+        Create an empty plot for I map (or beam if the class is used in the beam tab)
+        '''
 
         mainlayout = QGridLayout()
 
@@ -931,6 +1084,11 @@ class MapPlotsGroup(QWidget):
         self.tab1.setLayout(mainlayout)
 
     def QmapTab(self):
+
+        '''
+        Same of ImapTab but the Q Stokes parameter
+        '''
+
         mainlayout = QGridLayout()
 
         self.matplotlibWidget_Qmap = MatplotlibWidget(self)
@@ -941,6 +1099,10 @@ class MapPlotsGroup(QWidget):
         self.tab2.setLayout(mainlayout)
 
     def UmapTab(self):
+        
+        '''
+        Same of ImapTab but the U Stokes parameter
+        '''
 
         self.UmapGroup = QGroupBox("Detector Offset")
         mainlayout = QGridLayout()
@@ -953,6 +1115,12 @@ class MapPlotsGroup(QWidget):
         self.tab3.setLayout(mainlayout)
 
     def updateTab(self, data):
+
+        '''
+        Function to updates the I, Q and U plots when the 
+        button plot is pushed
+        '''
+
         if np.size(np.shape(data)) > 2:
             idx_list = ['I', 'Q', 'U']
 
@@ -962,6 +1130,11 @@ class MapPlotsGroup(QWidget):
             self.map2d(data)
 
     def map2d(self, data=None, idx='I'):
+
+        '''
+        Function to generate the map plots (I,Q and U) 
+        when the plot button is pushed
+        '''
         
         if idx == 'I':
             axis = self.axis_Imap
@@ -1008,6 +1181,11 @@ class MapPlotsGroup(QWidget):
         self.matplotlibWidget_Imap.canvas.draw()
 
 class MatplotlibWidget(QWidget):
+
+    '''
+    Class to generate an empty matplotlib.pyplot object
+    '''
+
     def __init__(self, parent=None):
         super(MatplotlibWidget, self).__init__(parent)
 
