@@ -151,7 +151,6 @@ class computeoffset():
         return np.rint(x_c), np.rint(y_c)
 
     def offset(self, wcs_trans, threshold=0.275, return_pixel=False, altitude=0., lon=0., lat=0.):
-
         x_c, y_c = self.centroid(threshold=threshold)
 
         coord_centre = coordinates.SkyCoord(self.angX_center, self.angY_center, unit='deg')
@@ -166,22 +165,23 @@ class computeoffset():
             return x_off, y_off
         
         else:
-            print
             coord = wcs.utils.pixel_to_skycoord(x_c, y_c, wcs_trans)
                         
             offset_angle = coord_centre.spherical_offsets_to(coord)
 
-            if self.ctype == 'AZ and EL':
+            return offset_angle[0].degree, offset_angle[1].degree
 
-                return offset_angle.az, offset_angle.alt
+            # if self.ctype == 'AZ and EL':
 
-            elif self.ctype == 'RA and DEC':
+            #     return offset_angle.az, offset_angle.alt
 
-                return offset_angle.ra, offset_angle.dec
+            # elif self.ctype == 'RA and DEC':
+            #     print('ANGLE', offset_angle[0].degree)
+            #     return offset_angle.ra, offset_angle.dec
 
-            elif self.ctype == 'CROSS-EL and EL':
+            # elif self.ctype == 'CROSS-EL and EL':
 
-                return offset_angle.az*np.cos(offset_angle.alt), offset_angle.alt
+            #     return offset_angle.az*np.cos(offset_angle.alt), offset_angle.alt
 
 
 
