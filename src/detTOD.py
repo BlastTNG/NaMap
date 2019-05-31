@@ -1,22 +1,31 @@
 import numpy as np
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 import os
 =======
 
 >>>>>>> 4ee3dbe... Fixed bug in selecting data
+=======
+>>>>>>> 651e1e6... Commented files
 import scipy.signal as sgn
-from scipy.optimize import curve_fit
+
 
 class data_cleaned():
 
+    '''
+    Class to clean the detector TOD using the functions in 
+    the next classes. Check them for more explanations
+    '''
+
     def __init__(self, data, fs, cutoff):
 
-        self.data = data
-        self.fs = float(fs)
-        self.cutoff = float(cutoff)
+        self.data = data                #detector TOD
+        self.fs = float(fs)             #frequency sampling of the detector
+        self.cutoff = float(cutoff)     #cutoff frequency of the highpass filter
 
     def data_clean(self):
+<<<<<<< HEAD
 <<<<<<< HEAD
         
 =======
@@ -37,13 +46,18 @@ class data_cleaned():
         self.cutoff = float(cutoff)     #cutoff frequency of the highpass filter
 
     def data_clean(self):
+=======
+>>>>>>> 651e1e6... Commented files
 
         '''
         Function to return the cleaned TOD as numpy array
         '''
+<<<<<<< HEAD
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
 =======
 >>>>>>> 4ee3dbe... Fixed bug in selecting data
+=======
+>>>>>>> 651e1e6... Commented files
         det_data = detector(self.data, 0, 0)
         residual_data = det_data.fit_residual()
 
@@ -58,12 +72,18 @@ class data_cleaned():
 class despike():
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
+=======
+>>>>>>> 651e1e6... Commented files
     '''
     Class to despike the TOD
     '''
 
+<<<<<<< HEAD
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
+=======
+>>>>>>> 651e1e6... Commented files
     def __init__(self, data):
 
         self.data = data
@@ -72,21 +92,25 @@ class despike():
     def findpeak(self, hthres=0, pthres=0):
 
         '''
+<<<<<<< HEAD
 =======
     def findpeak(self, hthres=5, pthres=0):
 
         '''
         This function finds the peak in the TOD.
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
+=======
+        This function finds the peak in the TOD.
+>>>>>>> 651e1e6... Commented files
         hthresh and pthres are measured in how many std the height (or the prominence) 
         of the peak is computed. The height of the peak is computed with respect to 
         the mean of the signal        
         '''
 <<<<<<< HEAD
         index = np.ones(1)
-        index_final = np.array([], dtype = 'int')
         ledge = np.array([], dtype = 'int')
         redge = np.array([], dtype = 'int')
+<<<<<<< HEAD
         count = 0
 =======
 
@@ -94,6 +118,8 @@ class despike():
         ledge = np.array([], dtype = 'int')
         redge = np.array([], dtype = 'int')
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
+=======
+>>>>>>> 651e1e6... Commented files
 
         y_std = np.std(self.data)
         y_mean = np.mean(self.data)
@@ -122,11 +148,14 @@ class despike():
 
         return index
 
-    def peak_width(self, hthres=5, pthres=0, window = 100):
+    def peak_width(self, hthres=0, pthres=0, window = 100):
 
+<<<<<<< HEAD
 <<<<<<< HEAD
         y_mean = np.mean(self.data)
 =======
+=======
+>>>>>>> 651e1e6... Commented files
 
         '''
         Function to estimate the width of the peaks.
@@ -134,16 +163,22 @@ class despike():
         left and right of the peak. The minimum at left and right is used
         to compute the width of the peak
         '''
+<<<<<<< HEAD
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
+=======
+>>>>>>> 651e1e6... Commented files
         
         peaks = self.findpeak(hthres=hthres, pthres=pthres)
         param = sgn.peak_widths(np.abs(self.data),peaks, rel_height = 1.0)
 
 <<<<<<< HEAD
+<<<<<<< HEAD
         height = self.data[peaks]-y_mean
 
 =======
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
+=======
+>>>>>>> 651e1e6... Commented files
         ledge = np.array([], dtype='int')
         redge = np.array([], dtype='int')
 
@@ -152,10 +187,14 @@ class despike():
                                   np.amin(self.data[peaks[i]-window:peaks[i]]))
             right_edge, = np.where(self.data[peaks[i]:peaks[i]+window] == \
 <<<<<<< HEAD
+<<<<<<< HEAD
                                   np.amin(self.data[peaks[i]:peaks[i]+window]))
 =======
                                    np.amin(self.data[peaks[i]:peaks[i]+window]))
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
+=======
+                                   np.amin(self.data[peaks[i]:peaks[i]+window]))
+>>>>>>> 651e1e6... Commented files
 
             left_edge += (peaks[i]-window)
             right_edge += peaks[i]
@@ -165,7 +204,12 @@ class despike():
 
         return param[0].copy(), ledge, redge
 
-    def replace_peak(self, hthres=5, pthres = 0, peaks = np.array([]), widths = np.array([])):
+    def replace_peak(self, hthres=0, pthres = 0, peaks = np.array([]), widths = np.array([])):
+
+        '''
+        This function replaces the spikes data with noise realization. Noise can be gaussian
+        or poissonian based on the statistic of the data
+        '''
 
 <<<<<<< HEAD
 =======
@@ -232,6 +276,7 @@ class despike():
 class filterdata():
 
 <<<<<<< HEAD
+<<<<<<< HEAD
     def __init__(self, data, cutoff, fs):
         
         '''
@@ -247,6 +292,16 @@ class filterdata():
         '''
         See data_cleaned for parameters explanantion
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
+=======
+    '''
+    class for filter the detector TOD
+    '''
+
+    def __init__(self, data, cutoff, fs):
+        
+        '''
+        See data_cleaned for parameters explanantion
+>>>>>>> 651e1e6... Commented files
         '''
 
         self.data = data
@@ -255,13 +310,19 @@ class filterdata():
     
     def highpass(self, order):
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
+=======
+>>>>>>> 651e1e6... Commented files
 
         '''
         Highpass butterworth filter.
         order parameter is the order of the butterworth filter
         '''
+<<<<<<< HEAD
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
+=======
+>>>>>>> 651e1e6... Commented files
         
         nyq = 0.5*self.fs
         normal_cutoff = self.cutoff / nyq
@@ -270,26 +331,38 @@ class filterdata():
 
     def butter_highpass_filter(self, order=5):
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
+=======
+>>>>>>> 651e1e6... Commented files
 
         '''
         Data filtered with a butterworth filter 
         order parameter is the order of the butterworth filter
         '''
+<<<<<<< HEAD
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
+=======
+>>>>>>> 651e1e6... Commented files
         b, a = self.highpass(order)
         filterdata = sgn.lfilter(b, a, self.data)
         return filterdata
 
     def cosine_filter(self, f):
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
+=======
+>>>>>>> 651e1e6... Commented files
 
         '''
         Highpass cosine filter
         '''
 
+<<<<<<< HEAD
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
+=======
+>>>>>>> 651e1e6... Commented files
         if f < .5*self.cutoff:
             return 0
         elif 0.5*self.cutoff <= f  and f <= self.cutoff:
@@ -299,8 +372,11 @@ class filterdata():
     
     def fft_filter(self, window):
 <<<<<<< HEAD
+<<<<<<< HEAD
         if window == True:
 =======
+=======
+>>>>>>> 651e1e6... Commented files
 
         '''
         Return an fft of the despiked data using the cosine filter.
@@ -309,7 +385,10 @@ class filterdata():
         '''
 
         if window is True:
+<<<<<<< HEAD
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
+=======
+>>>>>>> 651e1e6... Commented files
             window_data = np.hanning(len(self.data))
 
             fft_data = np.fft.rfft(self.data*window_data)
@@ -327,12 +406,18 @@ class filterdata():
     def ifft_filter(self, window):
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
+=======
+>>>>>>> 651e1e6... Commented files
         '''
         Inverse FFT of cleaned FFT data calculated in the previous function.
         '''
 
+<<<<<<< HEAD
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
+=======
+>>>>>>> 651e1e6... Commented files
         ifft_data = np.fft.irfft(self.fft_filter(window=window), len(self.data))
 
         return ifft_data
@@ -340,12 +425,18 @@ class filterdata():
 class detector():
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
+=======
+>>>>>>> 651e1e6... Commented files
     '''
     Class to load detector properties from a detectortable (need to be implemented)
     '''
 
+<<<<<<< HEAD
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
+=======
+>>>>>>> 651e1e6... Commented files
     def __init__(self, data, responsivity, grid):
 
         self.data = data
@@ -360,6 +451,7 @@ class detector():
 
         return self.grid-2*hwp_angle+roll
 
+<<<<<<< HEAD
 <<<<<<< HEAD
     def exponentialfit(self, edge, delay=0):
         x = np.arange(len(self.data))
@@ -388,7 +480,13 @@ class detector():
 
         return y_fin, index_exclude.astype(int)
 
+=======
+>>>>>>> 651e1e6... Commented files
     def polyfit(self, edge = 0, delay=0, order=6):
+
+        '''
+        Function to fit a trend line to a TOD
+        '''
 
         x = np.arange(len(self.data))
 <<<<<<< HEAD
@@ -449,12 +547,18 @@ class detector():
     def fit_residual(self, edge = 0, delay=0, order=6):
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
+=======
+>>>>>>> 651e1e6... Commented files
         '''
         Function to remove the trend polynomial from the TOD
         '''
 
+<<<<<<< HEAD
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
+=======
+>>>>>>> 651e1e6... Commented files
         polyres = self.polyfit(edge=edge, delay=delay, order=order)
         fitteddata = polyres[0]
         index = polyres[1]
