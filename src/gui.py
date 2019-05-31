@@ -5,6 +5,7 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
+from astropy.io import fits
 
 import numpy as np
 import os
@@ -75,6 +76,7 @@ class MainWindowTab(QTabWidget):
         self.cleandata = np.array([])
 
         self.tab1.plotbutton.clicked.connect(self.updatedata)
+        self.tab1.fitsbutton.clicked.connect(self.save2fits)
 
         self.addTab(self.tab1,"Parameters and Maps")
         self.addTab(self.tab2,"Detector TOD")
@@ -110,7 +112,6 @@ class MainWindowTab(QTabWidget):
             maps = self.tab1.map_value
             mp_ini = self.tab1.createMapPlotGroup
             mp_ini.updateTab(data=maps)
-
             #Update Offset
             self.tab1.updateOffsetValue()
 
@@ -120,6 +121,13 @@ class MainWindowTab(QTabWidget):
         process = psutil.Process(os.getpid())
         print('MEM3',process.memory_info().rss/1e9)
         print('END CYCLE')
+    
+    def save2fits(self): #function to save the map as a FITS file
+        hdr = self.tab1.proj.to_header() #grabs the projection information for header
+        maps = self.tab1.map_value #grabs the actual map for the fits img
+        hdu = fits.PrimaryHDU(maps, header = hdr)
+        hdu.writeto('./'+self.tab1.fitsname.text())
+
         
 class ParamMapTab(QWidget):
 
@@ -142,6 +150,7 @@ class ParamMapTab(QWidget):
         
         self.plotbutton = QPushButton('Plot')
         self.button = QPushButton('Test')
+        self.fitsbutton = QPushButton('Save as Fits')
         
         #self.plotbutton.clicked.connect(self.load_func)
         #self.plotbutton.clicked.connect(self.mapvalues)
@@ -150,6 +159,10 @@ class ParamMapTab(QWidget):
         self.createOffsetGroup()
         mainlayout = QGridLayout(self)
         self.createMapPlotGroup = MapPlotsGroup(checkbox=self.ICheckBox, data=self.map_value)
+
+        self.fitsname = QLineEdit('')
+        self.fitsnamelabel = QLabel("FITS name")
+        self.fitsnamelabel.setBuddy(self.fitsname)
 
         scroll = QScrollArea()
         scroll.setWidget(self.ExperimentGroup)
@@ -165,7 +178,9 @@ class ParamMapTab(QWidget):
         mainlayout.addWidget(self.plotbutton, 3, 0)
         mainlayout.addWidget(self.createMapPlotGroup, 0, 1, 2, 1)
         mainlayout.addWidget(self.OffsetGroup, 2, 1)
-        mainlayout.addWidget(self.button, 3, 1)
+        mainlayout.addWidget(self.fitsbutton,3,1)
+        mainlayout.addWidget(self.fitsname)
+        mainlayout.addWidget(self.fitsnamelabel)
         
         self.setLayout(mainlayout)        
 
@@ -182,11 +197,11 @@ class ParamMapTab(QWidget):
 
         self.DataRepository = QGroupBox("Data Repository")
         
-        self.detpath = QLineEdit('')
+        self.detpath = QLineEdit('/Users/ian/AnacondaProjects/BLASTpolData/bolo_data/')
         self.detpathlabel = QLabel("Detector Path:")
         self.detpathlabel.setBuddy(self.detpath)
 
-        self.detname = QLineEdit('')
+        self.detname = QLineEdit('n31c04')
         self.detnamelabel = QLabel("Detector Name:")
         self.detnamelabel.setBuddy(self.detname)
 
@@ -196,7 +211,7 @@ class ParamMapTab(QWidget):
         self.roachnumberlabel = QLabel("Roach Number:")
         self.roachnumberlabel.setBuddy(self.roachnumber)
 
-        self.coordpath = QLineEdit('')
+        self.coordpath = QLineEdit('/Users/ian/AnacondaProjects/BLASTpolData/')
         self.coordpathlabel = QLabel("Coordinate Path:")
         self.coordpathlabel.setBuddy(self.coordpath)
 
@@ -391,8 +406,8 @@ class ParamMapTab(QWidget):
         self.acsframelabel = QLabel("ACS Sample Samples per Frame")
         self.acsframelabel.setBuddy(self.acsframe)
 
-        self.startframe = QLineEdit('')
-        self.endframe = QLineEdit('')
+        self.startframe = QLineEdit('1918381')
+        self.endframe = QLineEdit('1922092')
         self.numberframelabel = QLabel('Starting and Ending Frames')
         self.numberframelabel.setBuddy(self.startframe)
 
@@ -690,7 +705,6 @@ class ParamMapTab(QWidget):
         '''
         
         label_final = []
-
         coord_type = self.coordchoice.currentText()
         if coord_type == 'RA and DEC':
             self.coord1 = str('RA')
