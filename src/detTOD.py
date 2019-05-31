@@ -41,7 +41,7 @@ class despike():
 
         self.data = data
 
-    def findpeak(self, hthres=0, pthres=0):
+    def findpeak(self, hthres=5, pthres=0):
 
         '''
         This function finds the peak in the TOD.
@@ -49,6 +49,7 @@ class despike():
         of the peak is computed. The height of the peak is computed with respect to 
         the mean of the signal        
         '''
+
         index = np.ones(1)
         ledge = np.array([], dtype = 'int')
         redge = np.array([], dtype = 'int')
@@ -72,7 +73,7 @@ class despike():
 
         return index
 
-    def peak_width(self, hthres=0, pthres=0, window = 100):
+    def peak_width(self, hthres=5, pthres=0, window = 100):
 
 
         '''
@@ -102,7 +103,7 @@ class despike():
 
         return param[0].copy(), ledge, redge
 
-    def replace_peak(self, hthres=0, pthres = 0, peaks = np.array([]), widths = np.array([])):
+    def replace_peak(self, hthres=5, pthres = 0, peaks = np.array([]), widths = np.array([])):
 
         '''
         This function replaces the spikes data with noise realization. Noise can be gaussian

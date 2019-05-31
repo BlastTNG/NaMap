@@ -108,6 +108,7 @@ class MainWindowTab(QTabWidget):
 
             #Update Maps
             maps = self.tab1.map_value
+            print(self.tab1.proj)
             mp_ini = self.tab1.createMapPlotGroup
             mp_ini.updateTab(data=maps)
 
@@ -887,7 +888,9 @@ class ParamMapTab(QWidget):
                             data, self.coord1slice, self.coord2slice, \
                             self.convolution, self.std, self.ICheckBox.isChecked())
 
-        self.proj = self.maps.wcs_proj()
+        self.maps.wcs_proj()
+
+        print('PROJ', self.maps.proj)
 
         self.map_value = self.maps.map2d()
 
