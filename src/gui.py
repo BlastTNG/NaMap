@@ -118,6 +118,7 @@ class MainWindowTab(QTabWidget):
         self.cleandata = np.array([])
 
         self.tab1.plotbutton.clicked.connect(self.updatedata)
+        self.tab1.fitsbutton.clicked.connect(self.save2fits)
 
         self.addTab(self.tab1,"Parameters and Maps")
         self.addTab(self.tab2,"Detector TOD")
@@ -151,11 +152,13 @@ class MainWindowTab(QTabWidget):
 
             #Update Maps
             maps = self.tab1.map_value
+<<<<<<< HEAD
             wcs = self.tab1.proj
             print(wcs)
+=======
+>>>>>>> 6ecb5ac... Added FITS file generator and field
             mp_ini = self.tab1.createMapPlotGroup
             mp_ini.updateTab(data=maps)
-            print(self.tab1.map_value)
             #Update Offset
             self.tab1.updateOffsetValue()
 
@@ -166,7 +169,12 @@ class MainWindowTab(QTabWidget):
         print('MEM3',process.memory_info().rss/1e9)
         print('END CYCLE')
     
-    # def save2fits(self): #function to save the map as a FITS file
+    def save2fits(self): #function to save the map as a FITS file
+        hdr = self.tab1.proj.to_header() #grabs the projection information for header
+        maps = self.tab1.map_value #grabs the actual map for the fits img
+        hdu = fits.PrimaryHDU(maps, header = hdr)
+        hdu.writeto('./'+self.tab1.fitsname.text())
+
         
 <<<<<<< HEAD
         self.show()
@@ -400,10 +408,11 @@ class ParamMapTab(QWidget):
 
         self.DataRepository = QGroupBox("Data Repository")
         
-        self.detpath = QLineEdit('')
+        self.detpath = QLineEdit('/Users/ian/AnacondaProjects/BLASTpolData/bolo_data/')
         self.detpathlabel = QLabel("Detector Path:")
         self.detpathlabel.setBuddy(self.detpath)
 
+<<<<<<< HEAD
         self.detname = QLineEdit('')
 =======
         mainlayout.addWidget(self.DataRepository, 0, 0)
@@ -437,6 +446,9 @@ class ParamMapTab(QWidget):
 
         self.detname = QLineEdit('n31c04')
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
+=======
+        self.detname = QLineEdit('n31c04')
+>>>>>>> 6ecb5ac... Added FITS file generator and field
         self.detnamelabel = QLabel("Detector Name:")
         self.detnamelabel.setBuddy(self.detname)
 
@@ -447,10 +459,14 @@ class ParamMapTab(QWidget):
         self.roachnumberlabel.setBuddy(self.roachnumber)
 
 <<<<<<< HEAD
+<<<<<<< HEAD
         self.coordpath = QLineEdit('')
 =======
         self.coordpath = QLineEdit('/Users/ian/AnacondaProjects/BLASTpolData/')
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
+=======
+        self.coordpath = QLineEdit('/Users/ian/AnacondaProjects/BLASTpolData/')
+>>>>>>> 6ecb5ac... Added FITS file generator and field
         self.coordpathlabel = QLabel("Coordinate Path:")
         self.coordpathlabel.setBuddy(self.coordpath)
 
@@ -687,12 +703,17 @@ class ParamMapTab(QWidget):
         self.acsframelabel.setBuddy(self.acsframe)
 
 <<<<<<< HEAD
+<<<<<<< HEAD
         self.startframe = QLineEdit('')
         self.endframe = QLineEdit('')
 =======
         self.startframe = QLineEdit('1918381')
         self.endframe = QLineEdit('1922092')
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
+=======
+        self.startframe = QLineEdit('1918381')
+        self.endframe = QLineEdit('1922092')
+>>>>>>> 6ecb5ac... Added FITS file generator and field
         self.numberframelabel = QLabel('Starting and Ending Frames')
         self.numberframelabel.setBuddy(self.startframe)
 
