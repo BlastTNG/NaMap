@@ -7,32 +7,42 @@ import matplotlib.pyplot as plt
 
 class maps():
 
+    '''
+    Wrapper class for the wcs_word class and the mapmaking class.
+    In this way in the gui.py only one class is called
+    '''
+
     def __init__(self, ctype, crpix, cdelt, crval, data, coord1, coord2, convolution, std, Ionly=True):
 
-        self.ctype = ctype
-        self.crpix = crpix
-        self.cdelt = cdelt
-        self.crval = crval
-        self.coord1 = coord1
-        self.coord2 = coord2
-        self.data = data
-        self.w = 0.
-        self.proj = 0.
-        self.convolution = convolution
-        self.std = float(std)
-        self.Ionly = Ionly
+        self.ctype = ctype             #see wcs_world for explanation of this parameter
+        self.crpix = crpix             #see wcs_world for explanation of this parameter
+        self.cdelt = cdelt             #see wcs_world for explanation of this parameter
+        self.crval = crval             #see wcs_world for explanation of this parameter
+        self.coord1 = coord1           #array of the first coordinate
+        self.coord2 = coord2           #array of the second coordinate
+        self.data = data               #cleaned TOD that is used to create a map
+        self.w = 0.                    #initialization of the coordinates of the map in pixel coordinates
+        self.proj = 0.                 #inizialization of the wcs of the map. see wcs_world for more explanation about projections
+        self.convolution = convolution #parameters to check if the convolution is required
+        self.std = float(std)          #std of the gaussian is the convolution is required
+        self.Ionly = Ionly             #paramters to check if only I is required to be computed
 
     def wcs_proj(self):
+
+        '''
+        Function to compute the projection and the pixel coordinates
+        '''
+
         wcsworld = wcs_world(self.ctype, self.crpix, self.cdelt, self.crval)
 
         self.w, self.proj = wcsworld.world(np.transpose(np.array([self.coord1, self.coord2])))
-        # print('Coordinates')
-        # print(np.transpose(np.array([self.coord1, self.coord2])))
-        # print('XandY')
-        # print(self.w)
-        # print(np.amax(self.w[:,0]),np.amin(self.w[:,0]))
 
     def map2d(self):
+
+        '''
+        Function to generate the maps using the pixel coordinates to bin
+        '''
+
         mapmaker = mapmaking(self.data, 1., 1.2, 1, np.floor(self.w).astype(int))
         if self.Ionly:
             Imap = mapmaker.map_singledetector_Ionly(self.crpix)
@@ -69,15 +79,24 @@ class maps():
 
 class wcs_world():
 
+    '''
+    Class to generate a wcs using astropy routines.
+    '''
+
     def __init__(self, ctype, crpix, crdelt, crval):
 
-        self.ctype = ctype
-        self.crdelt = crdelt
-        self.crpix = crpix
-        self.crval = crval
+        self.ctype = ctype    #ctype of the map, which projection is used to convert coordinates to pixel numbers
+        self.crdelt = crdelt  #cdelt of the map, distance in deg between two close pixels
+        self.crpix = crpix    #crpix of the map, central pixel of the map in pixel coordinates
+        self.crval = crval    #crval of the map, central pixel of the map in sky/telescope (depending on the system) coordinates
 
     def world(self, coord):
         
+        '''
+        Function for creating a wcs projection and a pixel coordinates 
+        from sky/telescope coordinates
+        '''
+
         w = wcs.WCS(naxis=2)
         w.wcs.crpix = self.crpix
         w.wcs.cdelt = self.crdelt
@@ -92,15 +111,25 @@ class wcs_world():
 
 class mapmaking(object):
 
+    '''
+    Class to generate the maps. For more information about the system to be solved
+    check Moncelsi et al. 2012
+    '''
+
     def __init__(self, data, weight, polangle, number, pixelmap):
 
-        self.data = data
-        self.weight = weight
-        self.polangle = polangle
-        self.number = number
-        self.pixelmap = pixelmap
+        self.data = data               #detector TOD
+        self.weight = weight           #weights associated with the detector values
+        self.polangle = polangle       #polarization angles of each detector
+        self.number = number           
+        self.pixelmap = pixelmap       #Coordinates of each point in the TOD in pixel coordinates
 
     def map_param(self, crpix, value=None, sigma=None, angle=None):
+
+        '''
+        Function to calculate the parameters of the map. Parameters follow the same 
+        naming scheme used in the paper
+        '''
 
         if value is None:
             value = self.data.copy()
@@ -166,6 +195,11 @@ class mapmaking(object):
         return I_est_flat, Q_est_flat, U_est_flat, N_hits_flat, Delta, A, B, C, D, E, F, param
 
     def map_singledetector_Ionly(self, crpix, value=None, sigma=None, angle=None):
+        
+        '''
+        Function to reshape the previous array to create a 2D map for a single detector
+        if only I map is requested
+        '''
 
         value =self.map_param(crpix=crpix, value=value, sigma=sigma, angle=angle)
 
@@ -200,6 +234,11 @@ class mapmaking(object):
         return I_pixel 
 
     def map_singledetector(self, crpix, value=None, sigma=None, angle=None):
+
+        '''
+        Function to reshape the previous array to create a 2D map for a single detector
+        if also polarization maps are requested
+        '''
 
 
         (I_est_flat, Q_est_flat, U_est_flat, N_hits_flat, Delta, \
@@ -261,7 +300,12 @@ class mapmaking(object):
 
     def convolution(self, std, map_value):
 
-        #The standard deviation is in pixel value
+        '''
+        Function to convolve the maps with a gaussian.
+        STD is in pixel values (20190531 from GC std right now is in arcsed 
+        according to the label, so the conversion between arcsec to pixel needs 
+        to be created)
+        '''
 
         kernel = Gaussian2DKernel(x_stddev=std)
 
