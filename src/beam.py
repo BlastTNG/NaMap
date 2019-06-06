@@ -1,5 +1,4 @@
 import numpy as np
-import matplotlib.pyplot as plt
 from scipy.optimize import least_squares
 from photutils import find_peaks
 from astropy.stats import sigma_clipped_stats
@@ -104,8 +103,7 @@ class beam(object):
 
             fit_param, var = self.fit()
 
-            fit_data = self.multivariate_gaussian_2d(fit_param.x)\
-                            .reshape(np.outer(self.xgrid, self.ygrid).shape)
+            fit_data = self.multivariate_gaussian_2d(fit_param.x).reshape(np.outer(self.xgrid, self.ygrid).shape)
             res = self.data-fit_data
 
             self.peak_finder(map_data=res)
@@ -128,6 +126,10 @@ class computeoffset():
         self.ctype = ctype
 
     def centroid(self, threshold=0.275):
+
+        '''
+        For more information about centroid calculation see Shariff, PhD Thesis, 2016
+        '''
 
         maxval = np.max(self.data)
         minval = np.min(self.data)
@@ -165,23 +167,17 @@ class computeoffset():
             return x_off, y_off
         
         else:
-            coord = wcs.utils.pixel_to_skycoord(x_c, y_c, wcs_trans)
-                        
-            offset_angle = coord_centre.spherical_offsets_to(coord)
 
-            return offset_angle[0].degree, offset_angle[1].degree
+            if self.ctype == 'RA and DEC':
+                coord = wcs.utils.pixel_to_skycoord(x_c, y_c, wcs_trans)
+                offset_angle = coord_centre.spherical_offsets_to(coord)
 
-            # if self.ctype == 'AZ and EL':
+                return offset_angle[0].degree, offset_angle[1].degree
 
-            #     return offset_angle.az, offset_angle.alt
+            elif self.ctype == 'CROSS-EL and EL':
+                coord = wcs_trans.wcs_pix2world(x_c, y_c, 1.)
 
-            # elif self.ctype == 'RA and DEC':
-            #     print('ANGLE', offset_angle[0].degree)
-            #     return offset_angle.ra, offset_angle.dec
-
-            # elif self.ctype == 'CROSS-EL and EL':
-
-            #     return offset_angle.az*np.cos(offset_angle.alt), offset_angle.alt
+                return coord[0]-self.angX_center, coord[1]-self.angY_center
 
 
 

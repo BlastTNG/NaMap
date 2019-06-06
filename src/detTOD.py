@@ -130,12 +130,6 @@ class despike():
             left_edge = int(np.floor(widths[1][i]))
             right_edge = int(np.ceil(widths[2][i]))
 
-            # plt.plot(self.data)
-            # plt.plot(peaks, self.data[peaks], 'x')
-            # plt.plot(left_edge, self.data[left_edge], 'x')
-            # plt.plot(right_edge, self.data[right_edge], 'x')
-            # plt.show()
-
             x_inter = np.append(x_inter, np.arange(left_edge, right_edge))
             replaced[left_edge:right_edge] = (replaced[left_edge]+\
                                               replaced[right_edge])/2.

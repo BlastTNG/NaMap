@@ -1,5 +1,6 @@
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
+from PyQt5.QtGui import *
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
@@ -28,7 +29,7 @@ class App(QMainWindow):
 
     def __init__(self):
         super().__init__()
-        self.title = 'Naive MapMaker'
+        self.title = 'NaMap'
 
         self.setWindowTitle(self.title)
         
@@ -89,21 +90,13 @@ class MainWindowTab(QTabWidget):
 
         #functions to compute the updated values
         self.tab1.load_func()
-        process = psutil.Process(os.getpid())
-        print('MEM0',process.memory_info().rss/1e9)
 
         self.data = self.tab1.detslice 
 
         self.cleandata = self.tab1.cleaned_data
 
-        process = psutil.Process(os.getpid())
-        print('MEM1',process.memory_info().rss/1e9)
-
         self.tab2.draw_TOD(self.data)
         self.tab2.draw_cleaned_TOD(self.cleandata)
-
-        process = psutil.Process(os.getpid())
-        print('MEM2',process.memory_info().rss/1e9)
 
         try:
             self.tab1.mapvalues(self.cleandata)
@@ -118,9 +111,6 @@ class MainWindowTab(QTabWidget):
         except AttributeError:
             pass
 
-        process = psutil.Process(os.getpid())
-        print('MEM3',process.memory_info().rss/1e9)
-        print('END CYCLE')
     
     def save2fits(self): #function to save the map as a FITS file
         hdr = self.tab1.proj.to_header() #grabs the projection information for header
@@ -777,28 +767,15 @@ class ParamMapTab(QWidget):
                                          self.coord1type.text(), self.coord2type.text(), \
                                          self.experiment.currentText())
 
-                process = psutil.Process(os.getpid())
-                print('MEM01_LOAD',process.memory_info().rss/1e9)
-
                 self.det_data, self.coord1_data, self.coord2_data = dataload.values()
-
-                process = psutil.Process(os.getpid())
-                print('MEM015_LOAD',process.memory_info().rss/1e9)
 
                 pickle.dump(self.det_data, open(det_path_pickle, 'wb'))  
                 pickle.dump(self.coord1_data, open(coord1_path_pickle, 'wb'))
                 pickle.dump(self.coord2_data, open(coord2_path_pickle, 'wb'))
 
-                process = psutil.Process(os.getpid())
-                print('MEM02_LOAD',process.memory_info().rss/1e9)
-
                 del dataload
                 gc.collect()
-
-            process = psutil.Process(os.getpid())
-            print('MEM01',process.memory_info().rss/1e9)
             
-
             if self.experiment.currentText().lower() == 'blast-tng':
                 zoomsyncdata = ld.frame_zoom_sync(self.det_data, self.detfreq.text(), \
                                                   self.detframe.text(), self.coord1_data, \
@@ -814,17 +791,22 @@ class ParamMapTab(QWidget):
                                                   self.acsframe.text(), self.startframe.text(), \
                                                   self.endframe.text(), self.experiment.currentText())
 
-            process = psutil.Process(os.getpid())
-            print('MEM02',process.memory_info().rss/1e9)
-
             (self.timemap, self.detslice, self.coord1slice, \
              self.coord2slice) = zoomsyncdata.sync_data()
 
             if self.DirConvCheckBox.isChecked:
                 self.dirfile_conversion()
 
-            process = psutil.Process(os.getpid())
-            print('MEM01_CONV',process.memory_info().rss/1e9)
+            ### CONVERSION TO RADIANS FOR ALL THE ANGLES ###
+
+            self.coord2slice = np.radians(self.coord2slice)
+
+            if self.coord1.lower() == 'ra':
+                self.coord1slice = np.radians(self.coord1slice*15.) #Conversion between hours to degree and then converted to radians
+            elif self.coord1.lower() == 'cross-el':
+                self.coord1slice = np.radians(self.coord1slice)*np.cos(self.coord2slice)
+            else:
+                self.coord1slice = np.radians(self.coord1slice)
             
             del self.det_data
             del self.coord1_data
@@ -832,15 +814,7 @@ class ParamMapTab(QWidget):
             del zoomsyncdata
             gc.collect()
 
-            process = psutil.Process(os.getpid())
-            print('MEM03',process.memory_info().rss/1e9)
-
             self.clean_func()
-
-            process = psutil.Process(os.getpid())
-            print('MEM04',process.memory_info().rss/1e9)
-
-            print('DataLoaded')
 
     def clean_func(self):
 
@@ -863,9 +837,6 @@ class ParamMapTab(QWidget):
                                          float(self.bcoord1conv.text()))
         coord2_conv = ld.convert_dirfile(self.coord2slice, float(self.acoord2conv.text()), \
                                          float(self.bcoord2conv.text()))
-                                         
-        process = psutil.Process(os.getpid())
-        print('MEM04',process.memory_info().rss/1e9)
 
         det_conv.conversion()
         coord1_conv.conversion()
