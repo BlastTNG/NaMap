@@ -1,8 +1,11 @@
 import numpy as np
 <<<<<<< HEAD
+<<<<<<< HEAD
 import matplotlib.pyplot as plt
 =======
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
+=======
+>>>>>>> 8989c24... Correct calculation of coordinates
 from scipy.optimize import least_squares
 from photutils import find_peaks
 from astropy.stats import sigma_clipped_stats
@@ -131,11 +134,15 @@ class beam(object):
             fit_param, var = self.fit()
 
 <<<<<<< HEAD
+<<<<<<< HEAD
             fit_data = self.multivariate_gaussian_2d(fit_param.x)\
                             .reshape(np.outer(self.xgrid, self.ygrid).shape)
 =======
             fit_data = self.multivariate_gaussian_2d(fit_param.x).reshape(np.outer(self.xgrid, self.ygrid).shape)
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
+=======
+            fit_data = self.multivariate_gaussian_2d(fit_param.x).reshape(np.outer(self.xgrid, self.ygrid).shape)
+>>>>>>> 8989c24... Correct calculation of coordinates
             res = self.data-fit_data
 
             self.peak_finder(map_data=res)
@@ -160,12 +167,18 @@ class computeoffset():
     def centroid(self, threshold=0.275):
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
+=======
+>>>>>>> 8989c24... Correct calculation of coordinates
         '''
         For more information about centroid calculation see Shariff, PhD Thesis, 2016
         '''
 
+<<<<<<< HEAD
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
+=======
+>>>>>>> 8989c24... Correct calculation of coordinates
         maxval = np.max(self.data)
         minval = np.min(self.data)
         y_max, x_max = np.where(self.data == maxval)
@@ -236,6 +249,7 @@ class computeoffset():
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
             print
 >>>>>>> 4ee3dbe... Fixed bug in selecting data
@@ -248,15 +262,19 @@ class computeoffset():
             return offset_angle[0].degree, offset_angle[1].degree
 
             # if self.ctype == 'AZ and EL':
+=======
+>>>>>>> 8989c24... Correct calculation of coordinates
 
-            #     return offset_angle.az, offset_angle.alt
+            if self.ctype == 'RA and DEC':
+                coord = wcs.utils.pixel_to_skycoord(x_c, y_c, wcs_trans)
+                offset_angle = coord_centre.spherical_offsets_to(coord)
 
-            # elif self.ctype == 'RA and DEC':
-            #     print('ANGLE', offset_angle[0].degree)
-            #     return offset_angle.ra, offset_angle.dec
+                return offset_angle[0].degree, offset_angle[1].degree
 
-            # elif self.ctype == 'CROSS-EL and EL':
+            elif self.ctype == 'CROSS-EL and EL':
+                coord = wcs_trans.wcs_pix2world(x_c, y_c, 1.)
 
+<<<<<<< HEAD
 <<<<<<< HEAD
                 return offset_angle.az*np.cos(offset_angle.alt), offset_angle.alt
 =======
@@ -275,6 +293,9 @@ class computeoffset():
 =======
             #     return offset_angle.az*np.cos(offset_angle.alt), offset_angle.alt
 >>>>>>> ccf3a8f... Added output for offset calculation
+=======
+                return coord[0]-self.angX_center, coord[1]-self.angY_center
+>>>>>>> 8989c24... Correct calculation of coordinates
 
 
 

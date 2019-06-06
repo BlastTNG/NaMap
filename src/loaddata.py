@@ -160,13 +160,10 @@ class data_value():
         det_data = self.load(self.det_path, self.det_name, self.det_file_type)
         coord2_data = self.load(self.coord_path, self.coord2_name.lower(), self.coord2_file_type)
 
-        if self.coord1_name.lower() == 'cross-el':
-            coord1_data = self.load(self.coord_path, 'az', self.coord1_file_type)
-            coord1_data = coord1_data*np.cos(coord2_data)
-        elif self.coord1_name.lower() == 'ra':
+        if self.coord1_name.lower() == 'ra':
             coord1_data = self.load(self.coord_path, self.coord1_name.lower(), self.coord1_file_type)
-            coord1_data = coord1_data*15.
         else:
+<<<<<<< HEAD
             coord1_data = self.load(self.coord_path, self.coord1_name.lower(), self.coord1_file_type)
 =======
         '''
@@ -182,6 +179,10 @@ class data_value():
             coord1_data = self.load(self.coord_path, 'az', self.coord1_file_type)
             
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
+=======
+            coord1_data = self.load(self.coord_path, 'az', self.coord1_file_type)
+            
+>>>>>>> 8989c24... Correct calculation of coordinates
         return det_data, coord1_data, coord2_data
 
 class convert_dirfile():

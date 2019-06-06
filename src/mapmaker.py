@@ -1,10 +1,12 @@
 import numpy as np
 import copy
 <<<<<<< HEAD
+<<<<<<< HEAD
 from astropy import wcs, coordinates
+=======
+from astropy import wcs
+>>>>>>> 8989c24... Correct calculation of coordinates
 from astropy.convolution import Gaussian2DKernel, convolve
-import matplotlib.pyplot as plt
-
 
 class maps():
 
@@ -19,8 +21,8 @@ class maps():
         self.crpix = crpix             #see wcs_world for explanation of this parameter
         self.cdelt = cdelt             #see wcs_world for explanation of this parameter
         self.crval = crval             #see wcs_world for explanation of this parameter
-        self.coord1 = coord1           #array of the first coordinate
-        self.coord2 = coord2           #array of the second coordinate
+        self.coord1 = np.degrees(coord1)          #array of the first coordinate
+        self.coord2 = np.degrees(coord2)           #array of the second coordinate
         self.data = data               #cleaned TOD that is used to create a map
         self.w = 0.                    #initialization of the coordinates of the map in pixel coordinates
         self.proj = 0.                 #inizialization of the wcs of the map. see wcs_world for more explanation about projections
@@ -89,7 +91,9 @@ class maps():
             if not self.convolution:
                 return Imap
             else:
-                return mapmaker.convolution(self.std, Imap)
+                std_pixel = self.std/3600./self.cdelt[0]
+                
+                return mapmaker.convolution(std_pixel, Imap)
         else:        
             Imap, Qmap, Umap = mapmaker.map_singledetector(self.crpix)
             if not self.convolution:
@@ -210,17 +214,23 @@ class wcs_world():
 =======
         if self.ctype == 'RA and DEC':
             w.wcs.ctype = ["RA---TAN", "DEC--TAN"]
+<<<<<<< HEAD
         elif self.ctype == 'AZ and EL' or self.ctype == 'CROSS-EL and EL':
 >>>>>>> 4ee3dbe... Fixed bug in selecting data
             w.wcs.ctype = ["TLON-ARC", "TLAT-ARC"]
 =======
         if self.ctype == 'RA and DEC':
             w.wcs.ctype = ["RA---TAN", "DEC--TAN"]
+=======
+>>>>>>> 8989c24... Correct calculation of coordinates
         elif self.ctype == 'AZ and EL':
             w.wcs.ctype = ["TLON-ARC", "TLAT-ARC"]
         elif self.ctype == 'CROSS-EL and EL':
             w.wcs.ctype = ["TLON-CAR", "TLAT-CAR"]
+<<<<<<< HEAD
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
+=======
+>>>>>>> 8989c24... Correct calculation of coordinates
         world = w.wcs_world2pix(coord, 1)
 
         return world, w
@@ -296,12 +306,6 @@ class mapmaking(object):
         
         x_map = self.pixelmap[:,0]   #RA 
         y_map = self.pixelmap[:,1]   #DEC
-
-        # print('Coordinates in X and Y')
-        # print(x_map)
-        # print(y_map)
-        # print(np.amax(x_map),np.amin(x_map))
-        # print(np.amin(y_map),np.amax(y_map))
         
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -612,10 +616,14 @@ class mapmaking(object):
 
             mapvalues = self.map_singledetector(value=self.data[i],sigma=self.weight[i],\
 <<<<<<< HEAD
+<<<<<<< HEAD
                                            angle=self.polangle[i])
 =======
                                                 angle=self.polangle[i])
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
+=======
+                                                angle=self.polangle[i])
+>>>>>>> 8989c24... Correct calculation of coordinates
             
             if i == 0:
                 I_map = mapvalues[0].copy()
@@ -636,9 +644,7 @@ class mapmaking(object):
 =======
         '''
         Function to convolve the maps with a gaussian.
-        STD is in pixel values (20190531 from GC std right now is in arcsed 
-        according to the label, so the conversion between arcsec to pixel needs 
-        to be created)
+        STD is in pixel values
         '''
 >>>>>>> 651e1e6... Commented files
 

@@ -247,6 +247,7 @@ class despike():
             right_edge = int(np.ceil(widths[2][i]))
 
 <<<<<<< HEAD
+<<<<<<< HEAD
             # plt.plot(self.data)
             # plt.plot(peaks, self.data[peaks], 'x')
             # plt.plot(left_edge, self.data[left_edge], 'x')
@@ -255,6 +256,8 @@ class despike():
 
 =======
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
+=======
+>>>>>>> 8989c24... Correct calculation of coordinates
             x_inter = np.append(x_inter, np.arange(left_edge, right_edge))
             replaced[left_edge:right_edge] = (replaced[left_edge]+\
                                               replaced[right_edge])/2.
