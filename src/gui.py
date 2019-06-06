@@ -1,0 +1,1410 @@
+from PyQt5.QtCore import *
+from PyQt5.QtWidgets import *
+from PyQt5.QtGui import *
+
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg
+from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
+from matplotlib.figure import Figure
+import matplotlib.pyplot as plt
+from astropy.io import fits
+
+import numpy as np
+import os
+import pickle
+import configparser
+import psutil
+import gc
+
+import src.detTOD as tod
+import src.loaddata as ld
+import src.mapmaker as mp
+import src.beam as bm
+
+
+class App(QMainWindow):
+
+    '''
+    Class to create the app
+    '''
+
+    def __init__(self):
+        super().__init__()
+        self.title = 'NaMap'
+
+        self.setWindowTitle(self.title)
+        
+        self.TabLayout = MainWindowTab(self)
+        self.setCentralWidget(self.TabLayout)
+
+    def closeEvent(self,event):
+
+        '''
+        This function contains the code that is run when the application is closed.
+        In this case, deleting the pickles file created.
+        '''
+
+        result = QMessageBox.question(self,
+                                      "Confirm Exit...",
+                                      "Are you sure you want to exit ?",
+                                      QMessageBox.Yes| QMessageBox.No)
+        event.ignore()
+
+        if result == QMessageBox.Yes:
+            
+            directory = 'pickles_object/'
+            pkl_list = os.listdir(directory)
+
+            if np.size(pkl_list) > 0:
+                for i in range(len(pkl_list)):
+                    path = directory+pkl_list[i]
+                    os.remove(path)
+
+            event.accept()
+
+class MainWindowTab(QTabWidget):
+
+    '''
+    General layout of the application 
+    '''
+
+    def __init__(self, parent = None):
+        super(MainWindowTab, self).__init__(parent)
+        self.tab1 = ParamMapTab()
+        self.tab2 = TODTab()
+        #self.tab3 = BeamTab()
+
+        self.data = np.array([])
+        self.cleandata = np.array([])
+
+        self.tab1.plotbutton.clicked.connect(self.updatedata)
+        self.tab1.fitsbutton.clicked.connect(self.save2fits)
+
+        self.addTab(self.tab1,"Parameters and Maps")
+        self.addTab(self.tab2,"Detector TOD")
+        #self.addTab(self.tab3, "Beam")
+
+    def updatedata(self):
+        '''
+        This function updates the map values everytime that the plot button is pushed
+        '''
+
+        #functions to compute the updated values
+        self.tab1.load_func()
+
+        self.data = self.tab1.detslice 
+
+        self.cleandata = self.tab1.cleaned_data
+
+        self.tab2.draw_TOD(self.data)
+        self.tab2.draw_cleaned_TOD(self.cleandata)
+
+        try:
+            self.tab1.mapvalues(self.cleandata)
+
+            #Update Maps
+            maps = self.tab1.map_value
+            mp_ini = self.tab1.createMapPlotGroup
+            mp_ini.updateTab(data=maps)
+            #Update Offset
+            self.tab1.updateOffsetValue()
+
+        except AttributeError:
+            pass
+
+    
+    def save2fits(self): #function to save the map as a FITS file
+        hdr = self.tab1.proj.to_header() #grabs the projection information for header
+        maps = self.tab1.map_value #grabs the actual map for the fits img
+        hdu = fits.PrimaryHDU(maps, header = hdr)
+        hdu.writeto('./'+self.tab1.fitsname.text())
+
+        
+class ParamMapTab(QWidget):
+
+    '''
+    Create the layout of the first tab containing the various input parameters and 
+    the final maps
+    '''
+
+    def __init__(self, parent=None):
+        super(QWidget, self).__init__(parent)
+
+        self.detslice = np.array([])         #Detector TOD between the frames of interest
+        self.cleaned_data = np.array([])     #Detector TOD cleaned (despiked and highpassed) between the frame of interest
+        self.proj = np.array([])             #WCS projection of the map
+        self.map_value = np.array([])        #Final map values
+
+        self.createAstroGroup()
+        self.createExperimentGroup()
+        self.createDataRepository()
+        
+        self.plotbutton = QPushButton('Plot')
+        self.button = QPushButton('Test')
+        self.fitsbutton = QPushButton('Save as Fits')
+        
+        #self.plotbutton.clicked.connect(self.load_func)
+        #self.plotbutton.clicked.connect(self.mapvalues)
+        #self.plotbutton.clicked.connect(self.clean_func)
+
+        self.createOffsetGroup()
+        mainlayout = QGridLayout(self)
+        self.createMapPlotGroup = MapPlotsGroup(checkbox=self.ICheckBox, data=self.map_value)
+
+        self.fitsname = QLineEdit('')
+        self.fitsnamelabel = QLabel("FITS name")
+        self.fitsnamelabel.setBuddy(self.fitsname)
+
+        scroll = QScrollArea()
+        scroll.setWidget(self.ExperimentGroup)
+        scroll.setWidgetResizable(True)
+        scroll.setFixedHeight(200)
+
+        ExperimentGroup_Scroll = QGroupBox("Experiment Parameters")
+        ExperimentGroup_Scroll.setLayout(QVBoxLayout())
+        ExperimentGroup_Scroll.layout().addWidget(scroll)
+        mainlayout.addWidget(self.DataRepository, 0, 0)
+        mainlayout.addWidget(self.AstroGroup, 1, 0)
+        mainlayout.addWidget(ExperimentGroup_Scroll, 2, 0)
+        mainlayout.addWidget(self.plotbutton, 3, 0)
+        mainlayout.addWidget(self.createMapPlotGroup, 0, 1, 2, 1)
+        mainlayout.addWidget(self.OffsetGroup, 2, 1)
+        mainlayout.addWidget(self.fitsbutton,3,1)
+        mainlayout.addWidget(self.fitsname)
+        mainlayout.addWidget(self.fitsnamelabel)
+        
+        self.setLayout(mainlayout)        
+
+    def createDataRepository(self):
+
+        '''
+        Function for the layout and input of the Data Repository group.
+        This includes:
+        - Paths to the data
+        - Name of the detectors
+        - Possibility to use pointing offset and detectortables
+        - Roach Number
+        '''
+
+        self.DataRepository = QGroupBox("Data Repository")
+        
+        self.detpath = QLineEdit('/Users/ian/AnacondaProjects/BLASTpolData/bolo_data/')
+        self.detpathlabel = QLabel("Detector Path:")
+        self.detpathlabel.setBuddy(self.detpath)
+
+        self.detname = QLineEdit('n31c04')
+        self.detnamelabel = QLabel("Detector Name:")
+        self.detnamelabel.setBuddy(self.detname)
+
+        self.detvalue = np.array([])
+
+        self.roachnumber = QLineEdit('')
+        self.roachnumberlabel = QLabel("Roach Number:")
+        self.roachnumberlabel.setBuddy(self.roachnumber)
+
+        self.coordpath = QLineEdit('/Users/ian/AnacondaProjects/BLASTpolData/')
+        self.coordpathlabel = QLabel("Coordinate Path:")
+        self.coordpathlabel.setBuddy(self.coordpath)
+
+        self.coord1value = np.array([])
+        self.coord2value = np.array([])
+
+        self.DettableCheckBox = QCheckBox("Use Detector Table")
+        self.DettableCheckBox.setChecked(False)
+        self.dettablepath = QLineEdit('')
+        self.dettablepathlabel = QLabel("Detector Table Path:")
+        self.dettablepathlabel.setBuddy(self.dettablepath)
+
+        self.DettableCheckBox.toggled.connect(self.dettablepathlabel.setVisible)
+        self.DettableCheckBox.toggled.connect(self.dettablepath.setVisible)
+
+        self.PointingOffsetCheckBox = QCheckBox("Use Pointing Offset")
+        self.PointingOffsetCheckBox.setChecked(False)
+        self.pointingoffsetpath = QLineEdit('')
+        self.pointingoffsetpathlabel = QLabel("Pointing Offset Table Path:")
+        self.pointingoffsetpathlabel.setBuddy(self.pointingoffsetpath)
+
+        self.PointingOffsetCheckBox.toggled.connect(self.pointingoffsetpathlabel.setVisible)
+        self.PointingOffsetCheckBox.toggled.connect(self.pointingoffsetpath.setVisible)
+
+        self.layout = QGridLayout()
+
+        self.layout.addWidget(self.detpathlabel, 0, 0)
+        self.layout.addWidget(self.detpath, 0, 1, 1, 2)
+        self.layout.addWidget(self.detnamelabel, 1, 0)
+        self.layout.addWidget(self.detname, 1, 1, 1, 2)
+        self.layout.addWidget(self.roachnumberlabel, 2, 0)
+        self.layout.addWidget(self.roachnumber, 2, 1, 1, 2)
+        self.layout.addWidget(self.coordpathlabel, 3, 0)
+        self.layout.addWidget(self.coordpath, 3, 1, 1, 2)
+        self.layout.addWidget(self.DettableCheckBox, 4, 0)
+        self.layout.addWidget(self.dettablepathlabel, 5, 1)
+        self.layout.addWidget(self.dettablepath, 5, 2)
+        self.layout.addWidget(self.PointingOffsetCheckBox, 6, 0)
+        self.layout.addWidget(self.pointingoffsetpathlabel, 7, 1)
+        self.layout.addWidget(self.pointingoffsetpath, 7, 2)
+
+        self.dettablepathlabel.setVisible(False)
+        self.dettablepath.setVisible(False)
+        self.pointingoffsetpathlabel.setVisible(False)
+        self.pointingoffsetpath.setVisible(False)
+
+        self.DataRepository.setLayout(self.layout)
+
+    def createAstroGroup(self):
+
+        '''
+        Function for the layout and input of the Astronometry parameters group.
+        This includes:
+        - Coordinates system
+        - Standard WCS parameters to create a map
+        - If the maps need to be convolved
+        '''
+
+        self.AstroGroup = QGroupBox("Astronomy Parameters")
+    
+        self.coordchoice = QComboBox()
+        self.coordchoice.addItem('RA and DEC')
+        self.coordchoice.addItem('AZ and EL')
+        self.coordchoice.addItem('CROSS-EL and EL')
+        coordLabel = QLabel("Coordinates System:")
+        coordLabel.setBuddy(self.coordchoice)
+
+        self.convchoice = QComboBox()
+        self.convchoice.addItem('Not Apply')
+        self.convchoice.addItem('Gaussian')
+        convLabel = QLabel("Map Convolution:")
+        convLabel.setBuddy(self.convchoice)
+
+        self.GaussianSTD = QLineEdit('')
+        self.gaussianLabel = QLabel("Convolution STD (in arcsec):")
+        self.gaussianLabel.setBuddy(self.GaussianSTD)
+
+        self.crpix1 = QLineEdit('50')
+        self.crpix2 = QLineEdit('50')
+        self.crpixlabel = QLabel("CRpix of the Map:")
+        self.crpixlabel.setBuddy(self.crpix1)
+
+        self.cdelt1 = QLineEdit('0.00189')
+        self.cdelt2 = QLineEdit('0.00189')
+        self.cdeltlabel = QLabel("Cdelt of the Map in deg:")
+        self.cdeltlabel.setBuddy(self.cdelt1)
+
+        self.crval1 = QLineEdit('132.9')
+        self.crval2 = QLineEdit('-42.39')
+        self.crvallabel = QLabel("Cval of the Map in deg:")
+        self.crvallabel.setBuddy(self.crval1)
+
+        self.pixnum1 = QLineEdit('100')
+        self.pixnum2 = QLineEdit('100')
+        self.pixnumlabel = QLabel("Pixel Number:")
+        self.pixnumlabel.setBuddy(self.pixnum1)
+
+        self.ICheckBox = QCheckBox("Map only I")
+        self.ICheckBox.setChecked(True)
+
+        self.BeamCheckBox = QCheckBox("Beam Analysis")
+        self.BeamCheckBox.setChecked(False)
+        
+        self.convchoice.activated[str].connect(self.updateGaussian)
+        self.coordchoice.activated[str].connect(self.configuration_update)
+           
+        self.layout = QGridLayout()
+        self.layout.addWidget(coordLabel, 0, 0)
+        self.layout.addWidget(self.coordchoice, 0, 1, 1, 2)
+        self.layout.addWidget(convLabel, 1, 0)
+        self.layout.addWidget(self.convchoice, 1, 1, 1, 2)
+        self.layout.addWidget(self.gaussianLabel, 2, 1)
+        self.layout.addWidget(self.GaussianSTD, 2, 2)
+        self.layout.addWidget(self.crpixlabel, 3, 0)
+        self.layout.addWidget(self.crpix1, 3, 1)
+        self.layout.addWidget(self.crpix2, 3, 2)
+        self.layout.addWidget(self.cdeltlabel, 4, 0)
+        self.layout.addWidget(self.cdelt1, 4, 1)
+        self.layout.addWidget(self.cdelt2, 4, 2)
+        self.layout.addWidget(self.crvallabel, 5, 0)
+        self.layout.addWidget(self.crval1, 5, 1)
+        self.layout.addWidget(self.crval2, 5, 2)
+        self.layout.addWidget(self.pixnumlabel, 6, 0)
+        self.layout.addWidget(self.pixnum1, 6, 1)
+        self.layout.addWidget(self.pixnum2, 6, 2)
+        self.layout.addWidget(self.ICheckBox, 7, 0)
+        self.layout.addWidget(self.BeamCheckBox, 8, 0)
+
+        self.GaussianSTD.setVisible(False)
+        self.gaussianLabel.setVisible(False)
+        
+        self.AstroGroup.setLayout(self.layout)
+
+    def updateGaussian(self, text=None):
+
+        '''
+        Function to update the layout of the group, to add a line 
+        to input the std of the gaussian convolution if the convolution parameter
+        is set to gaussian
+        '''
+
+        if text is None:
+            text = self.convchoice.currentText()
+
+        if text == 'Gaussian': 
+            self.GaussianSTD.setVisible(True)
+            self.GaussianSTD.setEnabled(True)
+            self.gaussianLabel.setVisible(True)
+            self.gaussianLabel.setEnabled(True)
+        else: 
+            self.GaussianSTD.setVisible(False)
+            self.GaussianSTD.setEnabled(False)
+            self.gaussianLabel.setVisible(False)
+            self.gaussianLabel.setEnabled(False)
+
+    def createExperimentGroup(self):
+
+        '''
+        Function for the layout and input of the Experiment parameters group.
+        This includes:
+        - Frequency sampling of detectors and ACSs 
+        - Experiment to be analyzed 
+        - Frames of interests
+        - High pass filter cutoff frequency
+        - If DIRFILE conversion needs to be performed. If so, the parameters to 
+          use for the conversion
+        '''
+
+        self.ExperimentGroup = QGroupBox()
+
+        self.experiment = QComboBox()
+        self.experiment.addItem('BLASTPol')
+        self.experiment.addItem('BLAST-TNG')
+        self.experimentLabel = QLabel("Experiment:")
+        self.experimentLabel.setBuddy(self.experiment)
+
+        self.detfreq = QLineEdit('')
+        self.detfreqlabel = QLabel("Detector Frequency Sample")
+        self.detfreqlabel.setBuddy(self.detfreq)
+        self.acsfreq = QLineEdit('')
+        self.acsfreqlabel = QLabel("ACS Frequency Sample")
+        self.acsfreqlabel.setBuddy(self.acsfreq)
+
+        self.highpassfreq = QLineEdit('0.1')
+        self.highpassfreqlabel = QLabel("High Pass Filter cutoff frequency")
+        self.highpassfreqlabel.setBuddy(self.highpassfreq)
+
+        self.detframe = QLineEdit('')
+        self.detframelabel = QLabel("Detector Samples per Frame")        
+        self.detframelabel.setBuddy(self.detframe)
+        self.acsframe = QLineEdit('')
+        self.acsframelabel = QLabel("ACS Sample Samples per Frame")
+        self.acsframelabel.setBuddy(self.acsframe)
+
+        self.startframe = QLineEdit('1918381')
+        self.endframe = QLineEdit('1922092')
+        self.numberframelabel = QLabel('Starting and Ending Frames')
+        self.numberframelabel.setBuddy(self.startframe)
+
+        self.dettype = QLineEdit('')      
+        self.dettypelabel = QLabel("Detector DIRFILE data type")
+        self.dettypelabel.setBuddy(self.dettype)
+        self.coord1type = QLineEdit('')
+        self.coord1typelabel = QLabel("Coordinate 1 DIRFILE data type")
+        self.coord1typelabel.setBuddy(self.coord1type)
+        self.coord2type = QLineEdit('')
+        self.coord2typelabel = QLabel("Coordinate 2 DIRFILE data type")
+        self.coord2typelabel.setBuddy(self.coord2type)
+
+
+        self.DirConvCheckBox = QCheckBox("DIRFILE Conversion factors")
+        self.DirConvCheckBox.setChecked(True)
+
+        self.adetconv = QLineEdit('')
+        self.bdetconv = QLineEdit('')
+        self.detconv = QLabel('Detector conversion factors')
+        self.detconv.setBuddy(self.adetconv)
+
+        self.acoord1conv = QLineEdit('')
+        self.bcoord1conv = QLineEdit('')
+        self.coord1conv = QLabel('Coordinate 1 conversion factors')
+        self.coord1conv.setBuddy(self.acoord1conv)
+
+        self.acoord2conv = QLineEdit('')
+        self.bcoord2conv = QLineEdit('')
+        self.coord2conv = QLabel('Coordinate 2 conversion factors')
+        self.coord2conv.setBuddy(self.acoord2conv)
+
+        self.configuration_update()
+        self.experiment.activated[str].connect(self.configuration_update)
+
+        self.DirConvCheckBox.toggled.connect(self.detconv.setVisible)
+        self.DirConvCheckBox.toggled.connect(self.adetconv.setVisible)
+        self.DirConvCheckBox.toggled.connect(self.bdetconv.setVisible)
+
+        self.DirConvCheckBox.toggled.connect(self.coord1conv.setVisible)
+        self.DirConvCheckBox.toggled.connect(self.acoord1conv.setVisible)
+        self.DirConvCheckBox.toggled.connect(self.bcoord1conv.setVisible)
+
+        self.DirConvCheckBox.toggled.connect(self.coord2conv.setVisible)
+        self.DirConvCheckBox.toggled.connect(self.acoord2conv.setVisible)
+        self.DirConvCheckBox.toggled.connect(self.bcoord2conv.setVisible)
+
+        self.layout = QGridLayout()
+        self.layout.addWidget(self.experimentLabel, 0, 0)
+        self.layout.addWidget(self.experiment, 0, 1, 1, 3)
+        self.layout.addWidget(self.detfreqlabel, 1, 0)
+        self.layout.addWidget(self.detfreq, 1, 1, 1, 3)
+        self.layout.addWidget(self.acsfreqlabel, 2, 0)
+        self.layout.addWidget(self.acsfreq, 2, 1, 1, 3)
+        self.layout.addWidget(self.highpassfreqlabel, 3, 0)
+        self.layout.addWidget(self.highpassfreq, 3, 1, 1, 3)
+        self.layout.addWidget(self.detframelabel, 4, 0)
+        self.layout.addWidget(self.detframe, 4, 1, 1, 3)
+        self.layout.addWidget(self.acsframelabel, 5, 0)
+        self.layout.addWidget(self.acsframe, 5, 1, 1, 3)
+        self.layout.addWidget(self.dettypelabel, 6, 0)
+        self.layout.addWidget(self.dettype, 6, 1, 1, 3)
+        self.layout.addWidget(self.coord1typelabel, 7, 0)
+        self.layout.addWidget(self.coord1type, 7, 1, 1, 3)
+        self.layout.addWidget(self.coord2typelabel, 8, 0)
+        self.layout.addWidget(self.coord2type, 8, 1, 1, 3)
+        self.layout.addWidget(self.numberframelabel, 9, 0)
+        self.layout.addWidget(self.startframe, 9, 2, 1, 1)
+        self.layout.addWidget(self.endframe, 9, 3, 1, 1)
+
+        self.layout.addWidget(self.DirConvCheckBox, 10, 0)
+        self.layout.addWidget(self.detconv, 11, 1)
+        self.layout.addWidget(self.adetconv, 11, 2)
+        self.layout.addWidget(self.bdetconv, 11, 3)
+        self.layout.addWidget(self.coord1conv, 12, 1)
+        self.layout.addWidget(self.acoord1conv, 12, 2)
+        self.layout.addWidget(self.bcoord1conv, 12, 3)
+        self.layout.addWidget(self.coord2conv, 13, 1)
+        self.layout.addWidget(self.acoord2conv, 13, 2)
+        self.layout.addWidget(self.bcoord2conv, 13, 3)
+        self.detconv.setVisible(True)
+        self.adetconv.setVisible(True)
+        self.bdetconv.setVisible(True)
+        self.coord1conv.setVisible(True)
+        self.acoord1conv.setVisible(True)
+        self.bcoord1conv.setVisible(True)
+        self.coord2conv.setVisible(True)
+        self.acoord2conv.setVisible(True)
+        self.bcoord2conv.setVisible(True)
+        self.ExperimentGroup.setContentsMargins(5, 5, 5, 5)
+
+        self.ExperimentGroup.setLayout(self.layout)
+
+    def configuration_update(self):
+
+        '''
+        Function to update the experiment parameters based on some templates.
+        It requires the coordinates system and the experiment name
+        '''
+
+        text = self.experiment.currentText()
+        coord_text = self.coordchoice.currentText()
+
+        self.configuration_value(text, coord_text)
+
+    def configuration_value(self, text, coord_text):
+
+        '''
+        Function to read the experiment parameters from the template
+        '''
+        
+        dir_path = os.getcwd()+'/config/'
+        
+        filepath = dir_path+text.lower()+'.cfg'
+        model = configparser.ConfigParser()
+
+        model.read(filepath)
+        sections = model.sections()
+
+        for section in sections:
+            if section.lower() == 'experiment parameters':
+                self.detfreq_config = float(model.get(section, 'DETFREQ').split('#')[0])
+                det_dir_conv = model.get(section,'DET_DIR_CONV').split('#')[0].strip()
+                self.detconv_config = np.array(det_dir_conv.split(',')).astype(float)
+                self.detframe_config = float(model.get(section, 'DET_SAMP_FRAME').split('#')[0])
+                self.dettype_config = model.get(section,'DET_FILE_TYPE').split('#')[0].strip()
+
+            elif section.lower() == 'ra_dec parameters':
+                if coord_text.lower() == 'ra and dec':
+                    self.acsfreq_config = float(model.get(section, 'ACSFREQ').split('#')[0])
+                    coor1_dir_conv = model.get(section,'COOR1_DIR_CONV').split('#')[0].strip()
+                    self.coord1conv_config = np.array(coor1_dir_conv.split(',')).astype(float)
+                    coor2_dir_conv = model.get(section,'COOR2_DIR_CONV').split('#')[0].strip()
+                    self.coord2conv_config = np.array(coor2_dir_conv.split(',')).astype(float)
+                    self.acsframe_config = float(model.get(section, 'ACS_SAMP_FRAME').split('#')[0])
+                    self.coord1type_config = model.get(section,'COOR1_FILE_TYPE').split('#')[0].strip()
+                    self.coord2type_config = model.get(section,'COOR2_FILE_TYPE').split('#')[0].strip()
+                else:
+                    pass
+
+            elif section.lower() == 'az_el parameters':
+                if coord_text.lower() == 'ra and dec':
+                    pass
+                else:
+                    self.acsfreq_config = float(model.get(section, 'ACSFREQ').split('#')[0])
+                    coor1_dir_conv = model.get(section,'COOR1_DIR_CONV').split('#')[0].strip()
+                    self.coord1conv_config = np.array(coor1_dir_conv.split(',')).astype(float)
+                    coor2_dir_conv = model.get(section,'COOR2_DIR_CONV').split('#')[0].strip()
+                    self.coord2conv_config = np.array(coor2_dir_conv.split(',')).astype(float)
+                    self.acsframe_config = float(model.get(section, 'ACS_SAMP_FRAME').split('#')[0])
+                    self.coord1type_config = model.get(section,'COOR1_FILE_TYPE').split('#')[0].strip()
+                    self.coord2type_config = model.get(section,'COOR2_FILE_TYPE').split('#')[0].strip()
+
+            
+        self.detfreq.setText(str(self.detfreq_config))
+        self.acsfreq.setText(str(self.acsfreq_config))
+        self.detframe.setText(str(self.detframe_config))
+        self.acsframe.setText(str(self.acsframe_config))
+        self.dettype.setText(str(self.dettype_config))
+        self.coord1type.setText(str(self.coord1type_config))
+        self.coord2type.setText(str(self.coord2type_config))
+        self.adetconv.setText(str(self.detconv_config[0]))
+        self.bdetconv.setText(str(self.detconv_config[1]))
+        self.acoord1conv.setText(str(self.coord1conv_config[0]))
+        self.bcoord1conv.setText(str(self.coord1conv_config[1]))
+        self.acoord2conv.setText(str(self.coord2conv_config[0]))
+        self.bcoord2conv.setText(str(self.coord2conv_config[1]))
+          
+    def createOffsetGroup(self):
+
+        '''
+        Function to create the layout and the output of the offset group.
+        Check the beam.py for offset calculation
+        '''
+
+
+        self.OffsetGroup = QGroupBox("Detector Offset")
+
+        self.RAoffsetlabel = QLabel('RA (deg)')
+        self.DECoffsetlabel = QLabel('Dec (deg)')
+        self.RAoffset = QLineEdit('')
+        self.DECoffset = QLineEdit('')
+
+        self.AZoffsetlabel = QLabel('Azimuth (deg)')
+        self.ELoffsetlabel = QLabel('Elevation (deg)')
+        self.AZoffset = QLineEdit('')
+        self.ELoffset = QLineEdit('')
+
+        self.CROSSELoffsetlabel = QLabel('Cross Elevation (deg)')
+        self.ELxoffsetlabel = QLabel('Elevation (deg)')
+        self.CROSSELoffset = QLineEdit('')
+        self.ELxoffset = QLineEdit('')
+
+        self.coordchoice.activated[str].connect(self.updateOffsetLabel)
+
+        self.updateOffsetLabel()
+
+        self.layout = QGridLayout()
+        self.layout.addWidget(self.RAoffsetlabel, 0, 0)
+        self.layout.addWidget(self.RAoffset, 0, 1)
+        self.layout.addWidget(self.DECoffsetlabel, 1, 0)
+        self.layout.addWidget(self.DECoffset, 1, 1)
+        self.layout.addWidget(self.AZoffsetlabel, 0, 0)
+        self.layout.addWidget(self.AZoffset, 0, 1)
+        self.layout.addWidget(self.ELoffsetlabel, 1, 0)
+        self.layout.addWidget(self.ELoffset, 1, 1)
+        self.layout.addWidget(self.CROSSELoffsetlabel, 0, 0)
+        self.layout.addWidget(self.CROSSELoffset, 0, 1)
+        self.layout.addWidget(self.ELxoffsetlabel, 1, 0)
+        self.layout.addWidget(self.ELxoffset, 1, 1)
+
+        self.RAoffset.setEnabled(False)
+        self.DECoffset.setEnabled(False)
+
+        self.AZoffset.setEnabled(False)
+        self.ELoffset.setEnabled(False)
+
+        self.ELxoffset.setEnabled(False)
+        self.CROSSELoffset.setEnabled(False)
+        
+        self.OffsetGroup.setLayout(self.layout)
+
+    def updateOffsetLabel(self):
+
+        '''
+        Update the offset labels based on the coordinate system choice
+        '''
+
+        self.ctype = self.coordchoice.currentText()
+
+        if self.ctype == 'RA and DEC':
+            self.RADECvisibile = True
+            self.AZELvisibile = False
+            self.CROSSEL_ELvisibile = False
+
+        elif self.ctype == 'AZ and EL':
+            self.RADECvisibile = False
+            self.AZELvisibile = True
+            self.CROSSEL_ELvisibile = False
+            
+        elif self.ctype == 'CROSS-EL and EL':
+            self.RADECvisibile = False
+            self.AZELvisibile = False
+            self.CROSSEL_ELvisibile = True
+
+
+        self.RAoffset.setVisible(self.RADECvisibile)
+        self.DECoffset.setVisible(self.RADECvisibile)
+        self.RAoffsetlabel.setVisible(self.RADECvisibile)
+        self.DECoffsetlabel.setVisible(self.RADECvisibile)
+
+        self.AZoffset.setVisible(self.AZELvisibile)
+        self.ELoffset.setVisible(self.AZELvisibile)
+        self.AZoffsetlabel.setVisible(self.AZELvisibile)
+        self.ELoffsetlabel.setVisible(self.AZELvisibile)      
+
+        self.CROSSELoffset.setVisible(self.CROSSEL_ELvisibile)
+        self.ELxoffset.setVisible(self.CROSSEL_ELvisibile)
+        self.CROSSELoffsetlabel.setVisible(self.CROSSEL_ELvisibile)
+        self.ELxoffsetlabel.setVisible(self.CROSSEL_ELvisibile) 
+
+    def updateOffsetValue(self):
+
+        '''
+        Calculate and update the offset value based on the coordinate system choice
+        '''
+        
+        ctype_map = self.coordchoice.currentText()
+
+        offset = bm.computeoffset(self.map_value, float(self.crval1.text()), float(self.crval2.text()), ctype_map)
+
+        self.offset_angle = offset.offset(self.maps.proj)
+
+        if self.ctype == 'RA and DEC':
+            self.RAoffset.setText(str(self.offset_angle[0]))
+            self.DECoffset.setText(str(self.offset_angle[1]))
+
+        elif self.ctype == 'AZ and EL':
+            self.AZoffset.setText(str(self.offset_angle[0]))
+            self.ELoffset.setText(str(self.offset_angle[1]))
+            
+        elif self.ctype == 'CROSS-EL and EL':
+            self.CROSSELoffset.setText(str(self.offset_angle[0]))
+            self.ELxoffset.setText(str(self.offset_angle[1]))
+
+    def load_func(self):
+
+
+        '''
+        Wrapper function to loaddata.py to read the DIRFILEs.
+        If the paths are not correct a warning is generated. To reduce the time to 
+        re-run the code everytime, a new DIRFILE is loaded a pickle object is created so it can be 
+        loaded again when the plot button is pushed. The pickles object are deleted when
+        the software is closed
+        '''
+        
+        label_final = []
+        coord_type = self.coordchoice.currentText()
+        if coord_type == 'RA and DEC':
+            self.coord1 = str('RA')
+            self.coord2 = str('DEC')
+        elif coord_type == 'AZ and EL':
+            self.coord1 = str('AZ')
+            self.coord2 = str('EL')
+        elif coord_type == 'CROSS-EL and EL':
+            self.coord1 = str('CROSS-EL')
+            self.coord2 = str('EL')
+
+        try:
+            os.stat(self.detpath.text()+'/'+self.detname.text())
+        except OSError:
+            label = self.detpathlabel.text()
+            label_final.append(label)
+        if self.experiment.currentText().lower() == 'blast-tng':    
+            try:
+                os.stat(self.coordpath.text())
+            except OSError:
+                label = self.coordpathlabel.text()
+                label_final.append(label)
+        elif self.experiment.currentText().lower() == 'blastpol':
+            try:
+                if self.coord1 == 'RA':
+                    os.stat(self.coordpath.text()+'/'+self.coord1.lower())
+                else:
+                    os.stat(self.coordpath.text()+'/az')
+            except OSError:
+                label = self.coord1.lower()+' coordinate'
+                label_final.append(label)
+            try:
+                os.stat(self.coordpath.text()+'/'+self.coord2.lower())
+            except OSError:
+                label = self.coord2.lower()+' coordinate'
+                label_final.append(label)
+
+        if np.size(label_final) != 0:
+
+            self.warningbox = QMessageBox()
+            self.warningbox.setIcon(QMessageBox.Warning)
+            self.warningbox.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+
+            self.warningbox.setWindowTitle('Warning')
+
+            msg = 'Incorrect Path(s): \n'
+            for i in range(len(label_final)): 
+                msg += (str(label_final[i][:-1])) +'\n'
+            
+            self.warningbox.setText(msg)        
+        
+            self.warningbox.exec_()
+
+        else:
+            
+            os.makedirs(os.path.dirname('pickles_object/'), exist_ok=True)
+
+            det_path_pickle = 'pickles_object/'+self.detname.text()
+            coord1_path_pickle = 'pickles_object/'+self.coord1
+            coord2_path_pickle = 'pickles_object/'+self.coord2
+
+            try:               
+                self.det_data = pickle.load(open(det_path_pickle, 'rb'))  
+                self.coord1_data = pickle.load(open(coord1_path_pickle, 'rb'))
+                self.coord2_data = pickle.load(open(coord2_path_pickle, 'rb'))
+
+            except FileNotFoundError:               
+                dataload = ld.data_value(self.detpath.text(), self.detname.text(), self.coordpath.text(), \
+                                         self.coord1, self.coord2, self.dettype.text(), \
+                                         self.coord1type.text(), self.coord2type.text(), \
+                                         self.experiment.currentText())
+
+                self.det_data, self.coord1_data, self.coord2_data = dataload.values()
+
+                pickle.dump(self.det_data, open(det_path_pickle, 'wb'))  
+                pickle.dump(self.coord1_data, open(coord1_path_pickle, 'wb'))
+                pickle.dump(self.coord2_data, open(coord2_path_pickle, 'wb'))
+
+                del dataload
+                gc.collect()
+            
+            if self.experiment.currentText().lower() == 'blast-tng':
+                zoomsyncdata = ld.frame_zoom_sync(self.det_data, self.detfreq.text(), \
+                                                  self.detframe.text(), self.coord1_data, \
+                                                  self.coord2_data, self.acsfreq.text(), 
+                                                  self.acsframe.text(), self.startframe.text(), \
+                                                  self.endframe.text(), self.experiment.currentText(), \
+                                                  roach_number = self.roachnumber.text(), \
+                                                  roach_pps_path = self.coord_path.text())
+            elif self.experiment.currentText().lower() == 'blastpol':
+                zoomsyncdata = ld.frame_zoom_sync(self.det_data, self.detfreq.text(), \
+                                                  self.detframe.text(), self.coord1_data, \
+                                                  self.coord2_data, self.acsfreq.text(), 
+                                                  self.acsframe.text(), self.startframe.text(), \
+                                                  self.endframe.text(), self.experiment.currentText())
+
+            (self.timemap, self.detslice, self.coord1slice, \
+             self.coord2slice) = zoomsyncdata.sync_data()
+
+            if self.DirConvCheckBox.isChecked:
+                self.dirfile_conversion()
+
+            ### CONVERSION TO RADIANS FOR ALL THE ANGLES ###
+
+            self.coord2slice = np.radians(self.coord2slice)
+
+            if self.coord1.lower() == 'ra':
+                self.coord1slice = np.radians(self.coord1slice*15.) #Conversion between hours to degree and then converted to radians
+            elif self.coord1.lower() == 'cross-el':
+                self.coord1slice = np.radians(self.coord1slice)*np.cos(self.coord2slice)
+            else:
+                self.coord1slice = np.radians(self.coord1slice)
+            
+            del self.det_data
+            del self.coord1_data
+            del self.coord2_data
+            del zoomsyncdata
+            gc.collect()
+
+            self.clean_func()
+
+    def clean_func(self):
+
+        '''
+        Function to compute the cleaned detector TOD
+        '''
+
+        det_tod = tod.data_cleaned(self.detslice, self.detfreq.text(), self.highpassfreq.text())
+        self.cleaned_data = det_tod.data_clean()
+
+    def dirfile_conversion(self):
+
+        '''
+        Function to convert the DIRFILE data.
+        '''
+
+        det_conv = ld.convert_dirfile(self.detslice, float(self.adetconv.text()), \
+                                      float(self.bdetconv.text()))
+        coord1_conv = ld.convert_dirfile(self.coord1slice, float(self.acoord1conv.text()), \
+                                         float(self.bcoord1conv.text()))
+        coord2_conv = ld.convert_dirfile(self.coord2slice, float(self.acoord2conv.text()), \
+                                         float(self.bcoord2conv.text()))
+
+        det_conv.conversion()
+        coord1_conv.conversion()
+        coord2_conv.conversion()
+
+        self.detslice = det_conv.data
+        self.coord1slice = coord1_conv.data
+        self.coord2slice = coord2_conv.data
+
+    def mapvalues(self, data):
+
+        '''
+        Function to compute the maps
+        '''
+
+        self.ctype = self.coordchoice.currentText()
+
+        self.crpix = np.array([int(float(self.crpix1.text())),\
+                               int(float(self.crpix2.text()))])
+        self.cdelt = np.array([float(self.cdelt1.text()),\
+                               float(self.cdelt2.text())])
+        self.crval = np.array([float(self.crval1.text()),\
+                               float(self.crval2.text())])
+
+        if self.convchoice.currentText().lower() == 'gaussian':
+            self.convolution = True
+            self.std = self.GaussianSTD.text()
+        else:
+            self.convolution = False
+            self.std = 0
+
+        self.maps = mp.maps(self.ctype, self.crpix, self.cdelt, self.crval, \
+                            data, self.coord1slice, self.coord2slice, \
+                            self.convolution, self.std, self.ICheckBox.isChecked())
+
+        self.maps.wcs_proj()
+
+        self.proj = self.maps.proj
+
+        self.map_value = self.maps.map2d()
+
+class TODTab(QWidget):
+
+    '''
+    Layout Class for the TOD tab
+    '''
+
+    def __init__(self, parent=None):
+
+        super(QWidget, self).__init__(parent)
+
+        self.c = ParamMapTab()
+
+        self.createTODplot()
+        self.createTODcleanedplot()
+
+        mainlayout = QGridLayout()
+        mainlayout.addWidget(self.TODplot, 0, 0)
+        mainlayout.addWidget(self.TODcleanedplot, 0, 1)
+        
+        self.setLayout(mainlayout)
+
+    def createTODplot(self, data = None):
+
+        '''
+        Function to create the TOD empty plot
+        '''
+
+        self.TODplot = QGroupBox("Detector TOD")
+        TODlayout = QGridLayout()
+
+        self.matplotlibWidget_TOD = MatplotlibWidget(self)
+        self.axis_TOD = self.matplotlibWidget_TOD.figure.add_subplot(111)
+        self.axis_TOD.set_axis_off()
+        TODlayout.addWidget(self.matplotlibWidget_TOD)        
+
+        self.TODplot.setLayout(TODlayout)
+
+    def draw_TOD(self, data = None):
+
+        '''
+        Function to draw the TOD when the plot button is pushed.
+        The plotted TOD is the one between the frame of interest
+        '''
+        
+        self.axis_TOD.set_axis_on()
+        self.axis_TOD.clear()
+        try:
+            self.axis_TOD.plot(data)
+        except AttributeError:
+            pass
+        self.axis_TOD.set_title('detTOD')
+        self.matplotlibWidget_TOD.canvas.draw()
+
+    def createTODcleanedplot(self, data = None):
+
+        '''
+        Same of createTODPlot but for the cleanedTOD
+        '''
+
+        self.TODcleanedplot = QGroupBox("Detector Cleaned TOD")
+        self.layout = QVBoxLayout()
+
+        self.matplotlibWidget_cleaned_TOD = MatplotlibWidget(self)
+        self.axis_cleaned_TOD = self.matplotlibWidget_cleaned_TOD.figure.add_subplot(111)
+        self.axis_cleaned_TOD.set_axis_off()
+        self.layout.addWidget(self.matplotlibWidget_cleaned_TOD)
+
+        self.TODcleanedplot.setLayout(self.layout)
+
+    def draw_cleaned_TOD(self, data = None):
+
+        '''
+        Same of draw_TOD but for the cleaned TOD
+        '''
+        
+        self.axis_cleaned_TOD.set_axis_on()
+        self.axis_cleaned_TOD.clear()
+        try:           
+            self.axis_cleaned_TOD.plot(data)
+        except AttributeError or NameError or TypeError:
+            pass
+        self.axis_cleaned_TOD.set_title('Cleaned Data')
+        self.matplotlibWidget_cleaned_TOD.canvas.draw()
+
+class BeamTab(ParamMapTab):
+
+    '''
+    Layout for the tab used to show the calculated beams
+    '''
+
+
+    def __init__(self, parent=None, checkbox=None):
+
+        super(QWidget, self).__init__(parent)
+
+        c = ParamMapTab()
+
+        beammaps = MapPlotsGroup(checkbox=c.ICheckBox)
+
+        mainlayout = QGridLayout()
+        mainlayout.addWidget(beammaps, 0, 0)
+        
+        self.setLayout(mainlayout)
+        
+class MapPlotsGroup(QWidget):
+
+    '''
+    Generic layout to create a tabbed plot layout for maps
+    in case only I is requested or also polarization maps
+    are requested as output.
+    This class is used for plotting both the maps and the beams 
+    '''
+
+    def __init__(self, data, checkbox, parent=None):
+
+        super(QWidget, self).__init__(parent)
+
+        self.tabs = QTabWidget()
+        self.tab1 = QWidget()
+        self.tab2 = QWidget()
+        self.tab3 = QWidget()
+
+        self.data = data
+
+        self.checkbox = checkbox
+
+        self.tabvisible()
+
+        self.tabs.addTab(self.tab1,"I Map")
+        self.ImapTab()
+        self.QmapTab()
+        self.UmapTab()
+
+        self.checkbox.toggled.connect(self.tabvisible)
+        
+        self.layout = QVBoxLayout()
+        self.layout.addWidget(self.tabs)
+        self.setLayout(self.layout)
+
+    def tabvisible(self):
+
+        '''
+        Function to update the visibility of the polarization maps.
+        '''
+
+        if self.checkbox.isChecked():
+            self.Qsave = self.tabs.widget(1)
+            self.tabs.removeTab(1)
+            self.Usave = self.tabs.widget(1)
+            self.tabs.removeTab(1)
+        else:
+            try:
+                self.tabs.insertTab(1, self.Qsave)
+                self.tabs.insertTab(2, self.Usave)
+            except:
+                self.tabs.addTab(self.tab2,"Q Map")
+                self.tabs.addTab(self.tab3,"U Map")
+
+    def ImapTab(self, button=None):
+
+        '''
+        Create an empty plot for I map (or beam if the class is used in the beam tab)
+        '''
+
+        mainlayout = QGridLayout()
+
+        self.matplotlibWidget_Imap = MatplotlibWidget(self)
+        self.axis_Imap = self.matplotlibWidget_Imap.figure.add_subplot(111)
+        self.axis_Imap.set_axis_off()
+        mainlayout.addWidget(self.matplotlibWidget_Imap)
+        #self.map2d(self.data)
+        # try:
+        #     button.clicked.connect(partial(self.map2d,self.data))
+        # except AttributeError:
+        #     pass
+
+        self.tab1.setLayout(mainlayout)
+
+    def QmapTab(self):
+
+        '''
+        Same of ImapTab but the Q Stokes parameter
+        '''
+
+        mainlayout = QGridLayout()
+
+        self.matplotlibWidget_Qmap = MatplotlibWidget(self)
+        self.axis_Qmap = self.matplotlibWidget_Qmap.figure.add_subplot(111)
+        self.axis_Qmap.set_axis_off()
+        mainlayout.addWidget(self.matplotlibWidget_Qmap)
+
+        self.tab2.setLayout(mainlayout)
+
+    def UmapTab(self):
+        
+        '''
+        Same of ImapTab but the U Stokes parameter
+        '''
+
+        self.UmapGroup = QGroupBox("Detector Offset")
+        mainlayout = QGridLayout()
+
+        self.matplotlibWidget_Umap = MatplotlibWidget(self)
+        self.axis_Umap = self.matplotlibWidget_Umap.figure.add_subplot(111)
+        self.axis_Umap.set_axis_off()
+        mainlayout.addWidget(self.matplotlibWidget_Umap)
+
+        self.tab3.setLayout(mainlayout)
+
+    def updateTab(self, data):
+
+        '''
+        Function to updates the I, Q and U plots when the 
+        button plot is pushed
+        '''
+
+        if np.size(np.shape(data)) > 2:
+            idx_list = ['I', 'Q', 'U']
+
+            for i in range(len(idx_list)):
+                self.map2d(data[i], idx_list[i])
+        else:
+            self.map2d(data)
+
+    def map2d(self, data=None, idx='I'):
+
+        '''
+        Function to generate the map plots (I,Q and U) 
+        when the plot button is pushed
+        '''
+        
+        if idx == 'I':
+            axis = self.axis_Imap
+        elif idx == 'Q':
+            axis = self.axis_Qmap
+        elif idx == 'U':
+            axis = self.axis_Umap
+
+        img = axis.images
+        if np.size(img) > 0:
+            cb = img[-1].colorbar
+            cb.remove()
+
+        axis.set_axis_on()
+        axis.clear()
+        axis.set_title('Maps')
+        
+        #max_index = np.where(np.abs(self.map_value) == np.amax((np.abs(self.map_value))))
+
+        #levels = 5
+
+        #interval = np.flip(np.linspace(0, 1, levels+1))
+
+        #map_levels = self.map_value[max_index]*(1-interval)
+
+        # extent = (np.amin(self.coord1slice), np.amax(self.coord1slice), \
+        #           np.amin(self.coord2slice), np.amax(self.coord2slice))
+
+        data_masked = np.ma.masked_where(data == 0, data)
+
+        im = axis.imshow(data_masked, origin='lower', cmap=plt.cm.viridis)     
+        plt.colorbar(im, ax=axis)
+
+        # if self.ctype == 'RA and DEC':
+        #     self.axis_map.set_xlabel('RA (deg)')
+        #     self.axis_map.set_ylabel('Dec (deg)')
+        # elif self.ctype == 'AZ and EL':
+        #     self.axis_map.set_xlabel('Azimuth (deg)')
+        #     self.axis_map.set_ylabel('Elevation (deg)')
+        # elif self.ctype == 'CROSS-EL and EL':
+        #     self.axis_map.set_xlabel('Cross Elevation (deg)')
+        #     self.axis_map.set_ylabel('Elevation (deg)')
+
+        self.matplotlibWidget_Imap.canvas.draw()
+
+class MatplotlibWidget(QWidget):
+
+    '''
+    Class to generate an empty matplotlib.pyplot object
+    '''
+
+    def __init__(self, parent=None):
+        super(MatplotlibWidget, self).__init__(parent)
+
+        self.figure = Figure()
+        self.canvas = FigureCanvasQTAgg(self.figure)
+        self.toolbar = NavigationToolbar(self.canvas, self)
+
+        self.layoutVertical = QVBoxLayout(self)
+        self.layoutVertical.addWidget(self.canvas)
+        self.layoutVertical.addWidget(self.toolbar)
+
+# class MainWindow(QTabWidget):
+    
+#     def __init__(self, parent = None):
+#         super(MainWindow, self).__init__(parent)
+#         self.tab1 = QWidget()
+#         self.tab2 = QWidget()
+#         self.tab3 = QWidget()
+            
+#         self.addTab(self.tab1,"Parameters and Maps")
+#         self.addTab(self.tab2,"Detector TOD")
+#         self.addTab(self.tab3, "Beam")
+#         self.ParamMapLayout()
+#         self.TODLayout()    
+#         self.beamLayout()
+#         self.setWindowTitle("Naive MapMaker")
+        
+#         self.show()
+
+
+
+#     def createMapPlotGroup(self):
+#         self.MapPlotGroup = QTabWidget()
+
+#         self.mapTab1 = QWidget()
+#         self.mapTab2 = QWidget()
+#         self.mapTab3 = QWidget()
+
+#         self.layout = QVBoxLayout()  
+#         self.matplotlibWidget_Map = MatplotlibWidget(self)
+#         self.axis_map = self.matplotlibWidget_Map.figure.add_subplot(111)
+#         self.axis_map.set_axis_off()
+#         self.layout.addWidget(self.matplotlibWidget_Map)
+#         self.plotbutton.clicked.connect(self.map2d)
+
+#         self.MapPlotGroup.setLayout(self.layout)
+           
+#     def map2d(self, data=None):
+#         data = [random.random() for i in range(25)]
+
+#         self.ctype = self.coordchoice.currentText()
+
+#         self.crpix = np.array([int(float(self.crpix1.text())),\
+#                                int(float(self.crpix2.text()))])
+#         self.cdelt = np.array([float(self.cdelt1.text()),\
+#                                float(self.cdelt2.text())])
+#         self.crval = np.array([float(self.crval1.text()),\
+#                                float(self.crval2.text())])
+
+#         if self.convchoice.currentText().lower() == 'gaussian':
+#             self.convolution = True
+#             self.std = self.GaussianSTD.text()
+#         else:
+#             self.convolution = False
+#             self.std = 0
+
+#         self.maps = mp.maps(self.ctype, self.crpix, self.cdelt, self.crval, \
+#                        self.cleaned_data, self.coord1slice, self.coord2slice, \
+#                        self.convolution, self.std)
+
+#         self.maps.wcs_proj()
+
+#         self.map_value = self.maps.map2d()
+        
+#         self.axis_map.set_axis_on()
+#         self.axis_map.clear()
+#         self.axis_map.set_title('Maps')
+        
+#         max_index = np.where(np.abs(self.map_value) == np.amax((np.abs(self.map_value))))
+
+#         levels = 5
+
+#         interval = np.flip(np.linspace(0, 1, levels+1))
+
+#         map_levels = self.map_value[max_index]*(1-interval)
+
+#         extent = (np.amin(self.coord1slice), np.amax(self.coord1slice), \
+#                   np.amin(self.coord2slice), np.amax(self.coord2slice))
+#         im = self.axis_map.imshow(self.map_value, extent = extent, origin='lower', cmap=plt.cm.viridis)
+#         plt.colorbar(im)
+
+#         if self.ctype == 'RA and DEC':
+#             self.axis_map.set_xlabel('RA (deg)')
+#             self.axis_map.set_ylabel('Dec (deg)')
+#         elif self.ctype == 'AZ and EL':
+#             self.axis_map.set_xlabel('Azimuth (deg)')
+#             self.axis_map.set_ylabel('Elevation (deg)')
+#         elif self.ctype == 'CROSS-EL and EL':
+#             self.axis_map.set_xlabel('Cross Elevation (deg)')
+#             self.axis_map.set_ylabel('Elevation (deg)')
+
+#         self.matplotlibWidget_Map.canvas.draw()
+
+#     def createOffsetGroup(self):
+
+#         self.OffsetGroup = QGroupBox("Detector Offset")
+
+#         self.RAoffsetlabel = QLabel('RA (deg)')
+#         self.DECoffsetlabel = QLabel('Dec (deg)')
+#         self.RAoffset = QLineEdit('')
+#         self.DECoffset = QLineEdit('')
+
+#         self.AZoffsetlabel = QLabel('Azimuth (deg)')
+#         self.ELoffsetlabel = QLabel('Elevation (deg)')
+#         self.AZoffset = QLineEdit('')
+#         self.ELoffset = QLineEdit('')
+
+#         self.CROSSELoffsetlabel = QLabel('Cross Elevation (deg)')
+#         self.ELxoffsetlabel = QLabel('Elevation (deg)')
+#         self.CROSSELoffset = QLineEdit('')
+#         self.ELxoffset = QLineEdit('')
+
+#         self.coordchoice.activated[str].connect(self.updateOffsetLabel)
+#         self.plotbutton.clicked.connect(self.updateOffsetValue)
+
+#         self.updateOffsetLabel()
+
+#         self.layout = QGridLayout()
+#         self.layout.addWidget(self.RAoffsetlabel, 0, 0)
+#         self.layout.addWidget(self.RAoffset, 0, 1)
+#         self.layout.addWidget(self.DECoffsetlabel, 1, 0)
+#         self.layout.addWidget(self.DECoffset, 1, 1)
+#         self.layout.addWidget(self.AZoffsetlabel, 0, 0)
+#         self.layout.addWidget(self.AZoffset, 0, 1)
+#         self.layout.addWidget(self.ELoffsetlabel, 1, 0)
+#         self.layout.addWidget(self.ELoffset, 1, 1)
+#         self.layout.addWidget(self.CROSSELoffsetlabel, 0, 0)
+#         self.layout.addWidget(self.CROSSELoffset, 0, 1)
+#         self.layout.addWidget(self.ELxoffsetlabel, 1, 0)
+#         self.layout.addWidget(self.ELxoffset, 1, 1)
+
+#         self.RAoffset.setEnabled(False)
+#         self.DECoffset.setEnabled(False)
+
+#         self.AZoffset.setEnabled(False)
+#         self.ELoffset.setEnabled(False)
+
+#         self.ELxoffset.setEnabled(False)
+#         self.CROSSELoffset.setEnabled(False)
+        
+#         self.OffsetGroup.setLayout(self.layout)
+
+#     def updateOffsetLabel(self):
+
+#         self.ctype = self.coordchoice.currentText()
+
+#         if self.ctype == 'RA and DEC':
+#             self.RADECvisibile = True
+#             self.AZELvisibile = False
+#             self.CROSSEL_ELvisibile = False
+
+#         elif self.ctype == 'AZ and EL':
+#             self.RADECvisibile = False
+#             self.AZELvisibile = True
+#             self.CROSSEL_ELvisibile = False
+            
+#         elif self.ctype == 'CROSS-EL and EL':
+#             self.RADECvisibile = False
+#             self.AZELvisibile = False
+#             self.CROSSEL_ELvisibile = True
+
+
+#         self.RAoffset.setVisible(self.RADECvisibile)
+#         self.DECoffset.setVisible(self.RADECvisibile)
+#         self.RAoffsetlabel.setVisible(self.RADECvisibile)
+#         self.DECoffsetlabel.setVisible(self.RADECvisibile)
+
+#         self.AZoffset.setVisible(self.AZELvisibile)
+#         self.ELoffset.setVisible(self.AZELvisibile)
+#         self.AZoffsetlabel.setVisible(self.AZELvisibile)
+#         self.ELoffsetlabel.setVisible(self.AZELvisibile)      
+
+#         self.CROSSELoffset.setVisible(self.CROSSEL_ELvisibile)
+#         self.ELxoffset.setVisible(self.CROSSEL_ELvisibile)
+#         self.CROSSELoffsetlabel.setVisible(self.CROSSEL_ELvisibile)
+#         self.ELxoffsetlabel.setVisible(self.CROSSEL_ELvisibile) 
+
+#     def updateOffsetValue(self):
+        
+#         ctype_map = self.coordchoice.currentText()
+
+#         offset = bm.computeoffset(self.map_value, float(self.crval1.text()), float(self.crval2.text()), ctype_map)
+
+#         self.offset_angle = offset.offset(self.maps.proj)
+
+#         if self.ctype == 'RA and DEC':
+#             self.RAoffset = QLineEdit(str(self.offset_angle[0]))
+#             self.DECoffset = QLineEdit(str(self.offset_angle[1]))
+
+#         elif self.ctype == 'AZ and EL':
+#             self.AZoffset = QLineEdit(str(self.offset_angle[0]))
+#             self.ELoffset = QLineEdit(str(self.offset_angle[1]))
+            
+#         elif self.ctype == 'CROSS-EL and EL':
+#             self.CROSSELoffset = QLineEdit(str(self.offset_angle[0]))
+#             self.ELxoffset = QLineEdit(str(self.offset_angle[1]))
+
+#     def TODLayout(self):
+
+#         
+
+
+
+#     def beamLayout(self):
+
+#         self.createbeamplot()
+
+#         mainlayout = QGridLayout()
+#         mainlayout.addWidget(self.beamplot, 0, 0)
+
+#         self.tab3.setLayout(mainlayout)
+
+#     def createbeamplot(self, data = None):
+
+#         self.beamplot = QGroupBox("Beam Map")
+        
+#         self.layout = QVBoxLayout()
+
+#         self.matplotlibWidget_beam = MatplotlibWidget(self)
+#         self.axis_beam = self.matplotlibWidget_beam.figure.add_subplot(111)
+#         self.axis_beam.set_axis_off()
+#         self.layout.addWidget(self.matplotlibWidget_beam)        
+#         self.plotbutton.clicked.connect(partial(self.draw_beam, data))
+
+#         self.beamplot.setLayout(self.layout)
+
+#     def draw_beam(self, data = None):
+#         self.axis_beam.set_axis_on()
+#         self.axis_beam.clear()
+#         try:
+#             beam = bm.beam(self.map_value)
+#             self.beam_data, self.beam_param, self.beam_error = beam.beam_fit()
+#             self.axis_beam.imshow(self.beam_data)
+#         except AttributeError:
+#             pass
+#         self.axis_beam.set_title('Beam')
+#         self.matplotlibWidget_beam.canvas.draw()
+
+
