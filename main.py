@@ -5,7 +5,7 @@ import sys
 
 def main():
     app = QApplication(sys.argv)
-    ex = gui.App()
+    ex = gui.AppWindow()
     ex.show()
     sys.exit(app.exec_())
 
