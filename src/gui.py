@@ -44,12 +44,15 @@ import numpy as np
 import os
 import pickle
 import configparser
-import psutil
 import gc
+<<<<<<< HEAD
 <<<<<<< HEAD
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
 =======
 >>>>>>> 6acdf4e... Solved a memory leak when trying to replot with different parameters
+=======
+import copy
+>>>>>>> 77760bc... Add TOD timing offset
 
 import src.detTOD as tod
 import src.loaddata as ld
@@ -190,12 +193,16 @@ class AppWindow(QMainWindow):
         self.setWindowTitle(self.title)
 
         menubar = self.menuBar()
+
         self.beammenu = menubar.addMenu('Beam Functions')
         beamfit = QAction('Fitting Parameters', self)
-
         self.beammenu.addAction(beamfit)
-
         beamfit.triggered.connect(self.beam_fit_param_menu)
+        
+        self.detmenu = menubar.addMenu('TOD Functions')
+        todfunc = QAction('Time offset between TOD and Pointing',  self)
+        self.detmenu.addAction(todfunc)
+        todfunc.triggered.connect(self.tod_func_offset)
         
         self.TabLayout = MainWindowTab(self)
         self.setCentralWidget(self.TabLayout)
@@ -203,13 +210,22 @@ class AppWindow(QMainWindow):
     @pyqtSlot()
     def beam_fit_param_menu(self):
         dialog = BeamFitParamWindow()
-        dialog.fitparamsignal.connect(self.connection)
+        dialog.fitparamsignal.connect(self.connection_beam_param)
         dialog.exec_()
-        
+    
+    @pyqtSlot()
+    def tod_func_offset(self):
+        dialog = TODoffsetWindow()
+        dialog.todoffsetsignal.connect(self.connection_tod_off)
+        dialog.exec_()
 
     @pyqtSlot(np.ndarray)
-    def connection(self, val):
+    def connection_beam_param(self, val):
         self.TabLayout.beamparam = val.copy()
+    
+    @pyqtSlot(float)
+    def connection_tod_off(self, val):
+        self.TabLayout.todoffsetvalue = copy.copy(val)
 
     def closeEvent(self,event):
 
@@ -320,6 +336,42 @@ class BeamFitParamWindow(QDialog):
     #         event.accept()
 
 
+class TODoffsetWindow(QDialog):
+
+    '''
+    Dialog window for adding manually time offset between the 
+    detector TOD and the pointing solution
+    '''
+
+    todoffsetsignal = pyqtSignal(float)
+
+    def __init__(self, parent = None):
+        super(QDialog, self).__init__(parent)
+        #w = QDialog(self)
+
+        self.setWindowTitle('Detectors TOD timing offset')
+
+        self.todoffsetvalue = QLineEdit('')
+        self.todoffset_label = QLabel('TOD timing offset value (ms)')
+
+        self.savebutton = QPushButton('Write Parameters')
+
+        self.savebutton.clicked.connect(self.updateParamValues)
+
+        layout = QGridLayout(self)
+
+        layout.addWidget(self.todoffset_label, 0, 0)
+        layout.addWidget(self.todoffsetvalue, 0, 1)
+        layout.addWidget(self.savebutton)
+
+        self.setLayout(layout)
+
+    def updateParamValues(self):
+
+        value = float(self.todoffsetvalue.text())
+
+        self.todoffsetsignal.emit(value)
+
 class MainWindowTab(QTabWidget):
 
     '''
@@ -340,6 +392,7 @@ class MainWindowTab(QTabWidget):
         self.cleandata = np.array([])
 
         self.beamparam = None
+        self.todoffsetvalue = None
 
         self.tab3 = BeamTab(checkbox=checkI)
         self.addTab(self.tab3, "Beam")
@@ -353,7 +406,7 @@ class MainWindowTab(QTabWidget):
         '''
 
         #functions to compute the updated values
-        self.tab1.load_func()
+        self.tab1.load_func(offset = self.todoffsetvalue)
 
         self.data = self.tab1.detslice 
 
@@ -405,6 +458,7 @@ class MainWindowTab(QTabWidget):
         maps = self.tab1.map_value #grabs the actual map for the fits img
         hdu = fits.PrimaryHDU(maps, header = hdr)
         hdu.writeto('./'+self.tab1.fitsname.text())
+
 
 class ParamMapTab(QWidget):
 
@@ -1297,7 +1351,7 @@ class ParamMapTab(QWidget):
             self.CROSSELoffset.setText(str(self.offset_angle[0]))
             self.ELxoffset.setText(str(self.offset_angle[1]))
 
-    def load_func(self):
+    def load_func(self, offset = None):
 
 
         '''
@@ -1403,7 +1457,7 @@ class ParamMapTab(QWidget):
                                                   self.detframe.text(), self.coord1_data, \
                                                   self.coord2_data, self.acsfreq.text(), 
                                                   self.acsframe.text(), self.startframe.text(), \
-                                                  self.endframe.text(), self.experiment.currentText())
+                                                  self.endframe.text(), self.experiment.currentText(), offset)
 
             (self.timemap, self.detslice, self.coord1slice, \
              self.coord2slice) = zoomsyncdata.sync_data()

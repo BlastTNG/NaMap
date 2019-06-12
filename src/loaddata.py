@@ -215,7 +215,7 @@ class frame_zoom_sync():
 
     def __init__(self, det_data, det_fs, det_sample_frame,\
                  coord1_data, coord2_data, coord_fs, coord_sample_frame, \
-                 startframe, endframe, experiment, roach_number=None, roach_pps_path=None):
+                 startframe, endframe, experiment, offset =None, roach_number=None, roach_pps_path=None):
 
         self.det_data = det_data                                #Detector data timestream
         self.det_fs = float(det_fs)                             #Detector frequency sampling
@@ -232,6 +232,7 @@ class frame_zoom_sync():
         else:
             self.roach_number = roach_number
         self.roach_pps_path = roach_pps_path                    #Pulse per second of the roach used to sync the data
+        self.offset = offset
 
     def frame_zoom(self, data, sample_frame, fs, fps):
 <<<<<<< HEAD
@@ -467,6 +468,7 @@ class frame_zoom_sync():
         coord1time, coord1 = self.frame_zoom(self.coord1_data, self.coord_sample_frame, \
                                              self.coord_fs, np.array([self.startframe,self.endframe]))
 
+<<<<<<< HEAD
         coord2time, coord2 = self.frame_zoom(self.coord2_data, self.coord_sample_frame, \
                                              self.coord_fs, np.array([self.startframe,self.endframe]))
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
@@ -482,6 +484,11 @@ class frame_zoom_sync():
                                              self.coord_fs, np.array([self.startframe,self.endframe]))
 
 >>>>>>> 651e1e6... Commented files
+=======
+        if self.offset is not None:
+            dettime = dettime - self.offset/1000.
+
+>>>>>>> 77760bc... Add TOD timing offset
         index1, = np.where(np.abs(dettime-coord1time[0]) == np.amin(np.abs(dettime-coord1time[0])))
         index2, = np.where(np.abs(dettime-coord1time[-1]) == np.amin(np.abs(dettime-coord1time[-1])))
 
