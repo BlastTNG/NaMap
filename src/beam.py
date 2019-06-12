@@ -11,12 +11,15 @@ from photutils import find_peaks
 from astropy.stats import sigma_clipped_stats
 from astropy import wcs, coordinates
 
+#import matplotlib.pyplot as plt
+
+
 class beam(object):
 
-    def __init__(self, data):
+    def __init__(self, data, param = None):
 
         self.data = data
-        self.param = np.array([])
+        self.param = param
 
         self.xgrid = np.arange(len(self.data[0,:]))
         self.ygrid = np.arange(len(self.data[:,0]))
@@ -32,7 +35,7 @@ class beam(object):
     def multivariate_gaussian_2d(self, params):
 
         (x, y) = self.xy_mesh
-        for i in range(np.size(params)/6):
+        for i in range(int(np.size(params)/6)):
             j = i*6
             amp = params[j]
             xo = float(params[j+1])
@@ -66,7 +69,11 @@ class beam(object):
 
     def peak_finder(self, map_data, mask_pf = False):
 
-        bs = 5
+        x_lim = np.size(self.xgrid)
+        y_lim = np.size(self.ygrid)
+        fact = 20.
+
+        bs = np.array([int(np.floor(y_lim/fact)), int(np.floor(x_lim/fact))])
 
         mean, median, std = sigma_clipped_stats(self.data, sigma=3.0)
         threshold = median+(5.*std)
@@ -80,6 +87,7 @@ class beam(object):
         if mask_pf is False:
 >>>>>>> 4ee3dbe... Fixed bug in selecting data
             tbl = find_peaks(map_data, threshold, box_size=bs)
+            mask_pf = np.zeros_like(self.xy_mesh[0])
         else:
             self.mask = mask_pf.copy()
             tbl = find_peaks(map_data, threshold, box_size=bs, mask = self.mask)
@@ -98,41 +106,52 @@ class beam(object):
             index_y = self.ygrid[tbl['y_peak'][i]]
             x_i = np.append(x_i, index_x)
             y_i = np.append(y_i, index_y)
-            mask_pf[index_y-bs:index_y+bs, index_x-bs:index_x+bs] = True
+            mask_pf[index_y-bs[1]:index_y+bs[1], index_x-bs[0]:index_x+bs[0]] = True
 
-            if np.size(self.param) == 0:
+            if self.param is None:
                 self.param = guess_temp
-                self.mask = mask_pf 
+                self.mask = mask_pf.copy()
 
             else:
                 self.param = np.append(self.param, guess_temp)
                 self.mask = np.logical_or(self.mask, mask_pf)
 
     def fit(self):
+        try:
+            p = least_squares(self.residuals, x0=self.param, \
+                              args=(self.xy_mesh, np.ravel(self.data),\
+                                    np.ones(len(np.ravel(self.data))), np.amax(self.data)), \
+                              method='lm')
+            
+            J = p.jac
+            cov = np.linalg.inv(J.T.dot(J))
+            var = np.sqrt(np.diagonal(cov))
 
-        p = least_squares(self.residuals, x0=self.param, \
-                          args=(self.xy_mesh, np.ravel(self.data),\
-                                np.ones(len(np.ravel(self.data))), np.amax(self.data)), \
-                          method='lm')
-        J = p.jac
-        cov = np.linalg.inv(J.T.dot(J))
-        var = np.sqrt(np.diagonal(cov))
+            return p, var
+        except np.linalg.LinAlgError:
+            msg = 'Fit not converged'
+            return msg, 0
 
-        return p, var
+    def beam_fit(self, mask_pf= False):
 
-    def beam_fit(self, peak_number = 0, mask_pf= False):
-
-        if peak_number == 0:
+        if self.param is not None:
+            peak_found = np.size(self.param)/6
+            force_fit = True
+        else:
             self.peak_finder(map_data = self.data, mask_pf = mask_pf)
             peak_number_ini = np.size(self.param)/6
             peak_found = peak_number_ini
-        else:
-            self.param  = 0
+            force_fit = False
 
         while peak_found > 0:
-
             fit_param, var = self.fit()
+            if isinstance(fit_param, str):
+                msg = 'fit not converged'
+                break
+            else:
+                fit_data = self.multivariate_gaussian_2d(fit_param.x).reshape(np.outer(self.ygrid, self.xgrid).shape)
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
             fit_data = self.multivariate_gaussian_2d(fit_param.x)\
@@ -148,12 +167,24 @@ class beam(object):
             self.peak_finder(map_data=res)
 
             peak_number = np.size(self.param)/6
+=======
+                if force_fit is False:
+                    res = self.data-fit_data
+>>>>>>> 1531050... Added option to choose beam fitting parameters
 
-            peak_found = peak_number-peak_number_ini
+                    self.peak_finder(map_data=res)
 
-            peak_number_ini = peak_number
+                    peak_number = np.size(self.param)/6
+                    peak_found = peak_number-peak_number_ini
+                    peak_number_ini = peak_number
+                else:
+                    peak_found = -1
 
-        return fit_data, fit_param.x, var
+        if isinstance(fit_param, str):
+            return msg, 0, 0
+        else:
+            return fit_data, fit_param.x, var
+        
 
 class computeoffset():
 

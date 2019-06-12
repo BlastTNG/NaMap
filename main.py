@@ -7,6 +7,7 @@ def main():
     app = QApplication(sys.argv)
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
     ex = gui.MainWindow()
 =======
     ex = gui.App()
@@ -14,6 +15,9 @@ def main():
 =======
     ex = gui.App()
 >>>>>>> fbc01b1... Gui updated with polarizarion maps tabs
+=======
+    ex = gui.AppWindow()
+>>>>>>> 1531050... Added option to choose beam fitting parameters
     ex.show()
     sys.exit(app.exec_())
 

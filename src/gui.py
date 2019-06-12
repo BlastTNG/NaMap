@@ -175,20 +175,41 @@ class MainWindowTab(QTabWidget):
     def ParamMapLayout(self):
 =======
 
-class App(QMainWindow):
+class AppWindow(QMainWindow):
 
     '''
     Class to create the app
     '''
+
+    emitting = pyqtSignal(np.ndarray)
 
     def __init__(self):
         super().__init__()
         self.title = 'NaMap'
 
         self.setWindowTitle(self.title)
+
+        menubar = self.menuBar()
+        self.beammenu = menubar.addMenu('Beam Functions')
+        beamfit = QAction('Fitting Parameters', self)
+
+        self.beammenu.addAction(beamfit)
+
+        beamfit.triggered.connect(self.beam_fit_param_menu)
         
         self.TabLayout = MainWindowTab(self)
         self.setCentralWidget(self.TabLayout)
+
+    @pyqtSlot()
+    def beam_fit_param_menu(self):
+        dialog = BeamFitParamWindow()
+        dialog.fitparamsignal.connect(self.connection)
+        dialog.exec_()
+        
+
+    @pyqtSlot(np.ndarray)
+    def connection(self, val):
+        self.TabLayout.beamparam = val.copy()
 
     def closeEvent(self,event):
 
@@ -215,6 +236,90 @@ class App(QMainWindow):
 
             event.accept()
 
+class BeamFitParamWindow(QDialog):
+
+    '''
+    Dialog window for adding manually beam fitting parameters
+    '''
+
+    fitparamsignal = pyqtSignal(np.ndarray)
+
+    def __init__(self, parent = None):
+        super(QDialog, self).__init__(parent)
+        #w = QDialog(self)
+
+        self.setWindowTitle('Beam Fitting Parameters')
+
+        self.peak_numbers = QLineEdit('')
+        self.peak_numbers_label = QLabel('Number of Gaussin to be fitted')
+
+        self.savebutton = QPushButton('Write Parameters')
+
+        self.table = QTableWidget()
+
+        self.peak_numbers.textChanged[str].connect(self.updateTable)
+        self.savebutton.clicked.connect(self.updateParamValues)
+
+        layout = QGridLayout(self)
+
+        layout.addWidget(self.peak_numbers_label, 0, 0)
+        layout.addWidget(self.peak_numbers, 0, 1)
+        layout.addWidget(self.table, 1, 0, 1, 2)
+        layout.addWidget(self.savebutton)
+
+        self.setLayout(layout)
+
+        self.resize(640, 480)
+        
+    def configureTable(self, table, rows):
+        table.setColumnCount(6)
+        table.setRowCount(rows)
+        table.setHorizontalHeaderItem(0, QTableWidgetItem("Amplitude"))
+        table.setHorizontalHeaderItem(1, QTableWidgetItem("X0 (in pixel)"))
+        table.setHorizontalHeaderItem(2, QTableWidgetItem("Y0 (in pixel)"))
+        table.setHorizontalHeaderItem(3, QTableWidgetItem("SigmaX (in pixel)"))
+        table.setHorizontalHeaderItem(4, QTableWidgetItem("SigmaY (in pixel)"))
+        table.setHorizontalHeaderItem(5, QTableWidgetItem("Theta"))
+        #table.horizontalHeader().setStretchLastSection(True)
+
+    def updateTable(self):
+        try:
+            rows = int(self.peak_numbers.text().strip())
+            self.configureTable(self.table, rows)
+        except ValueError:
+            pass
+
+    def updateParamValues(self):
+
+        values = np.array([])
+        rows_number = self.table.rowCount()
+        column_number = self.table.columnCount()
+
+        for i in range(rows_number):
+            for j in range(column_number):
+                values = np.append(values, float(self.table.item(i,j).text()))
+
+        self.fitparam = values.copy()
+        self.fitparamsignal.emit(values)
+
+    # def closeEvent(self,event):
+
+    #     '''
+    #     This function contains the code that is run when the application is closed.
+    #     In this case, deleting the pickles file created.
+    #     '''
+
+    #     result = QMessageBox.question(self,
+    #                                   "Confirm Exit...",
+    #                                   "Are you sure you want to exit ?",
+    #                                   QMessageBox.Yes| QMessageBox.No)
+    #     event.ignore()
+
+    #     if result == QMessageBox.Yes:
+        
+    #         event.accept()
+
+
 class MainWindowTab(QTabWidget):
 
     '''
@@ -225,17 +330,22 @@ class MainWindowTab(QTabWidget):
         super(MainWindowTab, self).__init__(parent)
         self.tab1 = ParamMapTab()
         self.tab2 = TODTab()
-        #self.tab3 = BeamTab()
-
-        self.data = np.array([])
-        self.cleandata = np.array([])
-
-        self.tab1.plotbutton.clicked.connect(self.updatedata)
-        self.tab1.fitsbutton.clicked.connect(self.save2fits)
 
         self.addTab(self.tab1,"Parameters and Maps")
         self.addTab(self.tab2,"Detector TOD")
-        #self.addTab(self.tab3, "Beam")
+
+        checkI = self.tab1.ICheckBox
+        
+        self.data = np.array([])
+        self.cleandata = np.array([])
+
+        self.beamparam = None
+
+        self.tab3 = BeamTab(checkbox=checkI)
+        self.addTab(self.tab3, "Beam")
+
+        self.tab1.plotbutton.clicked.connect(self.updatedata)
+        self.tab1.fitsbutton.clicked.connect(self.save2fits)
 
     def updatedata(self):
         '''
@@ -262,9 +372,33 @@ class MainWindowTab(QTabWidget):
             #Update Offset
             self.tab1.updateOffsetValue()
 
+            checkBeam = self.tab1.BeamCheckBox
+
+            #Create Beams
+            if checkBeam.isChecked():
+                beam_value = bm.beam(maps, param = self.beamparam)
+                beam_map = beam_value.beam_fit()
+
+                beams = self.tab3.beammaps
+
+                if isinstance(beam_map[0], str):
+                    self.warningbox = QMessageBox()
+                    self.warningbox.setIcon(QMessageBox.Warning)
+                    self.warningbox.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+
+                    self.warningbox.setWindowTitle('Warning')
+
+                    msg = 'Fit not converged'
+                    
+                    self.warningbox.setText(msg)        
+                
+                    self.warningbox.exec_()
+
+                else:
+                    beams.updateTab(data=beam_map[0])
+
         except AttributeError:
             pass
-
     
     def save2fits(self): #function to save the map as a FITS file
         hdr = self.tab1.proj.to_header() #grabs the projection information for header
@@ -272,7 +406,6 @@ class MainWindowTab(QTabWidget):
         hdu = fits.PrimaryHDU(maps, header = hdr)
         hdu.writeto('./'+self.tab1.fitsname.text())
 
-        
 class ParamMapTab(QWidget):
 
     '''
@@ -287,6 +420,7 @@ class ParamMapTab(QWidget):
         self.cleaned_data = np.array([])     #Detector TOD cleaned (despiked and highpassed) between the frame of interest
         self.proj = np.array([])             #WCS projection of the map
         self.map_value = np.array([])        #Final map values
+<<<<<<< HEAD
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
 =======
 class ParamMapTab(QWidget):
@@ -304,6 +438,9 @@ class ParamMapTab(QWidget):
         self.cleaned_data = np.array([])     #Detector TOD cleaned (despiked and highpassed) between the frame of interest
         self.proj = np.array([])             #WCS projection of the map
         self.map_value = np.array([])        #Final map values
+=======
+        #self.ICheckBox=None
+>>>>>>> 1531050... Added option to choose beam fitting parameters
 
         self.createAstroGroup()
         self.createExperimentGroup()
@@ -326,12 +463,7 @@ class ParamMapTab(QWidget):
 =======
         
         self.plotbutton = QPushButton('Plot')
-        self.button = QPushButton('Test')
         self.fitsbutton = QPushButton('Save as Fits')
-        
-        #self.plotbutton.clicked.connect(self.load_func)
-        #self.plotbutton.clicked.connect(self.mapvalues)
-        #self.plotbutton.clicked.connect(self.clean_func)
 
         self.createOffsetGroup()
         mainlayout = QGridLayout(self)
@@ -1455,12 +1587,10 @@ class BeamTab(ParamMapTab):
 
         super(QWidget, self).__init__(parent)
 
-        c = ParamMapTab()
-
-        beammaps = MapPlotsGroup(checkbox=c.ICheckBox)
+        self.beammaps = MapPlotsGroup(checkbox=checkbox, data=None)
 
         mainlayout = QGridLayout()
-        mainlayout.addWidget(beammaps, 0, 0)
+        mainlayout.addWidget(self.beammaps, 0, 0)
         
 <<<<<<< HEAD
         label_final = []

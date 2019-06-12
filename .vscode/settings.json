@@ -1,6 +1,7 @@
 {
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
     "python.pythonPath": "/home/gabrielecoppi/anaconda3/bin/python"
 =======
     "python.pythonPath": "/anaconda3/bin/python",
@@ -12,4 +13,11 @@
     "python.linting.pylintEnabled": true,
     "python.linting.enabled": true
 >>>>>>> 11cb7f9... removed test button
+=======
+    "python.pythonPath": "/home/gabriele/anaconda3/bin/python",
+    "python.linting.pylintEnabled": false,
+    "python.linting.enabled": true,
+    "python.linting.flake8Enabled": true,
+    "python.linting.flake8Args": ["--ignore=E2,E3,E5,W2,W3,F403,F405"]
+>>>>>>> 1531050... Added option to choose beam fitting parameters
 }
