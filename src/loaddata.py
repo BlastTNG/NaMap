@@ -310,8 +310,6 @@ class frame_zoom_sync():
         frames[0] = fps[0]*sample_frame
         frames[1] = fps[1]*sample_frame+1
 
-        print('FRAMES', frames)
-
         if len(np.shape(data)) == 1:
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -349,8 +347,6 @@ class frame_zoom_sync():
         string = 'pps_count_roach'+str(int(self.roach_number))
         
         data = d.getdata(string, gd.UINT32, num_frames = d.nframes-1)
-        print('PPS_data', data)
-        print(np.size(data))
         tmin = np.amin(data)
         tmax = np.amax(data)
 
@@ -445,9 +441,7 @@ class frame_zoom_sync():
             sframe = self.startframe*self.det_sample_frame
             eframe = self.endframe*self.det_sample_frame+1
             all_time = self.det_time().copy()
-            print('All time', all_time)
-            print('DET FRAMES', sframe, eframe)
-            print('Time',all_time-all_time[0])
+
             dettime = all_time[sframe:eframe]
             self.det_data = self.det_data[sframe:eframe]
 
@@ -485,6 +479,7 @@ class frame_zoom_sync():
                                              self.coord_fs, np.array([self.startframe,self.endframe]))
 
 <<<<<<< HEAD
+<<<<<<< HEAD
         coord2time, coord2 = self.frame_zoom(self.coord2_data, self.coord_sample_frame, \
                                              self.coord_fs, np.array([self.startframe,self.endframe]))
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
@@ -514,6 +509,13 @@ class frame_zoom_sync():
         dettime = dettime-dettime[0]
         coord1time = coord1time-coord1time[0]
 >>>>>>> 8b07277... IQ -> power libraries
+=======
+        if self.offset is not None:
+            dettime = dettime - self.offset/1000.
+
+        dettime = dettime-dettime[0]
+        coord1time = coord1time-coord1time[0]
+>>>>>>> b96fc79... Added wcs projection to maps
         index1, = np.where(np.abs(dettime-coord1time[0]) == np.amin(np.abs(dettime-coord1time[0])))
         index2, = np.where(np.abs(dettime-coord1time[-1]) == np.amin(np.abs(dettime-coord1time[-1])))
 

@@ -421,7 +421,8 @@ class MainWindowTab(QTabWidget):
             #Update Maps
             maps = self.tab1.map_value
             mp_ini = self.tab1.createMapPlotGroup
-            mp_ini.updateTab(data=maps)
+            print('Projection', self.tab1.proj)
+            mp_ini.updateTab(data=maps, projection=self.tab1.proj)
             #Update Offset
             self.tab1.updateOffsetValue()
 
@@ -472,7 +473,7 @@ class ParamMapTab(QWidget):
 
         self.detslice = np.array([])         #Detector TOD between the frames of interest
         self.cleaned_data = np.array([])     #Detector TOD cleaned (despiked and highpassed) between the frame of interest
-        self.proj = np.array([])             #WCS projection of the map
+        self.proj = None                     #WCS projection of the map
         self.map_value = np.array([])        #Final map values
 <<<<<<< HEAD
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
@@ -521,7 +522,8 @@ class ParamMapTab(QWidget):
 
         self.createOffsetGroup()
         mainlayout = QGridLayout(self)
-        self.createMapPlotGroup = MapPlotsGroup(checkbox=self.ICheckBox, data=self.map_value)
+        self.createMapPlotGroup = (MapPlotsGroup(checkbox=self.ICheckBox, data=self.map_value, \
+                                   projection = self.proj))
 
         self.fitsname = QLineEdit('')
         self.fitsnamelabel = QLabel("FITS name")
@@ -1833,10 +1835,6 @@ class MapPlotsGroup(QWidget):
 
                 del dataload
                 gc.collect()
-
-            print('Length')
-            print(np.size(self.det_data))
-            print(np.size(self.coord1_data))
             
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
             if self.experiment.currentText().lower() == 'blast-tng':
@@ -1852,6 +1850,7 @@ class MapPlotsGroup(QWidget):
                                                   self.detframe.text(), self.coord1_data, \
                                                   self.coord2_data, self.acsfreq.text(), 
                                                   self.acsframe.text(), self.startframe.text(), \
+<<<<<<< HEAD
                                                   self.endframe.text(), self.experiment.currentText())
 <<<<<<< HEAD
 
@@ -1865,17 +1864,17 @@ class MapPlotsGroup(QWidget):
 =======
             print(self.coord1_data)
 >>>>>>> 8b07277... IQ -> power libraries
+=======
+                                                  self.endframe.text(), self.experiment.currentText(), offset)
+
+
+>>>>>>> b96fc79... Added wcs projection to maps
             (self.timemap, self.detslice, self.coord1slice, \
              self.coord2slice) = zoomsyncdata.sync_data()
-            print('coord1slive before conv')
-            print(self.coord1slice)
+
             if self.DirConvCheckBox.isChecked:
                 self.dirfile_conversion()
-                print('post conv')
-                print(self.coord1slice)
 
-
-            print(self.detslice)
             ### CONVERSION TO RADIANS FOR ALL THE ANGLES ###
 
             self.coord2slice = np.radians(self.coord2slice)
@@ -2190,7 +2189,7 @@ class MapPlotsGroup(QWidget):
     This class is used for plotting both the maps and the beams 
     '''
 
-    def __init__(self, data, checkbox, parent=None):
+    def __init__(self, data, checkbox, projection=None, parent=None):
 
         super(QWidget, self).__init__(parent)
 
@@ -2199,9 +2198,10 @@ class MapPlotsGroup(QWidget):
         self.tab2 = QWidget()
         self.tab3 = QWidget()
 
+        
         self.data = data
-
         self.checkbox = checkbox
+        self.projection = projection
 
         self.tabvisible()
 
@@ -2244,14 +2244,7 @@ class MapPlotsGroup(QWidget):
         mainlayout = QGridLayout()
 
         self.matplotlibWidget_Imap = MatplotlibWidget(self)
-        self.axis_Imap = self.matplotlibWidget_Imap.figure.add_subplot(111)
-        self.axis_Imap.set_axis_off()
         mainlayout.addWidget(self.matplotlibWidget_Imap)
-        #self.map2d(self.data)
-        # try:
-        #     button.clicked.connect(partial(self.map2d,self.data))
-        # except AttributeError:
-        #     pass
 
         self.tab1.setLayout(mainlayout)
 
@@ -2264,8 +2257,6 @@ class MapPlotsGroup(QWidget):
         mainlayout = QGridLayout()
 
         self.matplotlibWidget_Qmap = MatplotlibWidget(self)
-        self.axis_Qmap = self.matplotlibWidget_Qmap.figure.add_subplot(111)
-        self.axis_Qmap.set_axis_off()
         mainlayout.addWidget(self.matplotlibWidget_Qmap)
 
         self.tab2.setLayout(mainlayout)
@@ -2280,13 +2271,11 @@ class MapPlotsGroup(QWidget):
         mainlayout = QGridLayout()
 
         self.matplotlibWidget_Umap = MatplotlibWidget(self)
-        self.axis_Umap = self.matplotlibWidget_Umap.figure.add_subplot(111)
-        self.axis_Umap.set_axis_off()
         mainlayout.addWidget(self.matplotlibWidget_Umap)
 
         self.tab3.setLayout(mainlayout)
 
-    def updateTab(self, data):
+    def updateTab(self, data, projection = None):
 
         '''
         Function to updates the I, Q and U plots when the 
@@ -2299,20 +2288,28 @@ class MapPlotsGroup(QWidget):
             for i in range(len(idx_list)):
                 self.map2d(data[i], idx_list[i])
         else:
-            self.map2d(data)
+            self.map2d(data=data, projection=projection)
 
-    def map2d(self, data=None, idx='I'):
+    def map2d(self, data=None, idx='I', projection=None):
 
         '''
         Function to generate the map plots (I,Q and U) 
         when the plot button is pushed
         '''
         
+        #register_projection(projection)
         if idx == 'I':
+            self.axis_Imap = (self.matplotlibWidget_Imap.figure.add_subplot(111, \
+                              projection=projection))
             axis = self.axis_Imap
         elif idx == 'Q':
+            self.axis_Qmap = (self.matplotlibWidget_Qmap.figure.add_subplot(111, \
+                              projection=projection))
             axis = self.axis_Qmap
         elif idx == 'U':
+            self.axis_Umap = (self.matplotlibWidget_Umap.figure.add_subplot(111, \
+                              projection=projection))
+
             axis = self.axis_Umap
 
         img = axis.images
@@ -2321,8 +2318,10 @@ class MapPlotsGroup(QWidget):
             cb.remove()
 
         axis.set_axis_on()
-        axis.clear()
+        #axis.clear()
         axis.set_title('Maps')
+
+        #print(axis.gca())
         
         #max_index = np.where(np.abs(self.map_value) == np.amax((np.abs(self.map_value))))
 
@@ -2339,6 +2338,7 @@ class MapPlotsGroup(QWidget):
 
         im = axis.imshow(data_masked, origin='lower', cmap=plt.cm.viridis)     
         plt.colorbar(im, ax=axis)
+        print('TEST')
 
         # if self.ctype == 'RA and DEC':
         #     self.axis_map.set_xlabel('RA (deg)')
@@ -2351,6 +2351,7 @@ class MapPlotsGroup(QWidget):
         #     self.axis_map.set_ylabel('Elevation (deg)')
 
         self.matplotlibWidget_Imap.canvas.draw()
+
 
 class MatplotlibWidget(QWidget):
 
