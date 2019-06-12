@@ -7,6 +7,7 @@ from astropy import wcs, coordinates
 from astropy import wcs
 >>>>>>> 8989c24... Correct calculation of coordinates
 from astropy.convolution import Gaussian2DKernel, convolve
+import matplotlib.pyplot as plt
 
 class maps():
 
@@ -232,6 +233,12 @@ class wcs_world():
 =======
 >>>>>>> 8989c24... Correct calculation of coordinates
         world = w.wcs_world2pix(coord, 1)
+        #f = open('/Users/ian/git/gabsmap/mapmaker/coordarr.txt','w')
+        #for i in range(len(coord)):
+        #    print(coord[i][0],'\t',coord[i][1],file = f)
+        #f.close()
+        #print('printing coords')
+        #print(coord)
 
         return world, w
 
@@ -347,7 +354,13 @@ class mapmaking(object):
 
         cos = np.cos(2.*angle)
         sin = np.sin(2.*angle)
-
+        print('print xmap')
+        print(x_map)
+        print('printing ymap')
+        print(y_map)
+        print('printing param')
+        print(param)
+        print(np.min(param))
         I_est_flat = np.bincount(param, weights=flux)*sigma
 <<<<<<< HEAD
 <<<<<<< HEAD
