@@ -761,7 +761,7 @@ class ParamMapTab(QWidget):
                 self.coord1_data = pickle.load(open(coord1_path_pickle, 'rb'))
                 self.coord2_data = pickle.load(open(coord2_path_pickle, 'rb'))
 
-            except FileNotFoundError:               
+            except FileNotFoundError:          
                 dataload = ld.data_value(self.detpath.text(), self.detname.text(), self.coordpath.text(), \
                                          self.coord1, self.coord2, self.dettype.text(), \
                                          self.coord1type.text(), self.coord2type.text(), \
@@ -775,6 +775,10 @@ class ParamMapTab(QWidget):
 
                 del dataload
                 gc.collect()
+
+            print('Length')
+            print(np.size(self.det_data))
+            print(np.size(self.coord1_data))
             
             if self.experiment.currentText().lower() == 'blast-tng':
                 zoomsyncdata = ld.frame_zoom_sync(self.det_data, self.detfreq.text(), \
@@ -783,20 +787,25 @@ class ParamMapTab(QWidget):
                                                   self.acsframe.text(), self.startframe.text(), \
                                                   self.endframe.text(), self.experiment.currentText(), \
                                                   roach_number = self.roachnumber.text(), \
-                                                  roach_pps_path = self.coord_path.text())
+                                                  roach_pps_path = self.coordpath.text())
             elif self.experiment.currentText().lower() == 'blastpol':
                 zoomsyncdata = ld.frame_zoom_sync(self.det_data, self.detfreq.text(), \
                                                   self.detframe.text(), self.coord1_data, \
                                                   self.coord2_data, self.acsfreq.text(), 
                                                   self.acsframe.text(), self.startframe.text(), \
                                                   self.endframe.text(), self.experiment.currentText())
-
+            print(self.coord1_data)
             (self.timemap, self.detslice, self.coord1slice, \
              self.coord2slice) = zoomsyncdata.sync_data()
-
+            print('coord1slive before conv')
+            print(self.coord1slice)
             if self.DirConvCheckBox.isChecked:
                 self.dirfile_conversion()
+                print('post conv')
+                print(self.coord1slice)
 
+
+            print(self.detslice)
             ### CONVERSION TO RADIANS FOR ALL THE ANGLES ###
 
             self.coord2slice = np.radians(self.coord2slice)
