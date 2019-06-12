@@ -1,5 +1,7 @@
 {
-    "python.pythonPath": "/anaconda3/bin/python",
-    "python.linting.pylintEnabled": true,
-    "python.linting.enabled": true
+    "python.pythonPath": "/home/gabriele/anaconda3/bin/python",
+    "python.linting.pylintEnabled": false,
+    "python.linting.enabled": true,
+    "python.linting.flake8Enabled": true,
+    "python.linting.flake8Args": ["--ignore=E2,E3,E5,W2,W3,F403,F405"]
 }
