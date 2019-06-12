@@ -11,7 +11,6 @@ class data_value():
     def __init__(self, det_path, det_name, coord_path, coord1_name, \
                  coord2_name, det_file_type, coord1_file_type, coord2_file_type, \
                  experiment):
-
         self.det_path = det_path                    #Path of the detector dirfile
         self.det_name = det_name                    #Detector name to be analyzed
         self.coord_path = coord_path                #Path of the coordinates dirfile
@@ -83,8 +82,10 @@ class data_value():
         '''
         Function to return the timestreams for detector and coordinates
         '''
-
-        det_data = self.load(self.det_path, self.det_name, self.det_file_type)
+        if self.experiment.lower() == 'blast-tng':
+            det_data = np.loadtxt(self.det_path+self.det_name)
+        else:
+            det_data = self.load(self.det_path, self.det_name, self.det_file_type)
         coord2_data = self.load(self.coord_path, self.coord2_name.lower(), self.coord2_file_type)
 
         if self.coord1_name.lower() == 'ra':
@@ -150,6 +151,8 @@ class frame_zoom_sync():
         frames[0] = fps[0]*sample_frame
         frames[1] = fps[1]*sample_frame+1
 
+        print('FRAMES', frames)
+
         if len(np.shape(data)) == 1:
             time = (np.arange(np.diff(frames))+frames[0])/np.floor(fs)
             return time, data[frames[0]:frames[1]]
@@ -168,7 +171,8 @@ class frame_zoom_sync():
         string = 'pps_count_roach'+str(int(self.roach_number))
         
         data = d.getdata(string, gd.UINT32, num_frames = d.nframes-1)
-
+        print('PPS_data', data)
+        print(np.size(data))
         tmin = np.amin(data)
         tmax = np.amax(data)
 
@@ -233,8 +237,11 @@ class frame_zoom_sync():
             
             sframe = self.startframe*self.det_sample_frame
             eframe = self.endframe*self.det_sample_frame+1
-            
-            dettime = self.det_time()[sframe:eframe]
+            all_time = self.det_time().copy()
+            print('All time', all_time)
+            print('DET FRAMES', sframe, eframe)
+            print('Time',all_time-all_time[0])
+            dettime = all_time[sframe:eframe]
             self.det_data = self.det_data[sframe:eframe]
 
         elif self.experiment.lower() == 'blastpol':
@@ -247,9 +254,18 @@ class frame_zoom_sync():
         coord2time, coord2 = self.frame_zoom(self.coord2_data, self.coord_sample_frame, \
                                              self.coord_fs, np.array([self.startframe,self.endframe]))
 
+<<<<<<< HEAD
         if self.offset is not None:
             dettime = dettime - self.offset/1000.
 
+=======
+        print('COORD Time',coord1time-coord1time[0])
+        print('DETTIME', dettime-dettime[0])
+        print('length dettime', len(dettime))
+        print('len coordtime', len(coord1time))
+        dettime = dettime-dettime[0]
+        coord1time = coord1time-coord1time[0]
+>>>>>>> f4651cad56d4eff466e1e69302eb84707b50d109
         index1, = np.where(np.abs(dettime-coord1time[0]) == np.amin(np.abs(dettime-coord1time[0])))
         index2, = np.where(np.abs(dettime-coord1time[-1]) == np.amin(np.abs(dettime-coord1time[-1])))
 
@@ -260,7 +276,8 @@ class frame_zoom_sync():
         del coord2time
         del coord1
         del coord2
-
         return (dettime[index1[0]+10:index2[0]-10], self.det_data[index1[0]+10:index2[0]-10], \
                 coord1_inter, coord2_inter)
+        
+
 

@@ -2,6 +2,7 @@ import numpy as np
 import copy
 from astropy import wcs
 from astropy.convolution import Gaussian2DKernel, convolve
+import matplotlib.pyplot as plt
 
 class maps():
 
@@ -108,6 +109,12 @@ class wcs_world():
         elif self.ctype == 'CROSS-EL and EL':
             w.wcs.ctype = ["TLON-CAR", "TLAT-CAR"]
         world = w.wcs_world2pix(coord, 1)
+        #f = open('/Users/ian/git/gabsmap/mapmaker/coordarr.txt','w')
+        #for i in range(len(coord)):
+        #    print(coord[i][0],'\t',coord[i][1],file = f)
+        #f.close()
+        #print('printing coords')
+        #print(coord)
 
         return world, w
 
@@ -168,7 +175,13 @@ class mapmaking(object):
 
         cos = np.cos(2.*angle)
         sin = np.sin(2.*angle)
-
+        print('print xmap')
+        print(x_map)
+        print('printing ymap')
+        print(y_map)
+        print('printing param')
+        print(param)
+        print(np.min(param))
         I_est_flat = np.bincount(param, weights=flux)*sigma
         Q_est_flat = np.bincount(param, weights=flux*cos)*sigma
         U_est_flat = np.bincount(param, weights=flux*sin)*sigma
