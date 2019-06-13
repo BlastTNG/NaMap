@@ -175,13 +175,7 @@ class mapmaking(object):
 
         cos = np.cos(2.*angle)
         sin = np.sin(2.*angle)
-        print('print xmap')
-        print(x_map)
-        print('printing ymap')
-        print(y_map)
-        print('printing param')
-        print(param)
-        print(np.min(param))
+
         I_est_flat = np.bincount(param, weights=flux)*sigma
         Q_est_flat = np.bincount(param, weights=flux*cos)*sigma
         U_est_flat = np.bincount(param, weights=flux*sin)*sigma

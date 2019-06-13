@@ -140,7 +140,7 @@ class frame_zoom_sync():
         self.roach_pps_path = roach_pps_path                    #Pulse per second of the roach used to sync the data
         self.offset = offset
 
-    def frame_zoom(self, data, sample_frame, fs, fps):
+    def frame_zoom(self, data, sample_frame, fs, fps, offset = None):
 
         '''
         Selecting the frames of interest and associate a timestamp for each value
@@ -153,7 +153,11 @@ class frame_zoom_sync():
 
         if len(np.shape(data)) == 1:
             time = (np.arange(np.diff(frames))+frames[0])/np.floor(fs)
-            return time, data[frames[0]:frames[1]]
+            if offset is not None:
+                delay = offset*np.floor(fs)/1000.
+                frames = frames.astype(float)+delay
+
+            return time, data[int(frames[0]):int(frames[1])]
         else:
             time = np.arange(len(data[0, :]))/np.floor(fs)
             time = time[frames[0]:frames[1]]
@@ -240,7 +244,8 @@ class frame_zoom_sync():
 
         elif self.experiment.lower() == 'blastpol':
             dettime, self.det_data = self.frame_zoom(self.det_data, self.det_sample_frame, \
-                                                     self.det_fs, np.array([self.startframe,self.endframe]))
+                                                     self.det_fs, np.array([self.startframe,self.endframe]), \
+                                                     self.offset)
 
         coord1time, coord1 = self.frame_zoom(self.coord1_data, self.coord_sample_frame, \
                                              self.coord_fs, np.array([self.startframe,self.endframe]))
@@ -248,13 +253,16 @@ class frame_zoom_sync():
         coord2time, coord2 = self.frame_zoom(self.coord2_data, self.coord_sample_frame, \
                                              self.coord_fs, np.array([self.startframe,self.endframe]))
 
-        if self.offset is not None:
-            dettime = dettime - self.offset/1000.
+        # if self.offset is not None:
+        #     print('OFFSET')
+        #     dettime = dettime - self.offset/1000.
+        #     print(np.diff(dettime))
 
         dettime = dettime-dettime[0]
         coord1time = coord1time-coord1time[0]
         index1, = np.where(np.abs(dettime-coord1time[0]) == np.amin(np.abs(dettime-coord1time[0])))
         index2, = np.where(np.abs(dettime-coord1time[-1]) == np.amin(np.abs(dettime-coord1time[-1])))
+        print(index1, index2)
 
         coord1_inter, coord2_inter = self.coord_int(coord1, coord2, \
                                                     coord1time, dettime[index1[0]+10:index2[0]-10])
