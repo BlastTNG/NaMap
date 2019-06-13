@@ -216,6 +216,13 @@ class AppWindow(QMainWindow):
     @pyqtSlot()
     def tod_func_offset(self):
         dialog = TODoffsetWindow()
+        try:
+            if self.TabLayout.todoffsetvalue is not None:
+                dialog.todoffsetvalue.setText(str(self.TabLayout.todoffsetvalue))
+            else:
+                dialog.todoffsetvalue.setText('0.0')
+        except AttributeError:
+            pass
         dialog.todoffsetsignal.connect(self.connection_tod_off)
         dialog.exec_()
 
@@ -356,8 +363,6 @@ class TODoffsetWindow(QDialog):
 
         self.savebutton = QPushButton('Write Parameters')
 
-        self.savebutton.clicked.connect(self.updateParamValues)
-
         layout = QGridLayout(self)
 
         layout.addWidget(self.todoffset_label, 0, 0)
@@ -366,11 +371,14 @@ class TODoffsetWindow(QDialog):
 
         self.setLayout(layout)
 
+        self.savebutton.clicked.connect(self.updateParamValues)
+
     def updateParamValues(self):
 
-        value = float(self.todoffsetvalue.text())
+        self.value = float(self.todoffsetvalue.text())
 
-        self.todoffsetsignal.emit(value)
+        self.todoffsetsignal.emit(self.value)
+        self.close()
 
 class MainWindowTab(QTabWidget):
 
@@ -421,8 +429,7 @@ class MainWindowTab(QTabWidget):
             #Update Maps
             maps = self.tab1.map_value
             mp_ini = self.tab1.createMapPlotGroup
-            print('Projection', self.tab1.proj)
-            mp_ini.updateTab(data=maps, projection=self.tab1.proj)
+            mp_ini.updateTab(data=maps)
             #Update Offset
             self.tab1.updateOffsetValue()
 
@@ -459,7 +466,6 @@ class MainWindowTab(QTabWidget):
         maps = self.tab1.map_value #grabs the actual map for the fits img
         hdu = fits.PrimaryHDU(maps, header = hdr)
         hdu.writeto('./'+self.tab1.fitsname.text())
-
 
 class ParamMapTab(QWidget):
 
@@ -2299,14 +2305,17 @@ class MapPlotsGroup(QWidget):
         
         #register_projection(projection)
         if idx == 'I':
+            self.matplotlibWidget_Imap.figure.clear()
             self.axis_Imap = (self.matplotlibWidget_Imap.figure.add_subplot(111, \
                               projection=projection))
             axis = self.axis_Imap
         elif idx == 'Q':
+            self.matplotlibWidget_Qmap.figure.clear()
             self.axis_Qmap = (self.matplotlibWidget_Qmap.figure.add_subplot(111, \
                               projection=projection))
             axis = self.axis_Qmap
         elif idx == 'U':
+            self.matplotlibWidget_Umap.figure.clear()
             self.axis_Umap = (self.matplotlibWidget_Umap.figure.add_subplot(111, \
                               projection=projection))
 
