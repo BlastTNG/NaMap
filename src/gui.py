@@ -342,7 +342,6 @@ class BeamFitParamWindow(QDialog):
         
     #         event.accept()
 
-
 class TODoffsetWindow(QDialog):
 
     '''
@@ -2361,7 +2360,6 @@ class MapPlotsGroup(QWidget):
 
         self.matplotlibWidget_Imap.canvas.draw()
 
-
 class MatplotlibWidget(QWidget):
 
     '''
@@ -2388,6 +2386,7 @@ class MatplotlibWidget(QWidget):
 =======
 >>>>>>> fbc01b1... Gui updated with polarizarion maps tabs
 
+<<<<<<< HEAD
 # class MainWindow(QTabWidget):
     
 #     def __init__(self, parent = None):
@@ -2776,6 +2775,8 @@ class MatplotlibWidget(QWidget):
 #             pass
 #         self.axis_beam.set_title('Beam')
 #         self.matplotlibWidget_beam.canvas.draw()
+=======
+>>>>>>> cab17d8... update repo
 
 
 <<<<<<< HEAD
