@@ -274,5 +274,3 @@ class frame_zoom_sync():
         return (dettime[index1[0]+10:index2[0]-10], self.det_data[index1[0]+10:index2[0]-10], \
                 coord1_inter, coord2_inter)
         
-
-
