@@ -203,16 +203,36 @@ class AppWindow(QMainWindow):
         todfunc = QAction('Time offset between TOD and Pointing',  self)
         self.detmenu.addAction(todfunc)
         todfunc.triggered.connect(self.tod_func_offset)
-        
+
+        self.pointingmenu = menubar.addMenu('Pointing Functions')
+        lstlatfunc = QAction('LAT and LST paramters',  self)
+        self.pointingmenu.addAction(lstlatfunc)
+        lstlatfunc.triggered.connect(self.lstlat_func_offset)
+        refpoint = QAction('Reference Point', self)
+        self.pointingmenu.addAction(refpoint)
+        refpoint.triggered.connect(self.refpoint_func)
+
         self.TabLayout = MainWindowTab(self)
         self.setCentralWidget(self.TabLayout)
 
     @pyqtSlot()
-    def beam_fit_param_menu(self):
-        dialog = BeamFitParamWindow()
-        dialog.fitparamsignal.connect(self.connection_beam_param)
+    def lstlat_func_offset(self):
+        dialog = LST_LAT_Param()
+        #dialog.fitparamsignal.connect(self.connection_beam_param)
+        dialog.LSTtype_signal.connect(self.connection_LST_type)
+        dialog.LATtype_signal.connect(self.connection_LAT_type)
+        dialog.LSTconv_signal.connect(self.connection_LST_conv)
+        dialog.LATconv_signal.connect(self.connection_LAT_conv)
+        dialog.lstlatfreqsignal.connect(self.connection_LSTLAT_freq)
+        dialog.lstlatsamplesignal.connect(self.connection_LSTLAT_sample)
         dialog.exec_()
     
+    @pyqtSlot()
+    def refpoint_func(self):
+        dialog = REFPOINT_Param()
+        dialog.radecsignal.connect(self.connection_ref_point)
+        dialog.exec_()
+
     @pyqtSlot()
     def tod_func_offset(self):
         dialog = TODoffsetWindow()
@@ -226,6 +246,12 @@ class AppWindow(QMainWindow):
         dialog.todoffsetsignal.connect(self.connection_tod_off)
         dialog.exec_()
 
+    @pyqtSlot()
+    def beam_fit_param_menu(self):
+        dialog = BeamFitParamWindow()
+        dialog.fitparamsignal.connect(self.connection_beam_param)
+        dialog.exec_()
+
     @pyqtSlot(np.ndarray)
     def connection_beam_param(self, val):
         self.TabLayout.beamparam = val.copy()
@@ -233,6 +259,35 @@ class AppWindow(QMainWindow):
     @pyqtSlot(float)
     def connection_tod_off(self, val):
         self.TabLayout.todoffsetvalue = copy.copy(val)
+
+    @pyqtSlot(str)
+    def connection_LST_type(self, val):
+        self.TabLayout.LSTtype = copy.copy(val)
+    
+    @pyqtSlot(str)
+    def connection_LAT_type(self, val):
+        self.TabLayout.LATtype = copy.copy(val)
+
+    @pyqtSlot(np.ndarray)
+    def connection_LST_conv(self, val):
+        self.TabLayout.LSTconv = val.copy()
+
+    @pyqtSlot(np.ndarray)
+    def connection_LAT_conv(self, val):
+        self.TabLayout.LATconv = val.copy()
+
+    @pyqtSlot(float)
+    def connection_LSTLAT_freq(self, val):
+        self.TabLayout.lstlatfreq = copy.copy(val)
+
+    @pyqtSlot(float)
+    def connection_LSTLAT_sample(self, val):
+        self.TabLayout.lstlatsampleframe = copy.copy(val)
+
+    @pyqtSlot(np.ndarray)
+    def connection_ref_point(self, val):
+        self.TabLayout.refpoint = val.copy()    
+
 
     def closeEvent(self,event):
 
@@ -259,6 +314,124 @@ class AppWindow(QMainWindow):
 
             event.accept()
 
+class LST_LAT_Param(QDialog):
+
+    LSTtype_signal = pyqtSignal(str)
+    LATtype_signal = pyqtSignal(str)
+    LSTconv_signal = pyqtSignal(np.ndarray)
+    LATconv_signal = pyqtSignal(np.ndarray)
+    lstlatfreqsignal = pyqtSignal(float)
+    lstlatsamplesignal = pyqtSignal(float)
+
+    def __init__(self, parent = None):
+        super(QDialog, self).__init__(parent)
+        
+        self.setWindowTitle('LAT and LST Parameters')
+
+        self.LSTtype = QLineEdit('')
+        self.LSTlabel = QLabel('LST File Type')
+
+        self.LATtype = QLineEdit('')
+        self.LATlabel = QLabel('LAT File Type')
+
+        self.aLSTconv = QLineEdit('')
+        self.bLSTconv = QLineEdit('')
+        self.LSTconv = QLabel('LST DIRFILE conversion factors')
+        self.LSTconv.setBuddy(self.aLSTconv)
+
+        self.aLATconv = QLineEdit('')
+        self.bLATconv = QLineEdit('')
+        self.LATconv = QLabel('LAT DIRFILE conversion factors')
+        self.LATconv.setBuddy(self.aLATconv)
+
+        self.LSTLATfreq = QLineEdit('')
+        self.LSTLATfreqlabel = QLabel('LST/LAT frequency Sample')
+
+        self.LSTLATsample = QLineEdit('')
+        self.LSTLATsamplelabel = QLabel('LST/LAT Samples per frame')
+
+        self.savebutton = QPushButton('Write Parameters')
+        self.savebutton.clicked.connect(self.updateParamValues)
+
+        layout = QGridLayout(self)
+
+        layout.addWidget(self.LSTlabel, 0, 0)
+        layout.addWidget(self.LSTtype, 0, 1)
+        layout.addWidget(self.LATlabel, 1, 0)
+        layout.addWidget(self.LATtype, 1, 1)
+        layout.addWidget(self.LSTconv, 2, 0)
+        layout.addWidget(self.aLSTconv, 2, 1)
+        layout.addWidget(self.bLSTconv, 2, 2)
+        layout.addWidget(self.LATconv, 3, 0)
+        layout.addWidget(self.aLATconv, 3, 1)
+        layout.addWidget(self.bLATconv, 3, 2)
+        layout.addWidget(self.LSTLATfreqlabel, 4, 0)
+        layout.addWidget(self.LSTLATfreq, 4, 1)
+        layout.addWidget(self.LSTLATsamplelabel, 5, 0)
+        layout.addWidget(self.LSTLATsample, 5, 1)
+
+        layout.addWidget(self.savebutton)
+
+        self.setLayout(layout)
+
+    def updateParamValues(self):
+
+        self.LSTtype_signal.emit(self.LSTtype.text())
+        self.LATtype_signal.emit(self.LATtype.text())
+
+        LST_array = np.array([float(self.aLSTconv.text()), \
+                              float(self.bLSTconv.text())])
+
+        LAT_array = np.array([float(self.aLATconv.text()), \
+                              float(self.bLATconv.text())])
+
+        self.LSTconv_signal.emit(LST_array)
+        self.LATconv_signal.emit(LAT_array)
+        self.lstlatfreqsignal.emit(float(self.LSTLATfreq.text()))
+        self.lstlatsamplesignal.emit(float(self.LSTLATsample.text()))
+
+        self.close()
+
+class REFPOINT_Param(QDialog):
+
+    '''
+    Class to create a dialog input for the coordinates of the reference point.
+    The reference point is used to compute the pointing offset
+    '''
+
+    radecsignal = pyqtSignal(np.ndarray)
+
+    def __init__(self, parent=None):
+        super(QDialog, self).__init__(parent)
+
+        self.setWindowTitle('Reference Point for pointing offset')
+
+        self.ra = QLineEdit('')
+        self.ralabel = QLabel('RA in degree')
+        self.dec = QLineEdit('')
+        self.declabel = QLabel('DEC in degree')
+
+        self.savebutton = QPushButton('Write Parameters')
+        self.savebutton.clicked.connect(self.updateParamValues)
+
+        self.layout = QGridLayout()
+
+        self.layout.addWidget(self.ralabel, 0, 0)
+        self.layout.addWidget(self.ra, 0, 1)
+        self.layout.addWidget(self.declabel, 1, 0)
+        self.layout.addWidget(self.dec, 1, 1)
+        self.layout.addWidget(self.savebutton)
+
+        self.setLayout(self.layout)
+
+    def updateParamValues(self):
+
+        self.ra_value = float(self.ra.text())
+        self.dec_value = float(self.dec.text())
+
+        self.radecsignal.emit(np.array([self.ra_value,self.dec_value]))
+        self.close() 
+
 class BeamFitParamWindow(QDialog):
 
     '''
@@ -269,8 +442,7 @@ class BeamFitParamWindow(QDialog):
 
     def __init__(self, parent = None):
         super(QDialog, self).__init__(parent)
-        #w = QDialog(self)
-
+        
         self.setWindowTitle('Beam Fitting Parameters')
 
         self.peak_numbers = QLineEdit('')
@@ -401,11 +573,21 @@ class MainWindowTab(QTabWidget):
         self.beamparam = None
         self.todoffsetvalue = None
 
+        #LAT and LST parameters
+        self.LSTtype = None
+        self.LATtype = None
+        self.LSTconv = np.array([1., 0.])
+        self.LATconv = np.array([1., 0.])
+        self.lstlatfreq = None
+        self.lstlatsampleframe = None
+
+        self.refpoint = None
+
         self.tab3 = BeamTab(checkbox=checkI)
         self.addTab(self.tab3, "Beam")
 
         self.tab1.plotbutton.clicked.connect(self.updatedata)
-        self.tab1.fitsbutton.clicked.connect(self.save2fits)
+        self.tab1.fitsbutton.clicked.connect(self.printvalue)
 
     def updatedata(self):
         '''
@@ -466,6 +648,16 @@ class MainWindowTab(QTabWidget):
         hdu = fits.PrimaryHDU(maps, header = hdr)
         hdu.writeto('./'+self.tab1.fitsname.text())
 
+    def printvalue(self):
+        print('OFFset', self.todoffsetvalue)
+        print('REF Point', self.refpoint)
+        print(self.LSTtype)
+        print(self.LATtype)
+        print(self.LSTconv)
+        print(self.LATconv)
+        print(self.lstlatfreq)
+        print(self.lstlatsampleframe)
+
 class ParamMapTab(QWidget):
 
     '''
@@ -480,6 +672,7 @@ class ParamMapTab(QWidget):
         self.cleaned_data = np.array([])     #Detector TOD cleaned (despiked and highpassed) between the frame of interest
         self.proj = None                     #WCS projection of the map
         self.map_value = np.array([])        #Final map values
+<<<<<<< HEAD
 <<<<<<< HEAD
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
 =======
@@ -501,6 +694,8 @@ class ParamMapTab(QWidget):
 =======
         #self.ICheckBox=None
 >>>>>>> 1531050... Added option to choose beam fitting parameters
+=======
+>>>>>>> 3f224e8... Added pointing input dialogs and caluclation
 
         self.createAstroGroup()
         self.createExperimentGroup()
@@ -999,6 +1194,7 @@ class ParamMapTab(QWidget):
         self.coord2conv.setVisible(True)
         self.acoord2conv.setVisible(True)
         self.bcoord2conv.setVisible(True)
+
         self.ExperimentGroup.setContentsMargins(5, 5, 5, 5)
 
         self.ExperimentGroup.setLayout(self.layout)
@@ -1358,7 +1554,8 @@ class ParamMapTab(QWidget):
             self.CROSSELoffset.setText(str(self.offset_angle[0]))
             self.ELxoffset.setText(str(self.offset_angle[1]))
 
-    def load_func(self, offset = None):
+    def load_func(self, offset = None, correction=False, LSTtype=None, LATtype=None,\
+                  LSTconv=None, LATconv=None, lstlatfreq=None):
 
 
         '''
@@ -1430,33 +1627,59 @@ class ParamMapTab(QWidget):
             det_path_pickle = 'pickles_object/'+self.detname.text()
             coord1_path_pickle = 'pickles_object/'+self.coord1
             coord2_path_pickle = 'pickles_object/'+self.coord2
+            lat_path_pickle = 'pickles_object/lat'
+            lst_path_pickle = 'pickles_object/lst'
 
             try:               
                 self.det_data = pickle.load(open(det_path_pickle, 'rb'))  
                 self.coord1_data = pickle.load(open(coord1_path_pickle, 'rb'))
                 self.coord2_data = pickle.load(open(coord2_path_pickle, 'rb'))
+                
+                self.lst_data = pickle.load(open(lst_path_pickle, 'rb'))
+                self.lat_data = pickle.load(open(lat_path_pickle, 'rb'))
 
+            except FileNotFoundError:
+
+                if correction is True and self.coord1.lower() == 'ra':
+                    lat_file_type = self.lat_file_type
+                    lst_file_type = self.lst_file_type
+                else: 
+                    lat_file_type = None
+                    lst_file_type = None
+
+
+<<<<<<< HEAD
             except FileNotFoundError:               
+=======
+>>>>>>> 3f224e8... Added pointing input dialogs and caluclation
                 dataload = ld.data_value(self.detpath.text(), self.detname.text(), self.coordpath.text(), \
                                          self.coord1, self.coord2, self.dettype.text(), \
                                          self.coord1type.text(), self.coord2type.text(), \
-                                         self.experiment.currentText())
+                                         self.experiment.currentText(), lst_file_type, lat_file_type)
 
-                self.det_data, self.coord1_data, self.coord2_data = dataload.values()
+                if correction is True and self.coord1.lower() == 'ra':
+                    self.det_data, self.coord1_data, self.coord2_data, self.lst, self.lat = dataload.values()
+                    pickle.dump(self.lst_data, open(lst_path_pickle, 'wb'))
+                    pickle.dump(self.lat_data, open(lat_path_pickle, 'wb'))
+                else:
+                    self.det_data, self.coord1_data, self.coord2_data = dataload.values()
 
                 pickle.dump(self.det_data, open(det_path_pickle, 'wb'))  
                 pickle.dump(self.coord1_data, open(coord1_path_pickle, 'wb'))
                 pickle.dump(self.coord2_data, open(coord2_path_pickle, 'wb'))
+                
 
                 del dataload
                 gc.collect()
-            
+ 
             if self.experiment.currentText().lower() == 'blast-tng':
                 zoomsyncdata = ld.frame_zoom_sync(self.det_data, self.detfreq.text(), \
                                                   self.detframe.text(), self.coord1_data, \
                                                   self.coord2_data, self.acsfreq.text(), 
                                                   self.acsframe.text(), self.startframe.text(), \
                                                   self.endframe.text(), self.experiment.currentText(), \
+                                                  self.lst_data, self.lat_data, lstlatfreq, \
+                                                  offset=offset, \
                                                   roach_number = self.roachnumber.text(), \
                                                   roach_pps_path = self.coord_path.text())
             elif self.experiment.currentText().lower() == 'blastpol':
@@ -1464,13 +1687,31 @@ class ParamMapTab(QWidget):
                                                   self.detframe.text(), self.coord1_data, \
                                                   self.coord2_data, self.acsfreq.text(), 
                                                   self.acsframe.text(), self.startframe.text(), \
+<<<<<<< HEAD
                                                   self.endframe.text(), self.experiment.currentText(), offset)
 
             (self.timemap, self.detslice, self.coord1slice, \
              self.coord2slice) = zoomsyncdata.sync_data()
+=======
+                                                  self.endframe.text(), self.experiment.currentText(), \
+                                                  self.lst_data, self.lat_data, lstlatfreq, \
+                                                  offset)
+
+            if correction is True and self.coord1.lower() == 'ra':
+                (self.timemap, self.detslice, self.coord1slice, \
+                 self.coord2slice, self.lstslice, self.latslice) = zoomsyncdata.sync_data()
+            else:
+                (self.timemap, self.detslice, self.coord1slice, \
+                 self.coord2slice) = zoomsyncdata.sync_data()
+>>>>>>> 3f224e8... Added pointing input dialogs and caluclation
 
             if self.DirConvCheckBox.isChecked:
-                self.dirfile_conversion()
+                self.dirfile_conversion(correction = correction, LSTconv = LSTconv, \
+                                        LATconv = LATconv)
+
+
+
+            
 
             ### CONVERSION TO RADIANS FOR ALL THE ANGLES ###
 
@@ -1485,7 +1726,7 @@ class ParamMapTab(QWidget):
             
             del self.det_data
             del self.coord1_data
-            del self.coord2_data
+            del self.coord2_data 
             del zoomsyncdata
             gc.collect()
 
@@ -1500,7 +1741,7 @@ class ParamMapTab(QWidget):
         det_tod = tod.data_cleaned(self.detslice, self.detfreq.text(), self.highpassfreq.text())
         self.cleaned_data = det_tod.data_clean()
 
-    def dirfile_conversion(self):
+    def dirfile_conversion(self, correction=False, LSTconv=None, LATconv=None):
 
         '''
         Function to convert the DIRFILE data.
@@ -1521,6 +1762,20 @@ class ParamMapTab(QWidget):
         self.coord1slice = coord1_conv.data
         self.coord2slice = coord2_conv.data
 
+        if correction is True and self.coord1.lower() == 'ra':
+            lst_conv = ld.convert_dirfile(self.lstslice, float(LSTconv[0]), \
+                                          float(LSTconv[1]))
+            lat_conv = ld.convert_dirfile(self.latslice, float(LATconv[0]), \
+                                          float(LATconv[1]))
+
+            lst_conv.conversion()
+            lat_conv.conversion()
+
+            self.lstslice = lst_conv.data
+            self.latslice = lat_conv.data
+
+        
+    
     def mapvalues(self, data):
 
         '''

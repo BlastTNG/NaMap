@@ -8,7 +8,7 @@ class data_value():
 =======
     
     '''
-    Class for reading the values from a DIRFILE
+    Class for reading the values of the TODs (detectors and coordinates) from a DIRFILE
     '''
 <<<<<<< HEAD
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
@@ -21,6 +21,7 @@ class data_value():
 >>>>>>> 651e1e6... Commented files
     def __init__(self, det_path, det_name, coord_path, coord1_name, \
                  coord2_name, det_file_type, coord1_file_type, coord2_file_type, \
+<<<<<<< HEAD
                  experiment):
 <<<<<<< HEAD
 
@@ -54,6 +55,9 @@ class data_value():
 =======
 =======
 >>>>>>> 8b07277... IQ -> power libraries
+=======
+                 experiment, lst_file_type, lat_file_type):
+>>>>>>> 3f224e8... Added pointing input dialogs and caluclation
         self.det_path = det_path                    #Path of the detector dirfile
         self.det_name = det_name                    #Detector name to be analyzed
         self.coord_path = coord_path                #Path of the coordinates dirfile
@@ -63,6 +67,9 @@ class data_value():
         self.coord1_file_type = coord1_file_type    #Coordinate 1 DIRFILE datatype
         self.coord2_file_type = coord2_file_type    #Coordinate 2 DIRFILE datatype
         self.experiment = experiment                #Experiment to be analyzed
+
+        self.lst_file_type = lst_file_type
+        self.lat_file_type = lat_file_type
 
     def conversion_type(self, file_type):
 
@@ -187,13 +194,26 @@ class data_value():
             coord1_data = self.load(self.coord_path, self.coord1_name.lower(), self.coord1_file_type)
         else:
             coord1_data = self.load(self.coord_path, 'az', self.coord1_file_type)
+        
+        if self.lat_file_type is not None and self.lat_file_type is not None:
             
+<<<<<<< HEAD
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
 =======
             coord1_data = self.load(self.coord_path, 'az', self.coord1_file_type)
             
 >>>>>>> 8989c24... Correct calculation of coordinates
         return det_data, coord1_data, coord2_data
+=======
+            lat = self.load(self.coord_path, 'lat', self.lat_file_type)
+            lst = self.load(self.coord_path, 'lst', self.lst_file_type)
+
+            return det_data, coord1_data, coord2_data, lat, lst
+        
+        else:
+            return det_data, coord1_data, coord2_data
+
+>>>>>>> 3f224e8... Added pointing input dialogs and caluclation
 
 class convert_dirfile():
 
@@ -225,7 +245,9 @@ class frame_zoom_sync():
 
     def __init__(self, det_data, det_fs, det_sample_frame,\
                  coord1_data, coord2_data, coord_fs, coord_sample_frame, \
-                 startframe, endframe, experiment, offset =None, roach_number=None, roach_pps_path=None):
+                 startframe, endframe, experiment, \
+                 lst_data, lat_data, lstlatfreq, lstlat_sample_frame, \
+                 offset =None, roach_number=None, roach_pps_path=None):
 
         self.det_data = det_data                                #Detector data timestream
         self.det_fs = float(det_fs)                             #Detector frequency sampling
@@ -237,6 +259,10 @@ class frame_zoom_sync():
         self.startframe = int(float(startframe))                #Start frame
         self.endframe = int(float(endframe))                    #End frame
         self.experiment = experiment                            #Experiment to be analyzed, right now BLASTPol or BLAST-TNG
+        self.lst_data = lst_data                                #LST timestream (if correction is required and coordinates are RA-DEC)
+        self.lat_data = lat_data                                #LAT timestream (if correction is required and coordinates are RA-DEC)
+        self.lstlatfreq = lstlatfreq                            #LST-LAT sampling frequency (if correction is required and coordinates are RA-DEC)
+        self.lstlat_sample_frame = lstlat_sample_frame          #LST-LAT samples per frame (if correction is required and coordinates are RA-DEC)
         if roach_number is not None:
             self.roach_number = int(float(roach_number))        #If BLAST-TNG is the experiment, this gives the number of the roach used to read the detector
         else:
@@ -538,10 +564,10 @@ class frame_zoom_sync():
 >>>>>>> b96fc79... Added wcs projection to maps
         index1, = np.where(np.abs(dettime-coord1time[0]) == np.amin(np.abs(dettime-coord1time[0])))
         index2, = np.where(np.abs(dettime-coord1time[-1]) == np.amin(np.abs(dettime-coord1time[-1])))
-        print(index1, index2)
 
         coord1_inter, coord2_inter = self.coord_int(coord1, coord2, \
                                                     coord1time, dettime[index1[0]+10:index2[0]-10])
+<<<<<<< HEAD
         
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -553,10 +579,14 @@ class frame_zoom_sync():
 =======
 =======
 >>>>>>> 6acdf4e... Solved a memory leak when trying to replot with different parameters
+=======
+
+>>>>>>> 3f224e8... Added pointing input dialogs and caluclation
         del coord1time
         del coord2time
         del coord1
         del coord2
+<<<<<<< HEAD
 <<<<<<< HEAD
 
 <<<<<<< HEAD
@@ -565,6 +595,32 @@ class frame_zoom_sync():
                 coord1_inter, coord2_inter)
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
 =======
+=======
+
+        if self.lat_data is not None and self.lat_data is not None:
+            lsttime, lst = self.frame_zoom(self.lst_data, self.lstlat_sample_frame, \
+                                           self.lstlatfreq, np.array([self.startframe,self.endframe]))
+
+            lattime, lat = self.frame_zoom(self.lat_data, self.lstlat_sample_frame, \
+                                           self.lstlatfreq, np.array([self.startframe,self.endframe]))
+
+            lsttime = lsttime-lsttime[0]
+            index1, = np.where(np.abs(dettime-lsttime[0]) == np.amin(np.abs(dettime-lsttime[0])))
+            index2, = np.where(np.abs(dettime-lsttime[-1]) == np.amin(np.abs(dettime-lsttime[-1])))
+
+            lst_inter, lat_inter = self.coord_int(lst, lat, \
+                                                  lsttime, dettime[index1[0]+10:index2[0]-10])
+
+            del lst
+            del lat
+
+            return (dettime[index1[0]+10:index2[0]-10], self.det_data[index1[0]+10:index2[0]-10], \
+                    coord1_inter, coord2_inter, lst_inter, lat_inter)
+        
+        else:
+            return (dettime[index1[0]+10:index2[0]-10], self.det_data[index1[0]+10:index2[0]-10], \
+                    coord1_inter, coord2_inter)
+>>>>>>> 3f224e8... Added pointing input dialogs and caluclation
         
 =======
 >>>>>>> 6acdf4e... Solved a memory leak when trying to replot with different parameters
