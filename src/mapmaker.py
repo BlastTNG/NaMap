@@ -7,7 +7,6 @@ from astropy import wcs, coordinates
 from astropy import wcs
 >>>>>>> 8989c24... Correct calculation of coordinates
 from astropy.convolution import Gaussian2DKernel, convolve
-import matplotlib.pyplot as plt
 
 class maps():
 
