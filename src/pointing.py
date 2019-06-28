@@ -165,16 +165,20 @@ class compute_offset(object):
         x_c, y_c = self.centroid()
         x_map, y_map = wcs.utils.pixel_to_skycoord(np.array([x_c, y_c]), self.wcs_trans)
 
-        if self.ctype.lower() == 'ra and dec':
-            centroid_conv = conversion(x_map, y_map, np.average(self.lst), np.average(self.lst))
+        if self.cytpe.lower() == 'xel and el':
+            if self.ctype.lower() == 'ra and dec':
+                centroid_conv = conversion(x_map, y_map, np.average(self.lst), np.average(self.lst))
 
-            az_centr, el_centr = centroid_conv.radec2azel()
+                az_centr, el_centr = centroid_conv.radec2azel()
 
+            else:
+                az_centr = x_map
+                el_centr = y_map
+
+            xel_centr = az_centr/np.cos(np.radians(el_centr))
         else:
-            az_centr = x_map
+            xel_centr = x_map
             el_centr = y_map
-
-        xel_centr = az_centr/np.cos(np.radians(el_centr))
 
         ref_conv = conversion(self.coord1_ref, self.coord2_ref, np.average(self.lst), \
                               np.average(self.lst))
@@ -184,6 +188,9 @@ class compute_offset(object):
         xel_ref = az_ref/np.cos(np.radians(el_ref))
 
         return xel_centr-xel_ref, el_centr-el_ref
+
+
+
 
         
 

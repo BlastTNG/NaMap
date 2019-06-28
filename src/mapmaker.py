@@ -2,7 +2,6 @@ import numpy as np
 import copy
 from astropy import wcs
 from astropy.convolution import Gaussian2DKernel, convolve
-import matplotlib.pyplot as plt
 
 class maps():
 

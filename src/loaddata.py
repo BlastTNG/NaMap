@@ -1,6 +1,7 @@
 import pygetdata as gd
 import numpy as np
 from scipy.interpolate import interp1d
+import os
 
 class data_value():
     
@@ -105,7 +106,6 @@ class data_value():
         
         else:
             return det_data, coord1_data, coord2_data
-
 
 class convert_dirfile():
 
@@ -312,4 +312,34 @@ class frame_zoom_sync():
         else:
             return (dettime[index1[0]+10:index2[0]-10], self.det_data[index1[0]+10:index2[0]-10], \
                     coord1_inter, coord2_inter)
-        
+
+class xsc_offset():
+    
+    '''
+    class to read star camera offset files
+    '''
+
+    def __init__(self, xsc, frame1, frame2):
+
+        self.xsc = xsc #Star Camera number
+        self.frame1 = frame1 #Starting frame
+        self.frame2 = frame2 #Ending frame
+
+    def read_file(self):
+
+        '''
+        Function to read a star camera offset file and return the coordinates 
+        offset
+        '''
+
+        path = os.getcwd()+'/xsc_'+str(int(self.xsc))+'.txt'
+
+        xsc_file = np.loadtxt(path, skiprows = 1)
+
+        index, = np.where((xsc_file[0]>=self.frame1) & (xsc_file[1]<self.frame2))
+
+        if np.size(index) > 1:
+            index = index[0]
+
+        return xsc_file[2], xsc_file[3]
+
