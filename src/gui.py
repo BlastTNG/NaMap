@@ -39,6 +39,7 @@ import configparser
 =======
 >>>>>>> 11cb7f9... removed test button
 from astropy.io import fits
+from functools import partial
 
 import numpy as np
 import os
@@ -185,13 +186,17 @@ class AppWindow(QMainWindow):
     Class to create the app
     '''
 
-    emitting = pyqtSignal(np.ndarray)
-
     def __init__(self):
         super().__init__()
         self.title = 'NaMap'
 
         self.setWindowTitle(self.title)
+
+        self.TabLayout = MainWindowTab(self)
+        self.setCentralWidget(self.TabLayout)
+
+        self.current_name()
+        self.TabLayout.tab1.experiment.activated[str].connect(self.current_name)
 
         menubar = self.menuBar()
 
@@ -213,13 +218,13 @@ class AppWindow(QMainWindow):
         self.pointingmenu.addAction(refpoint)
         refpoint.triggered.connect(self.refpoint_func)
 
-        self.TabLayout = MainWindowTab(self)
-        self.setCentralWidget(self.TabLayout)
+    def current_name(self):
+
+        self.experiment_name = self.TabLayout.experiment_name
 
     @pyqtSlot()
     def lstlat_func_offset(self):
-        dialog = LST_LAT_Param()
-        #dialog.fitparamsignal.connect(self.connection_beam_param)
+        dialog = LST_LAT_Param(experiment = self.experiment_name)
         dialog.LSTtype_signal.connect(self.connection_LST_type)
         dialog.LATtype_signal.connect(self.connection_LAT_type)
         dialog.LSTconv_signal.connect(self.connection_LST_conv)
@@ -324,7 +329,7 @@ class LST_LAT_Param(QDialog):
     lstlatfreqsignal = pyqtSignal(float)
     lstlatsamplesignal = pyqtSignal(float)
 
-    def __init__(self, parent = None):
+    def __init__(self, experiment, parent = None):
         super(QDialog, self).__init__(parent)
         
         self.setWindowTitle('LAT and LST Parameters')
@@ -373,7 +378,40 @@ class LST_LAT_Param(QDialog):
 
         layout.addWidget(self.savebutton)
 
+        self.configuration_value(experiment=experiment)
+
         self.setLayout(layout)
+
+    def configuration_value(self, experiment):
+    
+        dir_path = os.getcwd()+'/config/'
+        
+        filepath = dir_path+experiment.lower()+'.cfg'
+        model = configparser.ConfigParser()
+
+        model.read(filepath)
+        sections = model.sections()
+
+        for section in sections:
+            if section.lower() == 'lst_lat parameters':
+                lstlatfreq_config = float(model.get(section, 'LSTLATFREQ').split('#')[0])
+                lst_dir_conv = model.get(section,'LST_DIR_CONV').split('#')[0].strip()
+                lstconv_config = np.array(lst_dir_conv.split(',')).astype(float)
+                lat_dir_conv = model.get(section,'LAT_DIR_CONV').split('#')[0].strip()
+                latconv_config = np.array(lat_dir_conv.split(',')).astype(float)
+                lstlatframe_config = float(model.get(section, 'LSTLAT_SAMP_FRAME').split('#')[0])
+                lsttype_config = model.get(section,'LST_FILE_TYPE').split('#')[0].strip()
+                lattype_config = model.get(section,'LAT_FILE_TYPE').split('#')[0].strip()
+
+        self.LSTLATfreq.setText(str(lstlatfreq_config))
+        self.LSTLATsample.setText(str(lstlatframe_config))
+        self.LSTtype.setText(str(lsttype_config))
+        self.LATtype.setText(str(lattype_config))
+        self.aLSTconv.setText(str(lstconv_config[0]))
+        self.bLSTconv.setText(str(lstconv_config[1]))
+        self.aLATconv.setText(str(latconv_config[0]))
+        self.bLATconv.setText(str(latconv_config[1]))
+
 
     def updateParamValues(self):
 
@@ -567,6 +605,9 @@ class MainWindowTab(QTabWidget):
         self.addTab(self.tab2,"Detector TOD")
 
         checkI = self.tab1.ICheckBox
+
+        self.emit_name()
+        self.tab1.experiment.activated[str].connect(self.emit_name)
         
         self.data = np.array([])
         self.cleandata = np.array([])
@@ -590,11 +631,14 @@ class MainWindowTab(QTabWidget):
         self.tab1.plotbutton.clicked.connect(self.updatedata)
         self.tab1.fitsbutton.clicked.connect(self.printvalue)
 
+    def emit_name(self):
+
+        self.experiment_name = (self.tab1.experiment.currentText())
+
     def updatedata(self):
         '''
         This function updates the map values everytime that the plot button is pushed
         '''
-
 
         if self.tab1.PointingOffsetCheckBox.isChecked():
             correction = True
@@ -626,8 +670,10 @@ class MainWindowTab(QTabWidget):
             #Update Offset
 
             if self.tab1.PointingOffsetCalculationCheckBox.isChecked():
-                
-                self.tab1.updateOffsetValue(self.lst, self.lat)
+                if self.refpoint is not None:
+                    self.tab1.updateOffsetValue(self.refpoint[0], self.refpoint[1])
+                else:
+                    self.tab1.updateOffsetValue()
 
             checkBeam = self.tab1.BeamCheckBox
 
@@ -685,6 +731,8 @@ class ParamMapTab(QWidget):
         super(QWidget, self).__init__(parent)
 
         self.detslice = np.array([])         #Detector TOD between the frames of interest
+        self.latslice = np.array([])
+        self.lstslice = np.array([])
         self.cleaned_data = np.array([])     #Detector TOD cleaned (despiked and highpassed) between the frame of interest
         self.proj = None                     #WCS projection of the map
         self.map_value = np.array([])        #Final map values
@@ -837,7 +885,7 @@ class ParamMapTab(QWidget):
 
         self.DataRepository = QGroupBox("Data Repository")
         
-        self.detpath = QLineEdit('/Users/ian/AnacondaProjects/BLASTpolData/bolo_data/')
+        self.detpath = QLineEdit('/mnt/c/Users/gabri/Documents/GitHub/mapmaking/2012_data/bolo_data/')
         self.detpathlabel = QLabel("Detector Path:")
         self.detpathlabel.setBuddy(self.detpath)
 
@@ -857,6 +905,7 @@ class ParamMapTab(QWidget):
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
         self.coordpath = QLineEdit('')
 =======
         self.coordpath = QLineEdit('/Users/ian/AnacondaProjects/BLASTpolData/')
@@ -864,6 +913,9 @@ class ParamMapTab(QWidget):
 =======
         self.coordpath = QLineEdit('/Users/ian/AnacondaProjects/BLASTpolData/')
 >>>>>>> 6ecb5ac... Added FITS file generator and field
+=======
+        self.coordpath = QLineEdit('/mnt/c/Users/gabri/Documents/GitHub/mapmaking/2012_data/')
+>>>>>>> cbc2d94... Solved some bugs in computing offset
         self.coordpathlabel = QLabel("Coordinate Path:")
         self.coordpathlabel.setBuddy(self.coordpath)
 
@@ -960,8 +1012,8 @@ class ParamMapTab(QWidget):
         self.cdeltlabel = QLabel("Cdelt of the Map in deg:")
         self.cdeltlabel.setBuddy(self.cdelt1)
 
-        self.crval1 = QLineEdit('132.9')
-        self.crval2 = QLineEdit('-42.39')
+        self.crval1 = QLineEdit('132.20')
+        self.crval2 = QLineEdit('-42.54')
         self.crvallabel = QLabel("Cval of the Map in deg:")
         self.crvallabel.setBuddy(self.crval1)
 
@@ -1318,7 +1370,6 @@ class ParamMapTab(QWidget):
                     self.acsframe_config = float(model.get(section, 'ACS_SAMP_FRAME').split('#')[0])
                     self.coord1type_config = model.get(section,'COOR1_FILE_TYPE').split('#')[0].strip()
                     self.coord2type_config = model.get(section,'COOR2_FILE_TYPE').split('#')[0].strip()
-
             
 <<<<<<< HEAD
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
@@ -1556,6 +1607,8 @@ class ParamMapTab(QWidget):
             coord1_ref = coord1_ref
             coord2_ref = coord2_ref
 
+        print('REF',coord1_ref, coord2_ref)
+
         offset = pt.compute_offset(coord1_ref, coord2_ref, self.map_value, self.w[:,0], self.w[:,1],\
                                    self.proj, self.ctype, self.lstslice, self.latslice)
 
@@ -1572,7 +1625,11 @@ class ParamMapTab(QWidget):
 =======
         
         xel_offset, el_offset = offset.value()
+<<<<<<< HEAD
 >>>>>>> 63d0b03... Added pointing offset calculation
+=======
+        print('OFFSET', xel_offset, el_offset)
+>>>>>>> cbc2d94... Solved some bugs in computing offset
 
         self.CROSSELoffset.setText(str(xel_offset))
         self.ELxoffset.setText(str(el_offset))
@@ -1627,6 +1684,7 @@ class ParamMapTab(QWidget):
                 label = self.coord2.lower()+' coordinate'
                 label_final.append(label)
 
+        label_lst = []
         if correction:
             try:
                 os.stat(os.getcwd()+'/xsc_'+self.pointingoffsetnumber.text()+'.txt')
@@ -1635,6 +1693,7 @@ class ParamMapTab(QWidget):
                 label_final.append(label)
         
         if (correction and self.coord1.lower() == 'ra') or self.PointingOffsetCalculationCheckBox.isChecked():
+            print('TEST')
             try:
                 os.stat(self.coordpath.text()+'/'+'lst')
             except OSError:
@@ -1646,21 +1705,38 @@ class ParamMapTab(QWidget):
                 label = 'LAT'
                 label_final.append(label)
 
-        if np.size(label_final) != 0:
+            if LSTtype is None:
+                print('OK_TEST')
+                label_lst = 'Write LST and LAT Parameters from the menubar'
 
-            self.warningbox = QMessageBox()
-            self.warningbox.setIcon(QMessageBox.Warning)
-            self.warningbox.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-
-            self.warningbox.setWindowTitle('Warning')
-
-            msg = 'Incorrect Path(s): \n'
-            for i in range(len(label_final)): 
-                msg += (str(label_final[i])) +'\n'
+        if np.size(label_final)+np.size(label_lst) != 0:
             
-            self.warningbox.setText(msg)        
-        
-            self.warningbox.exec_()
+            if np.size(label_final) != 0:
+                self.warningbox = QMessageBox()
+                self.warningbox.setIcon(QMessageBox.Warning)
+                self.warningbox.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+
+                self.warningbox.setWindowTitle('Warning')
+
+                msg = 'Incorrect Path(s): \n'
+                for i in range(len(label_final)): 
+                    msg += (str(label_final[i])) +'\n'
+                
+                self.warningbox.setText(msg)        
+            
+                self.warningbox.exec_()
+            
+            if np.size(label_lst) !=0:
+                self.lstwarningbox = QMessageBox()
+                self.lstwarningbox.setIcon(QMessageBox.Warning)
+                self.lstwarningbox.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+
+                self.lstwarningbox.setWindowTitle('Warning')
+                
+                self.lstwarningbox.setText(label_lst)        
+            
+                self.lstwarningbox.exec_()
+
 
         else:
             
@@ -1680,12 +1756,16 @@ class ParamMapTab(QWidget):
                 if (correction and self.coord1.lower() == 'ra') or self.PointingOffsetCalculationCheckBox.isChecked():
                     self.lst_data = pickle.load(open(lst_path_pickle, 'rb'))
                     self.lat_data = pickle.load(open(lat_path_pickle, 'rb'))
+                else:
+                    self.lst_data = None
+                    self.lat_data = None
 
             except FileNotFoundError:
 
                 if (correction and self.coord1.lower() == 'ra') or self.PointingOffsetCalculationCheckBox.isChecked():
-                    lat_file_type = self.lat_file_type
-                    lst_file_type = self.lst_file_type
+                    lat_file_type = LSTtype
+                    lst_file_type = LATtype
+                    print('OK', lat_file_type)
                 else: 
                     lat_file_type = None
                     lst_file_type = None
@@ -1701,11 +1781,13 @@ class ParamMapTab(QWidget):
                                          self.experiment.currentText(), lst_file_type, lat_file_type)
 
                 if (correction and self.coord1.lower() == 'ra') or self.PointingOffsetCalculationCheckBox.isChecked():
-                    self.det_data, self.coord1_data, self.coord2_data, self.lst, self.lat = dataload.values()
+                    self.det_data, self.coord1_data, self.coord2_data, self.lst_data, self.lat_data = dataload.values()
                     pickle.dump(self.lst_data, open(lst_path_pickle, 'wb'))
                     pickle.dump(self.lat_data, open(lat_path_pickle, 'wb'))
                 else:
                     self.det_data, self.coord1_data, self.coord2_data = dataload.values()
+                    self.lst_data = None
+                    self.lat_data = None
 
                 pickle.dump(self.det_data, open(det_path_pickle, 'wb'))  
                 pickle.dump(self.coord1_data, open(coord1_path_pickle, 'wb'))
@@ -1746,13 +1828,20 @@ class ParamMapTab(QWidget):
             else:
                 (self.timemap, self.detslice, self.coord1slice, \
                  self.coord2slice) = zoomsyncdata.sync_data()
+<<<<<<< HEAD
 >>>>>>> 3f224e8... Added pointing input dialogs and caluclation
+=======
+                self.lstslice = None
+                self.latslice = None
+
+            print('BEFORE', self.coord2slice)
+>>>>>>> cbc2d94... Solved some bugs in computing offset
 
             if self.DirConvCheckBox.isChecked:
                 self.dirfile_conversion(correction = correction, LSTconv = LSTconv, \
                                         LATconv = LATconv)
             
-
+            print('AFTER', self.coord2slice)
             if self.coord1.lower() == 'ra':
                 self.coord1slice = self.coord1slice*15. #Conversion between hours to degree
             elif self.coord1.lower() == 'cross-el':
@@ -1762,7 +1851,7 @@ class ParamMapTab(QWidget):
 
             if correction is True:
 
-                xsc_file = ld.xsc_offset(self.pointingoffsetnumber, self.frame1, self.frame2)
+                xsc_file = ld.xsc_offset(self.pointingoffsetnumber.text(), self.startframe.text(), self.endframe.text())
 
                 xsc_offset = xsc_file.read_file()   
 
@@ -1770,6 +1859,8 @@ class ParamMapTab(QWidget):
                                        xsc_offset, lst = self.lstslice, lat = self.latslice)
 
                 self.coord1slice, self.coord2slice = corr.correction()
+
+           
             
             del self.det_data
             del self.coord1_data
@@ -1809,7 +1900,8 @@ class ParamMapTab(QWidget):
         self.coord1slice = coord1_conv.data
         self.coord2slice = coord2_conv.data
 
-        if correction is True and self.coord1.lower() == 'ra':
+        if (correction and self.coord1.lower() == 'ra') or self.PointingOffsetCalculationCheckBox.isChecked():
+            print('TEST_CORRECTION')
             lst_conv = ld.convert_dirfile(self.lstslice, float(LSTconv[0]), \
                                           float(LSTconv[1]))
             lat_conv = ld.convert_dirfile(self.latslice, float(LATconv[0]), \
@@ -1820,6 +1912,8 @@ class ParamMapTab(QWidget):
 
             self.lstslice = lst_conv.data
             self.latslice = lat_conv.data
+
+            
             
     def mapvalues(self, data):
 

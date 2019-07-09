@@ -1,2 +1,3 @@
 #The offset are computed always with respect to the previous frame intervals 
 Frame1  Frame2  xEL(deg)    EL(deg)
+000000  2000000  0.2087 -0.2307

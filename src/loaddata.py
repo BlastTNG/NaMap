@@ -209,7 +209,7 @@ class data_value():
             lat = self.load(self.coord_path, 'lat', self.lat_file_type)
             lst = self.load(self.coord_path, 'lst', self.lst_file_type)
 
-            return det_data, coord1_data, coord2_data, lat, lst
+            return det_data, coord1_data, coord2_data, lst, lat
         
         else:
             return det_data, coord1_data, coord2_data
@@ -602,6 +602,7 @@ class frame_zoom_sync():
 =======
 
         if self.lat_data is not None and self.lat_data is not None:
+            print('Test')
             lsttime, lst = self.frame_zoom(self.lst_data, self.lstlat_sample_frame, \
                                            self.lstlatfreq, np.array([self.startframe,self.endframe]))
 
@@ -670,10 +671,11 @@ class xsc_offset():
         '''
 
         path = os.getcwd()+'/xsc_'+str(int(self.xsc))+'.txt'
+        print(path)
 
-        xsc_file = np.loadtxt(path, skiprows = 1)
+        xsc_file = np.loadtxt(path, skiprows = 2)
 
-        index, = np.where((xsc_file[0]>=self.frame1) & (xsc_file[1]<self.frame2))
+        index, = np.where((xsc_file[0]>=float(self.frame1)) & (xsc_file[1]<float(self.frame2)))
 
         if np.size(index) > 1:
             index = index[0]

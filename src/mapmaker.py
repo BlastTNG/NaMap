@@ -7,6 +7,7 @@ from astropy import wcs, coordinates
 from astropy import wcs
 >>>>>>> 8989c24... Correct calculation of coordinates
 from astropy.convolution import Gaussian2DKernel, convolve
+import matplotlib.pyplot as plt
 
 class maps():
 
@@ -21,8 +22,8 @@ class maps():
         self.crpix = crpix             #see wcs_world for explanation of this parameter
         self.cdelt = cdelt             #see wcs_world for explanation of this parameter
         self.crval = crval             #see wcs_world for explanation of this parameter
-        self.coord1 = np.degrees(coord1)          #array of the first coordinate
-        self.coord2 = np.degrees(coord2)           #array of the second coordinate
+        self.coord1 = coord1          #array of the first coordinate
+        self.coord2 = coord2           #array of the second coordinate
         self.data = data               #cleaned TOD that is used to create a map
         self.w = 0.                    #initialization of the coordinates of the map in pixel coordinates
         self.proj = 0.                 #inizialization of the wcs of the map. see wcs_world for more explanation about projections
@@ -75,6 +76,8 @@ class maps():
 =======
 >>>>>>> 651e1e6... Commented files
         wcsworld = wcs_world(self.ctype, self.crpix, self.cdelt, self.crval)
+
+        print('COORD1', np.transpose(np.array([self.coord1, self.coord2])))
 
         self.w, self.proj = wcsworld.world(np.transpose(np.array([self.coord1, self.coord2])))
 

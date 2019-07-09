@@ -32,7 +32,7 @@ class conversion(object):
         Function to convert RA and DEC to AZ and EL
         '''
 
-        hour_angle = np.radians(self.ra2ha())
+        hour_angle = np.radians(self.ra2ha()*15.)
 
         el = np.arcsin(np.sin(self.coord2)*np.sin(self.lat)+\
                        np.cos(self.lat)*np.cos(self.coord2)*np.cos(hour_angle))
@@ -41,7 +41,12 @@ class conversion(object):
         y = np.cos(self.coord2)*np.sin(hour_angle)
 
         az = -np.arctan2(x, y)
-
+        if isinstance(az, np.ndarray):
+            index, = np.where(az<0)
+            az[index] += 2*np.pi
+        else:
+            if az <= 0:
+                az += 2*np.pi
         return np.degrees(az), np.degrees(el)
 
     def azel2radec(self):
@@ -58,12 +63,11 @@ class conversion(object):
 
         y = np.cos(self.coord2)*np.sin(np.radians(self.coord1))
 
-        hour_angle = np.arctan2(x, y)
+        hour_angle = np.degrees(np.arctan2(x, y))/15.
 
-        ra = self.ha2ra(hour_angle)
+        ra = self.ha2ra(hour_angle)*15.
 
-        return np.degrees(ra), np.degrees(dec)
-
+        return ra, np.degrees(dec)
 
 class apply_offset(object):
 
@@ -90,12 +94,12 @@ class apply_offset(object):
 
             az, el = conv2azel.radec2azel()
 
-            xEL = az/np.cos(el)
+            xEL = az*np.cos(np.radians(el))
 
             xEL_corrected = xEL+self.xsc_offset[0]+self.det_offset[0]
             EL_corrected = el+self.xsc_offset[1]+self.det_offset[1]
 
-            conv2radec = conversion(xEL_corrected*np.cos(EL_corrected), EL_corrected, \
+            conv2radec = conversion(xEL_corrected/np.cos(np.radians(EL_corrected)), EL_corrected, \
                                     self.lst, self.lat)
 
             ra_corrected, dec_corrected = conv2radec.azel2radec()
@@ -107,8 +111,8 @@ class apply_offset(object):
             
             el_corrected = self.coord2+self.xsc_offset[1]+self.det_offset[1]
 
-            az_corrected = (self.coord1/np.cos(self.coord2)+self.xsc_offset[0]+\
-                            self.det_offset[0])*np.cos(el_corrected)
+            az_corrected = (self.coord1*np.cos(self.coord2)+self.xsc_offset[0]+\
+                            self.det_offset[0])/np.cos(el_corrected)
 
             return az_corrected, el_corrected
 
@@ -152,10 +156,25 @@ class compute_offset(object):
         a = self.map_data[gt_inds]
         flux = np.sum(a)
 
-        yy, xx = np.meshgrid(np.floor(self.pixel2_coord), np.floor(self.pixel1_coord))
+        x_coord_max = np.floor(np.amax(self.pixel1_coord))+1
+        x_coord_min = np.floor(np.amin(self.pixel1_coord))
 
+        x_arr = np.arange(x_coord_min, x_coord_max)
+
+        y_coord_max = np.floor(np.amax(self.pixel2_coord))+1
+        y_coord_min = np.floor(np.amin(self.pixel2_coord))
+
+        y_arr = np.arange(y_coord_min, y_coord_max)
+
+        xx, yy = np.meshgrid(x_arr, y_arr)
+        
         x_c = np.sum(xx*weight*self.map_data)/flux
         y_c = np.sum(yy*weight*self.map_data)/flux
+
+        # import matplotlib.pyplot as plt
+        # plt.imshow(self.map_data, origin = 'lower', extent=[x_coord_min, x_coord_max, y_coord_min, y_coord_max])
+        # plt.plot(x_c, y_c, 'x')
+        # plt.show()
 
         return np.rint(x_c), np.rint(y_c)
     
@@ -163,29 +182,36 @@ class compute_offset(object):
 
         #Centroid of the map
         x_c, y_c = self.centroid()
-        x_map, y_map = wcs.utils.pixel_to_skycoord(np.array([x_c, y_c]), self.wcs_trans)
+        map_center = wcs.utils.pixel_to_skycoord(x_c, y_c, self.wcs_trans)
+        x_map = map_center.ra.hour
+        y_map = map_center.dec.degree
+        
+        print('b1', x_c, y_c, x_map*15., y_map, np.average(self.lst), np.average(self.lat))
+        if self.ctype.lower() == 'ra and dec':
+            centroid_conv = conversion(x_map, y_map, np.average(self.lst), np.average(self.lat))
 
-        if self.cytpe.lower() == 'xel and el':
-            if self.ctype.lower() == 'ra and dec':
-                centroid_conv = conversion(x_map, y_map, np.average(self.lst), np.average(self.lst))
+            coord1_reference = self.coord1_ref/15.
 
-                az_centr, el_centr = centroid_conv.radec2azel()
+            az_centr, el_centr = centroid_conv.radec2azel()
+            xel_centr = az_centr*np.cos(np.radians(el_centr))
 
-            else:
-                az_centr = x_map
-                el_centr = y_map
-
-            xel_centr = az_centr/np.cos(np.radians(el_centr))
         else:
-            xel_centr = x_map
+            coord1_reference = self.coord1_ref
             el_centr = y_map
+            if self.cytpe.lower() == 'xel and el':
+                xel_centr = x_map            
+            else:
+                xel_centr = x_map/np.cos(np.radians(el_centr))
+            
 
-        ref_conv = conversion(self.coord1_ref, self.coord2_ref, np.average(self.lst), \
-                              np.average(self.lst))
+        ref_conv = conversion(coord1_reference, self.coord2_ref, np.average(self.lst), \
+                              np.average(self.lat))
 
         az_ref, el_ref = ref_conv.radec2azel()
 
-        xel_ref = az_ref/np.cos(np.radians(el_ref))
+        xel_ref = az_ref*np.cos(np.radians(el_ref))
+
+        print('TEST_REF')
 
         return xel_centr-xel_ref, el_centr-el_ref
 
