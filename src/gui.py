@@ -1834,21 +1834,23 @@ class ParamMapTab(QWidget):
                 self.lstslice = None
                 self.latslice = None
 
+<<<<<<< HEAD
             print('BEFORE', self.coord2slice)
 >>>>>>> cbc2d94... Solved some bugs in computing offset
 
+=======
+>>>>>>> dfc2e45... Correct pointing offset calculation
             if self.DirConvCheckBox.isChecked:
                 self.dirfile_conversion(correction = correction, LSTconv = LSTconv, \
                                         LATconv = LATconv)
             
-            print('AFTER', self.coord2slice)
-            if self.coord1.lower() == 'ra':
-                self.coord1slice = self.coord1slice*15. #Conversion between hours to degree
-            elif self.coord1.lower() == 'cross-el':
+            print('AFTER', self.coord1slice, self.coord2slice)
+            
+            if self.coord1.lower() == 'cross-el':
                 self.coord1slice = self.coord1slice*np.cos(np.radians(self.coord2slice))
-            else:
-                self.coord1slice = self.coord1slice
-
+            # else:
+            #     self.coord1slice = self.coord1slice
+            
             if correction is True:
 
                 xsc_file = ld.xsc_offset(self.pointingoffsetnumber.text(), self.startframe.text(), self.endframe.text())
@@ -1859,7 +1861,9 @@ class ParamMapTab(QWidget):
                                        xsc_offset, lst = self.lstslice, lat = self.latslice)
 
                 self.coord1slice, self.coord2slice = corr.correction()
-
+            else:
+                if self.coord1.lower() == 'ra':
+                    self.coord1slice = self.coord1slice*15. #Conversion between hours to degree
            
             
             del self.det_data

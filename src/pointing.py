@@ -31,22 +31,24 @@ class conversion(object):
         '''
         Function to convert RA and DEC to AZ and EL
         '''
-
+        
         hour_angle = np.radians(self.ra2ha()*15.)
-
+        print('HA', hour_angle)
         el = np.arcsin(np.sin(self.coord2)*np.sin(self.lat)+\
                        np.cos(self.lat)*np.cos(self.coord2)*np.cos(hour_angle))
-
+        print('EL', el)
         x = -np.sin(self.lat)*np.cos(self.coord2)*np.cos(hour_angle) + np.cos(self.lat)*np.sin(self.coord2)
-        y = np.cos(self.coord2)*np.sin(hour_angle)
+        y = -np.cos(self.coord2)*np.sin(hour_angle)
 
-        az = -np.arctan2(x, y)
+        az = np.arctan2(y, x)
+        print('AZ', az, y, x)
         if isinstance(az, np.ndarray):
             index, = np.where(az<0)
             az[index] += 2*np.pi
         else:
             if az <= 0:
                 az += 2*np.pi
+        print('AZ', az)
         return np.degrees(az), np.degrees(el)
 
     def azel2radec(self):
@@ -55,15 +57,15 @@ class conversion(object):
         Function to convert AZ and EL to RA and DEC
         '''
 
-        dec = np.arcsin(np.sin(self.coord2)*np.sin(self.lat)-\
+        dec = np.arcsin(np.sin(self.coord2)*np.sin(self.lat)+\
                         np.cos(self.lat)*np.cos(self.coord2)*np.cos(np.radians(self.coord1)))
 
-        x = np.sin(self.lat)*np.cos(self.coord2)*np.cos(np.radians(self.coord1)) +\
+        x = -np.sin(self.lat)*np.cos(self.coord2)*np.cos(np.radians(self.coord1)) +\
             np.cos(self.lat)*np.sin(self.coord2)
 
-        y = np.cos(self.coord2)*np.sin(np.radians(self.coord1))
+        y = -np.cos(self.coord2)*np.sin(np.radians(self.coord1))
 
-        hour_angle = np.degrees(np.arctan2(x, y))/15.
+        hour_angle = np.degrees(np.arctan2(y, x))/15.
 
         ra = self.ha2ra(hour_angle)*15.
 
@@ -95,9 +97,9 @@ class apply_offset(object):
             az, el = conv2azel.radec2azel()
 
             xEL = az*np.cos(np.radians(el))
-
-            xEL_corrected = xEL+self.xsc_offset[0]+self.det_offset[0]
-            EL_corrected = el+self.xsc_offset[1]+self.det_offset[1]
+            print('Correction', self.xsc_offset)
+            xEL_corrected = xEL#+self.xsc_offset[0]+self.det_offset[0]
+            EL_corrected = el#+self.xsc_offset[1]+self.det_offset[1]
 
             conv2radec = conversion(xEL_corrected/np.cos(np.radians(EL_corrected)), EL_corrected, \
                                     self.lst, self.lat)
