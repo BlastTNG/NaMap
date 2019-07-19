@@ -98,8 +98,8 @@ class apply_offset(object):
 
             xEL = az*np.cos(np.radians(el))
             print('Correction', self.xsc_offset)
-            xEL_corrected = xEL#+self.xsc_offset[0]+self.det_offset[0]
-            EL_corrected = el#+self.xsc_offset[1]+self.det_offset[1]
+            xEL_corrected = xEL+self.xsc_offset[0]+self.det_offset[0]
+            EL_corrected = el+self.xsc_offset[1]+self.det_offset[1]
 
             conv2radec = conversion(xEL_corrected/np.cos(np.radians(EL_corrected)), EL_corrected, \
                                     self.lst, self.lat)
