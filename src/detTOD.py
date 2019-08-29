@@ -9,28 +9,46 @@ class data_cleaned():
     the next classes. Check them for more explanations
     '''
 
-    def __init__(self, data, fs, cutoff):
+    def __init__(self, data, fs, cutoff, detlist):
 
         self.data = data                #detector TOD
         self.fs = float(fs)             #frequency sampling of the detector
         self.cutoff = float(cutoff)     #cutoff frequency of the highpass filter
+        self.detlist = detlist          #detector name list
 
     def data_clean(self):
 
         '''
         Function to return the cleaned TOD as numpy array
         '''
-        det_data = detector(self.data, 0, 0)
-        residual_data = det_data.fit_residual()
+        cleaned_data = np.zeros_like(self.data)
 
-        desp = despike(residual_data)
-        data_despiked = desp.replace_peak()
 
-        filterdat = filterdata(data_despiked, self.cutoff, self.fs)
-        cleaned_data = filterdat.ifft_filter(window=True)
+        if np.size(self.detlist) == 1:
+            det_data = detector(self.data, 0, 0)
+            residual_data = det_data.fit_residual()
 
-        return cleaned_data
-    
+            desp = despike(residual_data)
+            data_despiked = desp.replace_peak()
+
+            filterdat = filterdata(data_despiked, self.cutoff, self.fs)
+            cleaned_data = filterdat.ifft_filter(window=True)
+
+            return cleaned_data
+
+        else:
+            for i in range(np.size(self.detlist)):
+                det_data = detector(self.data[i,:], 0, 0)
+                residual_data = det_data.fit_residual()
+
+                desp = despike(residual_data)
+                data_despiked = desp.replace_peak()
+
+                filterdat = filterdata(data_despiked, self.cutoff, self.fs)
+                cleaned_data[i,:] = filterdat.ifft_filter(window=True)
+
+            return cleaned_data
+        
 class despike():
 
     '''

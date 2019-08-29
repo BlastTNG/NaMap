@@ -1,5 +1,7 @@
 import numpy as np
+import gc
 from astropy import wcs
+import matplotlib.pyplot as plt
 
 class conversion(object):
 
@@ -17,12 +19,18 @@ class conversion(object):
     def ra2ha(self):
 
         '''
-        Return the hour angle given the lst and the ra
+        Return the hour angle in hours given the lst and the ra
+        i.e. both lst and ra needs to be in hours
         ''' 
 
         return self.lst-self.coord1
 
     def ha2ra(self, hour_angle):
+
+        '''
+        Return the right ascension in hours given the lst and hour angles
+        i.e. both lst and hour angle needs to be in hours
+        '''
 
         return self.lst - hour_angle
 
@@ -33,22 +41,18 @@ class conversion(object):
         '''
         
         hour_angle = np.radians(self.ra2ha()*15.)
-        print('HA', hour_angle)
         el = np.arcsin(np.sin(self.coord2)*np.sin(self.lat)+\
                        np.cos(self.lat)*np.cos(self.coord2)*np.cos(hour_angle))
-        print('EL', el)
         x = -np.sin(self.lat)*np.cos(self.coord2)*np.cos(hour_angle) + np.cos(self.lat)*np.sin(self.coord2)
-        y = -np.cos(self.coord2)*np.sin(hour_angle)
+        y = np.cos(self.coord2)*np.sin(hour_angle)
 
         az = np.arctan2(y, x)
-        print('AZ', az, y, x)
         if isinstance(az, np.ndarray):
             index, = np.where(az<0)
             az[index] += 2*np.pi
         else:
             if az <= 0:
                 az += 2*np.pi
-        print('AZ', az)
         return np.degrees(az), np.degrees(el)
 
     def azel2radec(self):
@@ -96,32 +100,84 @@ class apply_offset(object):
 
             az, el = conv2azel.radec2azel()
 
-            xEL = az*np.cos(np.radians(el))
-            print('Correction', self.xsc_offset)
-            xEL_corrected = xEL+self.xsc_offset[0]+self.det_offset[0]
-            EL_corrected = el+self.xsc_offset[1]+self.det_offset[1]
+            xEL = np.degrees(np.radians(az)*np.cos(np.radians(el)))
+            print('STARCAMER', self.xsc_offset)
+            xEL_corrected = xEL-self.xsc_offset[0]
+            EL_corrected = el+self.xsc_offset[1]
+            
+            ra_corrected = np.zeros((int(np.size(self.det_offset)/2), len(xEL_corrected)))
+            dec_corrected = np.zeros((int(np.size(self.det_offset)/2), len(xEL_corrected)))
 
-            conv2radec = conversion(xEL_corrected/np.cos(np.radians(EL_corrected)), EL_corrected, \
-                                    self.lst, self.lat)
+            for i in range(int(np.size(self.det_offset)/2)):
+                print('DET_OFF', self.det_offset[i])
+                xEL_corrected_temp = xEL_corrected-self.det_offset[i, 0]
+                EL_corrected_temp = EL_corrected+self.det_offset[i, 1]
+                AZ_corrected_temp = np.degrees(np.radians(xEL_corrected_temp)/np.cos(np.radians(el)))
 
-            ra_corrected, dec_corrected = conv2radec.azel2radec()
+                conv2radec = conversion(AZ_corrected_temp, EL_corrected_temp, \
+                                        self.lst, self.lat)
+
+                ra_corrected[i,:], dec_corrected[i,:] = conv2radec.azel2radec()
+
+                hour_angle = np.radians((self.lst-self.coord1)*15)
+
+                y_pa = np.cos(np.radians(self.lat))*np.sin(hour_angle)
+                x_pa = np.sin(np.radians(self.lat))*np.cos(np.radians(self.coord2)) - np.cos(hour_angle)*np.cos(np.radians(self.lat))*np.sin(np.radians(self.coord2))
+                pa = np.arctan2(y_pa, x_pa)
+
+                if isinstance(pa, np.ndarray):
+                    index, = np.where(pa<0)
+                    pa[index] += 2*np.pi
+                else:
+                    if pa <= 0:
+                        pa += 2*np.pi
+
+                dec_corrected[i,:] = self.coord2-self.det_offset[i,0]*np.sin(pa)+self.det_offset[i,1]*np.cos(pa)
+                ra_corrected[i,:] = self.coord1*15. + (self.det_offset[i,0]*np.cos(pa)+self.det_offset[i,1]*np.sin(pa))/np.cos(dec_corrected[i,:])
+                
+                label_plt = 'DET'+str(i)
+                if i == 0:
+                    plt.plot(ra_corrected[i], 'o', label = label_plt)
+                else:
+                    plt.plot(ra_corrected[i], 'o' , label = label_plt)
+            del xEL_corrected_temp
+            del EL_corrected_temp
+            del AZ_corrected_temp
+            gc.collect()
+
+            plt.plot(self.coord1*15, label = 'original')
+            
+            plt.legend()
+            plt.show()
 
             return ra_corrected, dec_corrected
 
         elif self.cype.lower() == 'az and el':
 
-            
-            el_corrected = self.coord2+self.xsc_offset[1]+self.det_offset[1]
+            el_corrected = np.zeros((int(np.size(self.det_offset)/2), len(self.coord1)))
+            az_corrected = np.zeros((int(np.size(self.det_offset)/2), len(self.coord2)))
 
-            az_corrected = (self.coord1*np.cos(self.coord2)+self.xsc_offset[0]+\
-                            self.det_offset[0])/np.cos(el_corrected)
+            for i in range(int(np.size(self.det_offset)/2)):
+            
+                el_corrected[i, :] = self.coord2+self.xsc_offset[1]+self.det_offset[i, 1]
+
+                az_corrected[i, :] = (self.coord1*np.cos(self.coord2)+self.xsc_offset[i]-\
+                                      self.det_offset[i, 0])/np.cos(el_corrected)
 
             return az_corrected, el_corrected
 
         else:
 
-            return (self.coord1+self.xsc_offset[0]+self.det_offset[0], \
-                    self.coord2+self.xsc_offset[1]+self.det_offset[1])
+            el_corrected = np.zeros((int(np.size(self.det_offset)/2), len(self.coord1)))
+            xel_corrected = np.zeros((int(np.size(self.det_offset)/2), len(self.coord2)))
+
+            for i in range(int(np.size(self.det_offset)/2)):
+
+                xel_corrected[i, :] = self.coord1+self.xsc_offset[0]+self.det_offset[i, 0]
+                el_corrected[i, :] = self.coord2+self.xsc_offset[1]+self.det_offset[i, 1]
+
+
+            return xel_corrected,el_corrected
 
 
 class compute_offset(object):
@@ -184,12 +240,13 @@ class compute_offset(object):
 
         #Centroid of the map
         x_c, y_c = self.centroid()
-        map_center = wcs.utils.pixel_to_skycoord(x_c, y_c, self.wcs_trans)
-        x_map = map_center.ra.hour
-        y_map = map_center.dec.degree
-        
-        print('b1', x_c, y_c, x_map*15., y_map, np.average(self.lst), np.average(self.lat))
+               
         if self.ctype.lower() == 'ra and dec':
+            map_center = wcs.utils.pixel_to_skycoord(x_c, y_c, self.wcs_trans)
+            print('Centroid', map_center)
+            x_map = map_center.ra.hour
+            y_map = map_center.dec.degree
+            print('b1', x_c, y_c, x_map*15., y_map, np.average(self.lst), np.average(self.lat))
             centroid_conv = conversion(x_map, y_map, np.average(self.lst), np.average(self.lat))
 
             coord1_reference = self.coord1_ref/15.
@@ -198,6 +255,7 @@ class compute_offset(object):
             xel_centr = az_centr*np.cos(np.radians(el_centr))
 
         else:
+            map_center = self.wcs_trans.wcs_pix2world(x_c, y_c, 1)
             coord1_reference = self.coord1_ref
             el_centr = y_map
             if self.cytpe.lower() == 'xel and el':
