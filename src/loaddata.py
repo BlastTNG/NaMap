@@ -2,6 +2,7 @@ import pygetdata as gd
 import numpy as np
 from scipy.interpolate import interp1d
 import os
+import astropy.table as tb
 
 class data_value():
 <<<<<<< HEAD
@@ -117,6 +118,7 @@ class data_value():
         '''
         if np.size(file) == 1: 
             d = gd.dirfile(filepath, gd.RDONLY)
+<<<<<<< HEAD
             vectors = d.field_list()
             for i in range (len(vectors)):
                 if str(vectors[i])[2:-1] == file:
@@ -139,21 +141,28 @@ class data_value():
 =======
                     values = d.getdata(file, gdtype, num_frames = num-1, first_frame=0)
 >>>>>>> 6c0d8b1... Solved some errors in polarization maps (still some to be corrected)
+=======
+            gdtype = self.conversion_type(file_type)
+            if self.experiment.lower()=='blast-tng':
+                num = d.eof('MCP_1HZ_FRAMECOUNT')
+            else:
+                num = d.nframes
+            if isinstance(file, str):
+                values = d.getdata(file, gdtype, num_frames = num-1, first_frame=0)
+            else:
+                values = d.getdata(file[0], gdtype, num_frames = num-1, first_frame=0)
+>>>>>>> db74452... Solved a bug on applying the offset
             return np.asarray(values)
         else:
-            d = gd.dirfile(filepath[0], gd.RDWR|gd.UNENCODED)
-            vectors = d.field_list()
-            len_det = len(d.getdata(vectors[detlist[0]], gd.UINT16, num_frames = d.nframes))
-            values = np.zeros((len(filepath), len_det))
+            d = gd.dirfile(filepath, gd.RDWR|gd.UNENCODED)
+            len_det = len(d.getdata(file[0], gd.UINT16, num_frames = d.nframes))
+            values = np.zeros((len(file), len_det))
 
-            for i in range(len(filepath)):
-                d = gd.dirfile(filepath[i], gd.RDWR|gd.UNENCODED)
-                vectors = d.field_list()
-                for j in range(len(vectors)):
-                    if vectors[j] == file[i]:
-                        values[i,:] = np.asarray(d.getdata(vectors[file[i]], \
-                                                 gdtype_det,num_frames = d.nframes))
-                
+            for i in range(len(file)):
+                gdtype = self.conversion_type(file_type)
+                values[i,:] = np.asarray(d.getdata(file[i], \
+                                         gdtype,num_frames = d.nframes))
+            
             return values
 
     def values(self):
@@ -172,6 +181,7 @@ class data_value():
         det_data = self.load(self.det_path, self.det_name, self.det_file_type)
 =======
         if self.experiment.lower() == 'blast-tng':
+            # Temporary function 
             det_data = np.loadtxt(self.det_path+self.det_name)
         else:
             det_data = self.load(self.det_path, self.det_name, self.det_file_type)
@@ -344,6 +354,7 @@ class frame_zoom_sync():
         frames[0] = fps[0]*sample_frame
         frames[1] = fps[1]*sample_frame+1
 
+<<<<<<< HEAD
         if len(np.shape(data)) == 1:
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -360,15 +371,20 @@ class frame_zoom_sync():
             return time, data[frames[0]:frames[1]]
 =======
             if offset is not None:
+=======
+        if offset is not None:
+>>>>>>> db74452... Solved a bug on applying the offset
                 delay = offset*np.floor(fs)/1000.
                 frames = frames.astype(float)+delay
 
+        if len(np.shape(data)) == 1:
+            time = (np.arange(np.diff(frames))+frames[0])/np.floor(fs)
             return time, data[int(frames[0]):int(frames[1])]
 >>>>>>> 53b90cc... Correct sync with offset
         else:
             time = np.arange(len(data[0, :]))/np.floor(fs)
-            time = time[frames[0]:frames[1]]
-            return  time, data[:,frames[0]:frames[1]]
+            time = time[int(frames[0]):int(frames[1])]
+            return  time, data[:,int(frames[0]):int(frames[1])]
 
     def det_time(self):
 <<<<<<< HEAD
@@ -488,10 +504,10 @@ class frame_zoom_sync():
             self.det_data = self.det_data[sframe:eframe]
 
         elif self.experiment.lower() == 'blastpol':
+            print('data', self.det_data)
             dettime, self.det_data = self.frame_zoom(self.det_data, self.det_sample_frame, \
                                                      self.det_fs, np.array([self.startframe,self.endframe]), \
                                                      self.offset)
-
         coord1time, coord1 = self.frame_zoom(self.coord1_data, self.coord_sample_frame, \
                                              self.coord_fs, np.array([self.startframe,self.endframe]))
 
@@ -521,6 +537,7 @@ class frame_zoom_sync():
         coord1time, coord1 = self.frame_zoom(self.coord1_data, self.coord_sample_frame, \
                                              self.coord_fs, np.array([self.startframe,self.endframe]))
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -563,6 +580,8 @@ class frame_zoom_sync():
         if self.offset is not None:
             dettime = dettime - self.offset/1000.
 
+=======
+>>>>>>> db74452... Solved a bug on applying the offset
         dettime = dettime-dettime[0]
         coord1time = coord1time-coord1time[0]
 >>>>>>> b96fc79... Added wcs projection to maps
@@ -602,7 +621,6 @@ class frame_zoom_sync():
 =======
 
         if self.lat_data is not None and self.lat_data is not None:
-            print('Test')
             lsttime, lst = self.frame_zoom(self.lst_data, self.lstlat_sample_frame, \
                                            self.lstlatfreq, np.array([self.startframe,self.endframe]))
 
@@ -619,10 +637,15 @@ class frame_zoom_sync():
             del lst
             del lat
 
-            return (dettime[index1[0]+10:index2[0]-10], self.det_data[index1[0]+10:index2[0]-10], \
-                    coord1_inter, coord2_inter, lst_inter, lat_inter)
+            if np.size(np.shape(self.det_data)) > 1:
+                return (dettime[index1[0]+10:index2[0]-10], self.det_data[:,index1[0]+10:index2[0]-10], \
+                        coord1_inter, coord2_inter, lst_inter, lat_inter)
+            else:
+                return (dettime[index1[0]+10:index2[0]-10], self.det_data[index1[0]+10:index2[0]-10], \
+                        coord1_inter, coord2_inter, lst_inter, lat_inter)
         
         else:
+<<<<<<< HEAD
             return (dettime[index1[0]+10:index2[0]-10], self.det_data[index1[0]+10:index2[0]-10], \
                     coord1_inter, coord2_inter)
 <<<<<<< HEAD
@@ -650,6 +673,14 @@ class frame_zoom_sync():
 =======
 >>>>>>> cab17d8... update repo
 =======
+=======
+            if np.size(np.shape(self.det_data)) > 1:
+                return (dettime[index1[0]+10:index2[0]-10], self.det_data[:,index1[0]+10:index2[0]-10], \
+                        coord1_inter, coord2_inter)
+            else:
+                return (dettime[index1[0]+10:index2[0]-10], self.det_data[index1[0]+10:index2[0]-10], \
+                        coord1_inter, coord2_inter)
+>>>>>>> db74452... Solved a bug on applying the offset
 
 class xsc_offset():
     
@@ -671,7 +702,6 @@ class xsc_offset():
         '''
 
         path = os.getcwd()+'/xsc_'+str(int(self.xsc))+'.txt'
-        print(path)
 
         xsc_file = np.loadtxt(path, skiprows = 2)
 
@@ -682,4 +712,55 @@ class xsc_offset():
 
         return xsc_file[2], xsc_file[3]
 
+<<<<<<< HEAD
 >>>>>>> 63d0b03... Added pointing offset calculation
+=======
+class det_table():
+
+    '''
+    Class to read detector tables. For BLASTPol can convert also detector names using another table
+    '''
+
+    def __init__(self, name, experiment, pathtable):
+
+        self.name = name
+        self.experiment = experiment
+        self.pathtable = pathtable
+
+    def loadtable(self):
+        print('NAME', self.name, np.size(self.name))
+        det_off = np.zeros((np.size(self.name), 2))
+        noise = np.zeros(np.size(self.name))
+        grid_angle = np.zeros(np.size(self.name))
+
+        if self.experiment.lower() == 'blastpol':
+
+
+            for i in range(np.shape(det_off)[0]):
+                print('For', i)
+                if self.name[i][0].lower() == 'n':            
+                    path = self.pathtable+'/bolo_names.txt'
+                    name_table = np.loadtxt(path, skiprows = 1, dtype = str)
+
+                    index, = np.where(self.name[i].upper() == name_table[:,1])
+                    real_name = name_table[index, 0]
+                else:
+                    real_name = self.name
+
+                path = self.pathtable+'/bolotable.tsv'
+                btable = tb.Table.read(path, format='ascii.basic')
+                index, = np.where(btable['Name'] == real_name[0].upper())
+                det_off[i, 1] = btable['EL'][index]/3600.       #Conversion from arcsec to degrees
+                det_off[i, 0] = btable['XEL'][index]/3600.     #Conversion from arcsec to degrees
+                # det_off[i, 1] = 0.03843784  
+                # det_off[i, 0] = -0.02526244
+                
+                
+
+                noise[i] = btable['WhiteNoise'][index]
+                grid_angle = btable['Angle'][index]
+
+
+            return det_off, noise, grid_angle
+
+>>>>>>> db74452... Solved a bug on applying the offset

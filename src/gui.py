@@ -536,23 +536,6 @@ class BeamFitParamWindow(QDialog):
         self.fitparam = values.copy()
         self.fitparamsignal.emit(values)
 
-    # def closeEvent(self,event):
-
-    #     '''
-    #     This function contains the code that is run when the application is closed.
-    #     In this case, deleting the pickles file created.
-    #     '''
-
-    #     result = QMessageBox.question(self,
-    #                                   "Confirm Exit...",
-    #                                   "Are you sure you want to exit ?",
-    #                                   QMessageBox.Yes| QMessageBox.No)
-    #     event.ignore()
-
-    #     if result == QMessageBox.Yes:
-        
-    #         event.accept()
-
 class TODoffsetWindow(QDialog):
 
     '''
@@ -613,7 +596,7 @@ class MainWindowTab(QTabWidget):
         self.cleandata = np.array([])
 
         self.beamparam = None
-        self.todoffsetvalue = None
+        self.todoffsetvalue = None 
 
         #LAT and LST parameters
         self.LSTtype = None
@@ -629,7 +612,14 @@ class MainWindowTab(QTabWidget):
         self.addTab(self.tab3, "Beam")
 
         self.tab1.plotbutton.clicked.connect(self.updatedata)
+        # self.tab1.plotbutton.clicked.connect(self.emitdetlist)
         self.tab1.fitsbutton.clicked.connect(self.printvalue)
+
+        self.tab2.detcombolist.activated[str].connect(self.drawdetTOD)
+
+    # def emitdetlist(self):
+
+    #     self.detlistsignal.emit(self.tab1.det_list)
 
     def emit_name(self):
 
@@ -655,10 +645,20 @@ class MainWindowTab(QTabWidget):
         self.lst = self.tab1.lstslice
         self.lat = self.tab1.latslice
 
+        print('TAB',self.tab1.det_list)
+
         self.cleandata = self.tab1.cleaned_data
 
-        self.tab2.draw_TOD(self.data)
-        self.tab2.draw_cleaned_TOD(self.cleandata)
+        self.tab2.detlist_selection(self.tab1.det_list)
+
+        if np.size(np.shape(self.data)) == 1:
+            print('SIZE',np.size(np.shape(self.tab1.det_list)))
+            self.tab2.draw_TOD(self.data)
+            self.tab2.draw_cleaned_TOD(self.cleandata)
+        else:
+            print('DATA',self.data[0])
+            self.tab2.draw_TOD(self.data[0])
+            self.tab2.draw_cleaned_TOD(self.cleandata[0])
 
         try:
             self.tab1.mapvalues(self.cleandata)
@@ -666,7 +666,7 @@ class MainWindowTab(QTabWidget):
             #Update Maps
             maps = self.tab1.map_value
             mp_ini = self.tab1.createMapPlotGroup
-            mp_ini.updateTab(data=maps)
+            mp_ini.updateTab(data=maps, coord1 = self.tab1.coord1slice, coord2 = self.tab1.coord2slice)
             #Update Offset
 
             if self.tab1.PointingOffsetCalculationCheckBox.isChecked():
@@ -703,6 +703,20 @@ class MainWindowTab(QTabWidget):
         except AttributeError:
             pass
     
+    def drawdetTOD(self):
+        
+        index = self.tab2.detcombolist.currentIndex()
+
+        print('Index', index)
+
+        if np.size(np.shape(self.data)) == 1:
+            self.tab2.draw_TOD(self.data)
+            self.tab2.draw_cleaned_TOD(self.cleandata)
+        else:
+            print(self.data[index])
+            self.tab2.draw_TOD(self.data[index])
+            self.tab2.draw_cleaned_TOD(self.cleandata[index])
+
     def save2fits(self): #function to save the map as a FITS file
         hdr = self.tab1.proj.to_header() #grabs the projection information for header
         maps = self.tab1.map_value #grabs the actual map for the fits img
@@ -1657,12 +1671,16 @@ class ParamMapTab(QWidget):
         elif coord_type == 'CROSS-EL and EL':
             self.coord1 = str('CROSS-EL')
             self.coord2 = str('EL')
-
-        try:
-            os.stat(self.detpath.text()+'/'+self.detname.text())
-        except OSError:
-            label = self.detpathlabel.text()[:-1]
-            label_final.append(label)
+        
+        self.det_list = list(map(str.strip, self.detname.text().split(',')))
+        
+        for i in range(np.size(self.det_list)):
+            try:
+                os.stat(self.detpath.text()+'/'+self.det_list[i])
+            except OSError:
+                label = self.detpathlabel.text()[:-1]+':'+self.det_list[i]
+                label_final.append(label)
+        
         if self.experiment.currentText().lower() == 'blast-tng':    
             try:
                 os.stat(self.coordpath.text())
@@ -1693,7 +1711,6 @@ class ParamMapTab(QWidget):
                 label_final.append(label)
         
         if (correction and self.coord1.lower() == 'ra') or self.PointingOffsetCalculationCheckBox.isChecked():
-            print('TEST')
             try:
                 os.stat(self.coordpath.text()+'/'+'lst')
             except OSError:
@@ -1706,7 +1723,6 @@ class ParamMapTab(QWidget):
                 label_final.append(label)
 
             if LSTtype is None:
-                print('OK_TEST')
                 label_lst = 'Write LST and LAT Parameters from the menubar'
 
         if np.size(label_final)+np.size(label_lst) != 0:
@@ -1737,19 +1753,24 @@ class ParamMapTab(QWidget):
             
                 self.lstwarningbox.exec_()
 
-
         else:
             
             os.makedirs(os.path.dirname('pickles_object/'), exist_ok=True)
 
-            det_path_pickle = 'pickles_object/'+self.detname.text()
+            det_path_pickle = []
+            for i in range(np.size(self.det_list)):
+                det_path_pickle.append('pickles_object/'+self.det_list[i])
             coord1_path_pickle = 'pickles_object/'+self.coord1
             coord2_path_pickle = 'pickles_object/'+self.coord2
             lat_path_pickle = 'pickles_object/lat'
             lst_path_pickle = 'pickles_object/lst'
 
-            try:               
-                self.det_data = pickle.load(open(det_path_pickle, 'rb'))  
+            try:
+                for i in range(np.size(self.det_list)):
+                    if i == 0:               
+                        self.det_data = pickle.load(open(det_path_pickle[0], 'rb'))
+                    else:
+                        self.det_data = np.vstack((self.det_data, pickle.load(open(det_path_pickle[i], 'rb')))) 
                 self.coord1_data = pickle.load(open(coord1_path_pickle, 'rb'))
                 self.coord2_data = pickle.load(open(coord2_path_pickle, 'rb'))
                 
@@ -1765,17 +1786,20 @@ class ParamMapTab(QWidget):
                 if (correction and self.coord1.lower() == 'ra') or self.PointingOffsetCalculationCheckBox.isChecked():
                     lat_file_type = LSTtype
                     lst_file_type = LATtype
-                    print('OK', lat_file_type)
                 else: 
                     lat_file_type = None
                     lst_file_type = None
 
 
 <<<<<<< HEAD
+<<<<<<< HEAD
             except FileNotFoundError:               
 =======
 >>>>>>> 3f224e8... Added pointing input dialogs and caluclation
                 dataload = ld.data_value(self.detpath.text(), self.detname.text(), self.coordpath.text(), \
+=======
+                dataload = ld.data_value(self.detpath.text(), self.det_list, self.coordpath.text(), \
+>>>>>>> db74452... Solved a bug on applying the offset
                                          self.coord1, self.coord2, self.dettype.text(), \
                                          self.coord1type.text(), self.coord2type.text(), \
                                          self.experiment.currentText(), lst_file_type, lat_file_type)
@@ -1789,7 +1813,15 @@ class ParamMapTab(QWidget):
                     self.lst_data = None
                     self.lat_data = None
 
-                pickle.dump(self.det_data, open(det_path_pickle, 'wb'))  
+                print('Size', np.size(self.det_data), np.shape(self.det_data))
+                
+                for i in range(np.size(self.det_list)):
+                    print('lenth', i)
+                    if np.size(np.shape(self.det_data)) > 1:
+                        pickle.dump(self.det_data[i, :], open(det_path_pickle[i], 'wb'))
+                    else:
+                        pickle.dump(self.det_data, open(det_path_pickle[i], 'wb'))
+
                 pickle.dump(self.coord1_data, open(coord1_path_pickle, 'wb'))
                 pickle.dump(self.coord2_data, open(coord2_path_pickle, 'wb'))
                 
@@ -1833,6 +1865,7 @@ class ParamMapTab(QWidget):
 =======
                 self.lstslice = None
                 self.latslice = None
+<<<<<<< HEAD
 
 <<<<<<< HEAD
             print('BEFORE', self.coord2slice)
@@ -1840,31 +1873,39 @@ class ParamMapTab(QWidget):
 
 =======
 >>>>>>> dfc2e45... Correct pointing offset calculation
+=======
+>>>>>>> db74452... Solved a bug on applying the offset
             if self.DirConvCheckBox.isChecked:
                 self.dirfile_conversion(correction = correction, LSTconv = LSTconv, \
                                         LATconv = LATconv)
-            
-            print('AFTER', self.coord1slice, self.coord2slice)
-            
+
+            if self.DettableCheckBox.isChecked():
+                dettable = ld.det_table(self.det_list, self.experiment.currentText(), self.dettablepath.text())
+                self.det_off, self.noise_det, self.grid_angle = dettable.loadtable()
+
+            else:
+                self.det_off = np.zeros((np.size(self.det_list),2))
+                self.noise_det = np.ones(np.size(self.det_list))
+                self.grid_angle = np.zeros(np.size(self.det_list))
+                        
             if self.coord1.lower() == 'cross-el':
                 self.coord1slice = self.coord1slice*np.cos(np.radians(self.coord2slice))
-            # else:
-            #     self.coord1slice = self.coord1slice
             
             if correction is True:
 
+                
                 xsc_file = ld.xsc_offset(self.pointingoffsetnumber.text(), self.startframe.text(), self.endframe.text())
-
-                xsc_offset = xsc_file.read_file()   
-
+                xsc_offset = xsc_file.read_file()
+                xsc_offset = np.zeros(2)
+                print('XSC', xsc_offset)
                 corr = pt.apply_offset(self.coord1slice, self.coord2slice, coord_type,\
-                                       xsc_offset, lst = self.lstslice, lat = self.latslice)
+                                       xsc_offset, det_offset = self.det_off, lst = self.lstslice, \
+                                       lat = self.latslice)
 
                 self.coord1slice, self.coord2slice = corr.correction()
             else:
                 if self.coord1.lower() == 'ra':
                     self.coord1slice = self.coord1slice*15. #Conversion between hours to degree
-           
             
             del self.det_data
             del self.coord1_data
@@ -1880,7 +1921,7 @@ class ParamMapTab(QWidget):
         Function to compute the cleaned detector TOD
         '''
 
-        det_tod = tod.data_cleaned(self.detslice, self.detfreq.text(), self.highpassfreq.text())
+        det_tod = tod.data_cleaned(self.detslice, self.detfreq.text(), self.highpassfreq.text(), self.det_list)
         self.cleaned_data = det_tod.data_clean()
 
     def dirfile_conversion(self, correction=False, LSTconv=None, LATconv=None):
@@ -1916,8 +1957,6 @@ class ParamMapTab(QWidget):
 
             self.lstslice = lst_conv.data
             self.latslice = lat_conv.data
-
-            
             
     def mapvalues(self, data):
 
@@ -1934,13 +1973,15 @@ class ParamMapTab(QWidget):
         self.crval = np.array([float(self.crval1.text()),\
                                float(self.crval2.text())])
 
+        print('OK')
+
         if self.convchoice.currentText().lower() == 'gaussian':
             self.convolution = True
             self.std = self.GaussianSTD.text()
         else:
             self.convolution = False
             self.std = 0
-
+        print('YES')
         self.maps = mp.maps(self.ctype, self.crpix, self.cdelt, self.crval, \
                             data, self.coord1slice, self.coord2slice, \
                             self.convolution, self.std, self.ICheckBox.isChecked())
@@ -1967,9 +2008,12 @@ class TODTab(QWidget):
         self.createTODplot()
         self.createTODcleanedplot()
 
+        self.detcombolist = QComboBox()
+
         mainlayout = QGridLayout()
-        mainlayout.addWidget(self.TODplot, 0, 0)
-        mainlayout.addWidget(self.TODcleanedplot, 0, 1)
+        mainlayout.addWidget(self.detcombolist, 0, 0)
+        mainlayout.addWidget(self.TODplot, 1, 0)
+        mainlayout.addWidget(self.TODcleanedplot, 1, 1)
         
         self.setLayout(mainlayout)
 
@@ -2035,6 +2079,16 @@ class TODTab(QWidget):
             pass
         self.axis_cleaned_TOD.set_title('Cleaned Data')
         self.matplotlibWidget_cleaned_TOD.canvas.draw()
+
+    def detlist_selection(self, detlist):
+        print('DETLIST', detlist, np.size(detlist))
+        self.detcombolist.clear()
+        if np.size(detlist) == 1:
+            self.detcombolist.addItem(str(detlist))
+        else:
+            for i in range(np.size(detlist)):
+                print('CYCLE', i)
+                self.detcombolist.addItem(str(detlist[i]))
 
 class BeamTab(ParamMapTab):
 
@@ -2679,7 +2733,7 @@ class MapPlotsGroup(QWidget):
 
         self.tab3.setLayout(mainlayout)
 
-    def updateTab(self, data, projection = None):
+    def updateTab(self, data, coord1, coord2, projection = None):
 
         '''
         Function to updates the I, Q and U plots when the 
@@ -2692,9 +2746,9 @@ class MapPlotsGroup(QWidget):
             for i in range(len(idx_list)):
                 self.map2d(data[i], idx_list[i])
         else:
-            self.map2d(data=data, projection=projection)
+            self.map2d(data=data, coord1 = coord1, coord2 = coord2, projection=projection)
 
-    def map2d(self, data=None, idx='I', projection=None):
+    def map2d(self, data=None, coord1=None, coord2=None, idx='I', projection=None):
 
         '''
         Function to generate the map plots (I,Q and U) 
@@ -2738,12 +2792,12 @@ class MapPlotsGroup(QWidget):
 
         #map_levels = self.map_value[max_index]*(1-interval)
 
-        # extent = (np.amin(self.coord1slice), np.amax(self.coord1slice), \
-        #           np.amin(self.coord2slice), np.amax(self.coord2slice))
-
+        extent = (np.amin(coord1), np.amax(coord1), \
+                  np.amin(coord2), np.amax(coord2))
+        print('OK', extent)
         data_masked = np.ma.masked_where(data == 0, data)
 
-        im = axis.imshow(data_masked, origin='lower', cmap=plt.cm.viridis)     
+        im = axis.imshow(data_masked, extent = extent, origin='lower', cmap=plt.cm.viridis)     
         plt.colorbar(im, ax=axis)
         print('TEST')
 

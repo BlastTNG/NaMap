@@ -22,7 +22,7 @@ class maps():
         self.crpix = crpix             #see wcs_world for explanation of this parameter
         self.cdelt = cdelt             #see wcs_world for explanation of this parameter
         self.crval = crval             #see wcs_world for explanation of this parameter
-        self.coord1 = coord1          #array of the first coordinate
+        self.coord1 = coord1           #array of the first coordinate
         self.coord2 = coord2           #array of the second coordinate
         self.data = data               #cleaned TOD that is used to create a map
         self.w = 0.                    #initialization of the coordinates of the map in pixel coordinates
@@ -77,9 +77,27 @@ class maps():
 >>>>>>> 651e1e6... Commented files
         wcsworld = wcs_world(self.ctype, self.crpix, self.cdelt, self.crval)
 
-        print('COORD1', np.transpose(np.array([self.coord1, self.coord2])))
+        if np.size(np.shape(self.data)) == 1:
+            print('COORD_1',np.transpose(np.array([self.coord1, self.coord2])))
+            try:
+                self.w, self.proj = wcsworld.world(np.transpose(np.array([self.coord1[0], self.coord2[0]])))
+            except RuntimeError:
+                self.w, self.proj = wcsworld.world(np.transpose(np.array([self.coord1, self.coord2])))
+        else:
 
-        self.w, self.proj = wcsworld.world(np.transpose(np.array([self.coord1, self.coord2])))
+            if np.size(np.shape(self.coord1)) == 1:
+                self.w, self.proj = wcsworld.world(np.transpose(np.array([self.coord1, self.coord2])))
+            else:
+                print('SIZE', np.size(np.shape(self.data)), len(self.coord1), len(self.coord2))
+                self.w = np.zeros((np.size(np.shape(self.data)), len(self.coord1[0]), 2))
+                print('Coord',self.coord1)
+                for i in range(np.size(np.shape(self.data))):
+                    print('COORD',np.transpose(np.array([self.coord1[i], self.coord2[i]])))
+                    print('SHAPE', np.shape(self.w[i,:,:]))
+                    self.w[i,:,:], self.proj = wcsworld.world(np.transpose(np.array([self.coord1[i], self.coord2[i]])))
+                    plt.plot(self.coord1[i])
+
+                plt.show()
 
     def map2d(self):
 
@@ -87,6 +105,7 @@ class maps():
         Function to generate the maps using the pixel coordinates to bin
         '''
 
+<<<<<<< HEAD
         mapmaker = mapmaking(self.data, 1., 1.2, 1, np.floor(self.w).astype(int))
         if self.Ionly:
             Imap = mapmaker.map_singledetector_Ionly(self.crpix)
@@ -149,15 +168,50 @@ class maps():
         #         finalI = mapmaker.map_multidetector_Ionly()
         #     else:
         #         finalI = mapmaker.map_multidetector()
+=======
+        if np.size(np.shape(self.data)) == 1:
+            mapmaker = mapmaking(self.data, 1., 1.2, 1, np.floor(self.w).astype(int))
+            if self.Ionly:
+                Imap = mapmaker.map_singledetector_Ionly(self.crpix)
 
-        # else:
-        #     if param['map_parameters']['Ionly'][0].strip().lower() == 'true':
-        #         finalI = mapmaker.map_singledetector_Ionly(param['map_parameters']['crpix'])
-        #     else:
-        #         finalI = mapmaker.map_singledetector()
+                if not self.convolution:
+                    return Imap
+                else:
+                    std_pixel = self.std/3600./self.cdelt[0]
+                    
+                    return mapmaker.convolution(std_pixel, Imap)
+            else:        
+                Imap, Qmap, Umap = mapmaker.map_singledetector(self.crpix)
+                if not self.convolution:
+                    return Imap, Qmap, Umap
+                else:
+                    Imap_con = mapmaker.convolution(self.std, Imap)
+                    Qmap_con = mapmaker.convolution(self.std, Qmap)
+                    Umap_con = mapmaker.convolution(self.std, Umap)
+                    return Imap_con, Qmap_con, Umap_con
+>>>>>>> db74452... Solved a bug on applying the offset
 
-        # if param['map_parameters']['conv'].lower() != 'na':
-        #     finalI_conv = mapmaker.convolution(param['map_parameters']['stdev'], finalI)
+        else:
+            mapmaker = mapmaking(self.data, 1., 1.2, np.size(np.shape(self.data)), np.floor(self.w).astype(int))
+            if self.Ionly:
+                print('Multi', np.size(np.shape(self.data)))
+                Imap = mapmaker.map_multidetectors_Ionly(self.crpix)
+
+                if not self.convolution:
+                    return Imap
+                else:
+                    std_pixel = self.std/3600./self.cdelt[0]
+                    
+                    return mapmaker.convolution(std_pixel, Imap)
+            else:        
+                Imap, Qmap, Umap = mapmaker.map_singledetector(self.crpix)
+                if not self.convolution:
+                    return Imap, Qmap, Umap
+                else:
+                    Imap_con = mapmaker.convolution(self.std, Imap)
+                    Qmap_con = mapmaker.convolution(self.std, Qmap)
+                    Umap_con = mapmaker.convolution(self.std, Umap)
+                    return Imap_con, Qmap_con, Umap_con
 
 
 class wcs_world():
@@ -263,7 +317,7 @@ class mapmaking(object):
         self.number = number           
         self.pixelmap = pixelmap       #Coordinates of each point in the TOD in pixel coordinates
 
-    def map_param(self, crpix, value=None, sigma=None, angle=None):
+    def map_param(self, crpix, idxpixel, value=None, sigma=None, angle=None):
 
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -300,21 +354,21 @@ class mapmaking(object):
         if value is None:
 >>>>>>> 6c0d8b1... Solved some errors in polarization maps (still some to be corrected)
             value = self.data.copy()
-            if np.size(self.weight) > 1:
-                sigma = self.weight.copy()
-            else:
-                sigma = copy.copy(self.weight)
-            if np.size(self.polangle) > 1:
-                angle = self.polangle.copy()
-            else:
-                angle = copy.copy(self.polangle)*np.ones(np.size(value))
+        if np.size(self.weight) > 1:
+            sigma = self.weight.copy()
+        else:
+            sigma = copy.copy(self.weight)
+        if np.size(self.polangle) > 1:
+            angle = self.polangle.copy()
+        else:
+            angle = copy.copy(self.polangle)*np.ones(np.size(value))
 
         '''
         sigma is the inverse of the sqared white noise value, so it is 1/n**2
         ''' 
         
-        x_map = self.pixelmap[:,0]   #RA 
-        y_map = self.pixelmap[:,1]   #DEC
+        x_map = idxpixel[:,0]   #RA 
+        y_map = idxpixel[:,1]   #DEC
         
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -356,6 +410,9 @@ class mapmaking(object):
 
         cos = np.cos(2.*angle)
         sin = np.sin(2.*angle)
+
+        print('Param', param, np.size(param))
+        print('FLUX', flux, np.size(flux))
 
         I_est_flat = np.bincount(param, weights=flux)*sigma
 <<<<<<< HEAD
@@ -410,6 +467,7 @@ class mapmaking(object):
 
         return I_est_flat, Q_est_flat, U_est_flat, N_hits_flat, Delta, A, B, C, D, E, F, param
 
+<<<<<<< HEAD
     def map_singledetector_Ionly(self, crpix, value=None, sigma=None, angle=None):
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -423,13 +481,20 @@ class mapmaking(object):
 =======
 =======
 >>>>>>> 651e1e6... Commented files
+=======
+    def map_singledetector_Ionly(self, crpix, value=None, sigma=None, angle=None, idxpixel = None):
+>>>>>>> db74452... Solved a bug on applying the offset
         
         '''
         Function to reshape the previous array to create a 2D map for a single detector
         if only I map is requested
         '''
 
-        value =self.map_param(crpix=crpix, value=value, sigma=sigma, angle=angle)
+        if idxpixel is None:
+            idxpixel = self.pixelmap.copy()
+        else:
+            idxpixel = idxpixel
+        value =self.map_param(crpix=crpix, idxpixel = idxpixel, value=value, sigma=sigma, angle=angle)
 
         I_flat = np.zeros(len(value[0]))
 
@@ -439,8 +504,11 @@ class mapmaking(object):
         I_flat[np.nonzero(value[0])] = value[0][np.nonzero(value[0])]/value[3][np.nonzero(value[0])]
 >>>>>>> 6c0d8b1... Solved some errors in polarization maps (still some to be corrected)
 
-        x_len = np.amax(self.pixelmap[:,0])-np.amin(self.pixelmap[:,0])
-        y_len = np.amax(self.pixelmap[:,1])-np.amin(self.pixelmap[:,1])
+        x_len = np.amax(idxpixel[:,0])-np.amin(idxpixel[:,0])
+        y_len = np.amax(idxpixel[:,1])-np.amin(idxpixel[:,1])
+
+        print('Pixel_MIN', np.amin(idxpixel[:,0]), np.amin(idxpixel[:,1]))
+        print('Pixel_MIN', np.amax(idxpixel[:,0]), np.amax(idxpixel[:,1]))
 
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -481,9 +549,16 @@ class mapmaking(object):
 >>>>>>> 6c0d8b1... Solved some errors in polarization maps (still some to be corrected)
         return I_pixel
 
-    def map_multidetectors_Ionly(self):
+    def map_multidetectors_Ionly(self, crpix):
+        print('Multi x2', self.pixelmap)
+
+        Xmin = np.inf
+        Xmax = -np.inf
+        Ymin = np.inf
+        Ymax = -np.inf
 
         for i in range(self.number):
+<<<<<<< HEAD
             mapvalues = self.map_singledetector_Ionly(value=self.data[i],sigma=self.weight[i],\
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -496,10 +571,63 @@ class mapmaking(object):
 >>>>>>> 6c0d8b1... Solved some errors in polarization maps (still some to be corrected)
             if i == 0:
                 I_pixel = mapvalues[0].copy()
+=======
+            if np.size(np.shape(self.pixelmap)) == 2:
+                idxpixel = self.pixelmap.copy()
+                Xmin, Xmax = np.amin(idxpixel[:, 0]), np.amax(idxpixel[:, 0])
+                Ymin, Ymax = np.amin(idxpixel[:, 1]), np.amax(idxpixel[:,1])
+                break
             else:
-                I_pixel += mapvalues[0]
+                idxpixel = self.pixelmap[i].copy()
+                Xmin = np.amin(np.array([Xmin,np.amin(idxpixel[:, 0])]))
+                Xmax = np.amax(np.array([Xmax,np.amax(idxpixel[:, 0])]))
+                Ymin = np.amin(np.array([Ymin,np.amin(idxpixel[:, 1])]))
+                Ymax = np.amax(np.array([Ymax,np.amax(idxpixel[:, 1])]))
+                print('Values', Xmin, Xmax, Ymin, Ymax)
+        
+        finalmap = np.zeros((int(np.abs(Ymax-Ymin)+1), int(np.abs(Xmax-Xmin)+1)))
 
-        return I_pixel 
+        for i in range(self.number):
+            print('Det #', i)
+            if np.size(np.shape(self.pixelmap)) == 2:
+                idxpixel = self.pixelmap.copy()
+>>>>>>> db74452... Solved a bug on applying the offset
+            else:
+                idxpixel = self.pixelmap[i].copy()
+            print('Pixel_MIN', np.amin(idxpixel[:,0]), np.amin(idxpixel[:,1]))
+            print('Pixel_MIN', np.amax(idxpixel[:,0]), np.amax(idxpixel[:,1]))
+            mapvalues = self.map_singledetector_Ionly(crpix = crpix, value=self.data[i],sigma=self.weight,\
+                                                      angle=self.polangle, idxpixel = idxpixel)
+            print('MapShape', np.shape(mapvalues))
+
+            Xmin_map_temp, Xmax_map_temp = np.amin(idxpixel[:,0]), np.amax(idxpixel[:,0])
+            Ymin_map_temp, Ymax_map_temp = np.amin(idxpixel[:,1]), np.amax(idxpixel[:,1])
+
+            index1x = int(Xmin_map_temp-Xmin)
+            index2x = int(index1x + np.abs(Xmax_map_temp-Xmin_map_temp))
+            index1y = int(Ymin_map_temp-Ymin)
+            index2y = int(index1y + np.abs(Ymax_map_temp-Ymin_map_temp))
+            print('Indices', index1x,index2x,index1y,index2y)
+            print(np.shape(finalmap), np.shape(mapvalues))
+            finalmap[index1y:index2y+1,index1x:index2x+1] += mapvalues
+            # if i == 0:
+            #     I_pixel = mapvalues.copy()
+            #     Xmin_map_temp, Xmax_map_temp = np.amin(idxpixel[:,0]), np.amax(idxpixel[:,0])
+            #     Ymin_map_temp, Ymax_map_temp = np.amin(idxpixel[:,1]), np.amax(idxpixel[:,1])
+            # else:
+            #     Xmin, Xmax = np.amin(idxpixel[:,0]), np.amax(idxpixel[:,0])
+            #     Ymin, Ymax = np.amin(idxpixel[:,1]), np.amax(idxpixel[:,1])
+                
+            #     Xmin_map = np.amin(np.array([Xmin, Xmin_map_temp]))
+            #     Xmax_map = np.amax(np.array([Xmax, Xmax_map_temp]))
+            #     Ymin_map = np.amin(np.array([Ymin, Ymin_map_temp]))
+            #     Ymax_map = np.amax(np.array([Ymax, Ymax_map_temp]))
+
+
+
+            #     I_pixel += mapvalues
+
+        return finalmap
 
 <<<<<<< HEAD
 <<<<<<< HEAD
