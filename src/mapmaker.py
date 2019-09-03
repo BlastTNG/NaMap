@@ -136,6 +136,7 @@ class wcs_world():
             w.wcs.ctype = ["TLON-ARC", "TLAT-ARC"]
         elif self.ctype == 'CROSS-EL and EL':
             w.wcs.ctype = ["TLON-CAR", "TLAT-CAR"]
+        print('Coordinates', coord, type(coord), np.shape(coord))
         world = w.wcs_world2pix(coord, 1)
         #f = open('/Users/ian/git/gabsmap/mapmaker/coordarr.txt','w')
         #for i in range(len(coord)):
