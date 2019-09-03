@@ -273,7 +273,7 @@ class compute_offset(object):
 
         print('TEST_REF')
 
-        return xel_centr-xel_ref, el_centr-el_ref
+        return xel_centr-xel_ref, el_ref-el_centr
 
 
 

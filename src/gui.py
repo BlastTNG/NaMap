@@ -613,13 +613,9 @@ class MainWindowTab(QTabWidget):
 
         self.tab1.plotbutton.clicked.connect(self.updatedata)
         # self.tab1.plotbutton.clicked.connect(self.emitdetlist)
-        self.tab1.fitsbutton.clicked.connect(self.printvalue)
+        self.tab1.fitsbutton.clicked.connect(self.save2fits)
 
         self.tab2.detcombolist.activated[str].connect(self.drawdetTOD)
-
-    # def emitdetlist(self):
-
-    #     self.detlistsignal.emit(self.tab1.det_list)
 
     def emit_name(self):
 
@@ -666,7 +662,50 @@ class MainWindowTab(QTabWidget):
             #Update Maps
             maps = self.tab1.map_value
             mp_ini = self.tab1.createMapPlotGroup
-            mp_ini.updateTab(data=maps, coord1 = self.tab1.coord1slice, coord2 = self.tab1.coord2slice)
+            x_min_map = np.floor(np.amin(self.tab1.w[:,0]))
+            x_max_map = np.floor(np.amax(self.tab1.w[:,0])) 
+            y_min_map = np.floor(np.amin(self.tab1.w[:,1]))
+            y_max_map = np.floor(np.amax(self.tab1.w[:,1]))
+            print('Max', x_max_map, y_max_map)
+            print('Min', x_min_map, y_min_map)
+
+            index, = np.where(self.tab1.w[:,0]<0)
+            if np.size(index) > 1:
+                crpix1_new  = self.tab1.crpix[0]-x_min_map
+            else:
+                crpix1_new = copy.copy(self.tab1.crpix[0])
+            
+            index, = np.where(self.tab1.w[:,1]<0)
+            if np.size(index) > 1:
+                crpix2_new  = self.tab1.crpix[1]-y_min_map
+            else:
+                crpix2_new = copy.copy(self.tab1.crpix[1])
+
+            crpix_new = np.array([crpix1_new, crpix2_new])
+
+            print('CRPIX', self.tab1.crpix, crpix_new)
+            wcsworld = mp.wcs_world(self.tab1.ctype, crpix_new, self.tab1.cdelt, self.tab1.crval)
+
+            coord_test, self.proj_new = wcsworld.world(np.reshape(self.tab1.crval, (1,2)))
+
+            sel = np.array([])
+            if crpix_new[0]*2 < x_max_map:
+                sel = np.append(sel, np.array([crpix_new[0]-self.tab1.pixnum[0]/2, crpix_new[0]+self.tab1.pixnum[0]/2]))
+                x_sel = np.array([crpix_new[0]-self.tab1.pixnum[0]/2, crpix_new[0]+self.tab1.pixnum[0]/2], dtype=int)
+            else:
+                sel = np.append(sel, np.array([x_max_map-self.tab1.pixnum[0],x_max_map]))
+                x_sel = np.array([-100,-1], dtype=int)
+
+            if crpix_new[1]*2 < y_max_map:
+                sel = np.append(sel, np.array([crpix_new[1]-self.tab1.pixnum[1]/2, crpix_new[1]+self.tab1.pixnum[1]/2]))
+                y_sel = np.array([crpix_new[1]-self.tab1.pixnum[1]/2, crpix_new[1]+self.tab1.pixnum[1]/2], dtype=int)
+            else:
+                sel = np.append(sel, np.array([-self.tab1.pixnum[1],-1]))
+                y_sel = np.array([-100,-1], dtype=int)
+
+
+            mp_ini.updateTab(data=maps, coord1 = self.tab1.coord1slice, coord2 = self.tab1.coord2slice, \
+                             sel = sel, x_sel = x_sel, y_sel = y_sel, projection = self.proj_new)
             #Update Offset
 
             if self.tab1.PointingOffsetCalculationCheckBox.isChecked():
@@ -718,9 +757,10 @@ class MainWindowTab(QTabWidget):
             self.tab2.draw_cleaned_TOD(self.cleandata[index])
 
     def save2fits(self): #function to save the map as a FITS file
-        hdr = self.tab1.proj.to_header() #grabs the projection information for header
+        hdr = self.proj_new.to_header() #grabs the projection information for header
         maps = self.tab1.map_value #grabs the actual map for the fits img
         hdu = fits.PrimaryHDU(maps, header = hdr)
+        print('FITS')
         hdu.writeto('./'+self.tab1.fitsname.text())
 
     def printvalue(self):
@@ -800,8 +840,8 @@ class ParamMapTab(QWidget):
 
         self.createOffsetGroup()
         mainlayout = QGridLayout(self)
-        self.createMapPlotGroup = (MapPlotsGroup(checkbox=self.ICheckBox, data=self.map_value, \
-                                   projection = self.proj))
+        self.createMapPlotGroup = (MapPlotsGroup(checkbox=self.ICheckBox, ctype=self.coordchoice.currentText(), \
+                                   data=self.map_value))
 
         self.fitsname = QLineEdit('')
         self.fitsnamelabel = QLabel("FITS name")
@@ -1972,6 +2012,9 @@ class ParamMapTab(QWidget):
                                float(self.cdelt2.text())])
         self.crval = np.array([float(self.crval1.text()),\
                                float(self.crval2.text())])
+        self.pixnum = np.array([float(self.pixnum1.text()),\
+                               float(self.pixnum2.text())])
+        
 
         print('OK')
 
@@ -2113,6 +2156,7 @@ class BeamTab(ParamMapTab):
             self.RAoffset.setText(str(self.offset_angle[0]))
             self.DECoffset.setText(str(self.offset_angle[1]))
 
+<<<<<<< HEAD
         elif self.ctype == 'AZ and EL':
             self.AZoffset.setText(str(self.offset_angle[0]))
             self.ELoffset.setText(str(self.offset_angle[1]))
@@ -2120,6 +2164,9 @@ class BeamTab(ParamMapTab):
         elif self.ctype == 'CROSS-EL and EL':
             self.CROSSELoffset.setText(str(self.offset_angle[0]))
             self.ELxoffset.setText(str(self.offset_angle[1]))
+=======
+    def __init__(self, data, checkbox, ctype = None, parent=None):
+>>>>>>> 26b52b6... Solved projections in plotting and add plotting functions
 
     def load_func(self):
 
@@ -2132,6 +2179,7 @@ class BeamTab(ParamMapTab):
         the software is closed
         '''
         
+<<<<<<< HEAD
         label_final = []
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
         coord_type = self.coordchoice.currentText()
@@ -2660,6 +2708,11 @@ class MapPlotsGroup(QWidget):
         self.data = data
         self.checkbox = checkbox
         self.projection = projection
+=======
+        self.data = data
+        self.checkbox = checkbox
+        self.ctype = ctype
+>>>>>>> 26b52b6... Solved projections in plotting and add plotting functions
 
         self.tabvisible()
 
@@ -2733,7 +2786,7 @@ class MapPlotsGroup(QWidget):
 
         self.tab3.setLayout(mainlayout)
 
-    def updateTab(self, data, coord1, coord2, projection = None):
+    def updateTab(self, data, coord1, coord2, sel, x_sel, y_sel, projection=None):
 
         '''
         Function to updates the I, Q and U plots when the 
@@ -2744,11 +2797,12 @@ class MapPlotsGroup(QWidget):
             idx_list = ['I', 'Q', 'U']
 
             for i in range(len(idx_list)):
-                self.map2d(data[i], idx_list[i])
+                self.map2d(data=data[i], coord1=coord1, coord2=coord2, x_sel=x_sel, y_sel=y_sel, idx=idx_list[i],\
+                           projection=projection)
         else:
-            self.map2d(data=data, coord1 = coord1, coord2 = coord2, projection=projection)
+            self.map2d(data=data, coord1=coord1, coord2=coord2, x_sel=x_sel, y_sel=y_sel, projection=projection)
 
-    def map2d(self, data=None, coord1=None, coord2=None, idx='I', projection=None):
+    def map2d(self, data=None, coord1=None, coord2=None, x_sel=None, y_sel=None, idx='I', projection=None):
 
         '''
         Function to generate the map plots (I,Q and U) 
@@ -2779,39 +2833,39 @@ class MapPlotsGroup(QWidget):
             cb.remove()
 
         axis.set_axis_on()
-        #axis.clear()
-        axis.set_title('Maps')
-
-        #print(axis.gca())
         
-        #max_index = np.where(np.abs(self.map_value) == np.amax((np.abs(self.map_value))))
-
-        #levels = 5
-
-        #interval = np.flip(np.linspace(0, 1, levels+1))
-
-        #map_levels = self.map_value[max_index]*(1-interval)
-
-        extent = (np.amin(coord1), np.amax(coord1), \
-                  np.amin(coord2), np.amax(coord2))
-        print('OK', extent)
         data_masked = np.ma.masked_where(data == 0, data)
 
-        im = axis.imshow(data_masked, extent = extent, origin='lower', cmap=plt.cm.viridis)     
+        intervals = 3
+        levels = np.linspace(0.5, 1, intervals)*np.amax(data_masked[x_sel[0]:x_sel[1],y_sel[0]:y_sel[1]])
+
+        im = axis.imshow(data_masked[x_sel[0]:x_sel[1],y_sel[0]:y_sel[1]], origin='lower', cmap=plt.cm.viridis)
         plt.colorbar(im, ax=axis)
+        axis.contour(data_masked[x_sel[0]:x_sel[1],y_sel[0]:y_sel[1]], levels=levels, colors='white', alpha=0.5)
         print('TEST')
 
-        # if self.ctype == 'RA and DEC':
-        #     self.axis_map.set_xlabel('RA (deg)')
-        #     self.axis_map.set_ylabel('Dec (deg)')
-        # elif self.ctype == 'AZ and EL':
-        #     self.axis_map.set_xlabel('Azimuth (deg)')
-        #     self.axis_map.set_ylabel('Elevation (deg)')
-        # elif self.ctype == 'CROSS-EL and EL':
-        #     self.axis_map.set_xlabel('Cross Elevation (deg)')
-        #     self.axis_map.set_ylabel('Elevation (deg)')
+        if self.ctype == 'RA and DEC':
+            ra = axis.coords[0]
+            dec = axis.coords[1]
+            ra.set_axislabel('RA (deg)')
+            dec.set_axislabel('Dec (deg)')
+            dec.set_major_formatter('dd:mm:ss.s')
+            ra.set_major_formatter('dd:mm')
+        elif self.ctype == 'AZ and EL':
+            axis.set_xlabel('Azimuth (deg)')
+            axis.set_ylabel('Elevation (deg)')
+        elif self.ctype == 'CROSS-EL and EL':
+            axis.set_xlabel('Cross Elevation (deg)')
+            axis.set_ylabel('Elevation (deg)')
 
         self.matplotlibWidget_Imap.canvas.draw()
+
+        if idx == 'I':
+            self.matplotlibWidget_Imap.canvas.draw()
+        elif idx == 'Q':
+            self.matplotlibWidget_Qmap.canvas.draw()
+        elif idx == 'U':
+            self.matplotlibWidget_Umap.canvas.draw()
 
 class MatplotlibWidget(QWidget):
 

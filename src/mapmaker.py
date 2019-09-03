@@ -285,9 +285,13 @@ class wcs_world():
         elif self.ctype == 'CROSS-EL and EL':
             w.wcs.ctype = ["TLON-CAR", "TLAT-CAR"]
 <<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
 =======
 >>>>>>> 8989c24... Correct calculation of coordinates
+=======
+        print('Coordinates', coord, type(coord), np.shape(coord))
+>>>>>>> 26b52b6... Solved projections in plotting and add plotting functions
         world = w.wcs_world2pix(coord, 1)
         #f = open('/Users/ian/git/gabsmap/mapmaker/coordarr.txt','w')
         #for i in range(len(coord)):
