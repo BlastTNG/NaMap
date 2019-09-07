@@ -41,6 +41,14 @@ class conversion(object):
         '''
         
         hour_angle = np.radians(self.ra2ha()*15.)
+
+        if isinstance(hour_angle, np.ndarray):
+            index, = np.where(hour_angle<0)
+            hour_angle[index] += 2*np.pi
+        else:
+            if hour_angle<0:
+                hour_angle +=2*np.pi
+
         el = np.arcsin(np.sin(self.coord2)*np.sin(self.lat)+\
                        np.cos(self.lat)*np.cos(self.coord2)*np.cos(hour_angle))
         x = -np.sin(self.lat)*np.cos(self.coord2)*np.cos(hour_angle) + np.cos(self.lat)*np.sin(self.coord2)
@@ -48,11 +56,11 @@ class conversion(object):
 
         az = np.arctan2(y, x)
         if isinstance(az, np.ndarray):
-            index, = np.where(az<0)
-            az[index] += 2*np.pi
+            index, = np.where(np.sin(hour_angle)>0)
+            az[index] = 2*np.pi - az[index]
         else:
-            if az <= 0:
-                az += 2*np.pi
+            if np.sin(hour_angle)>0 :
+                az = 2*np.pi - az
         return np.degrees(az), np.degrees(el)
 
     def azel2radec(self):
@@ -69,9 +77,18 @@ class conversion(object):
 
         y = -np.cos(self.coord2)*np.sin(np.radians(self.coord1))
 
-        hour_angle = np.degrees(np.arctan2(y, x))/15.
+        hour_angle = np.arctan2(y, x)
 
-        ra = self.ha2ra(hour_angle)*15.
+        index, = np.where(np.sin(np.radians(self.coord1)) > 0)
+        hour_angle[index] = 2*np.pi - hour_angle[index]
+
+        index, = np.where(hour_angle<0)
+        hour_angle += 2.*np.pi
+
+        ra = self.ha2ra(np.degrees(hour_angle)/15.)*15.
+
+        index, = np.where(ra<0)
+        ra[index] += 360.
 
         return ra, np.degrees(dec)
 
@@ -120,9 +137,12 @@ class apply_offset(object):
                 ra_corrected[i,:], dec_corrected[i,:] = conv2radec.azel2radec()
 
                 hour_angle = np.radians((self.lst-self.coord1)*15)
+                print('hour', hour_angle)
+                index, = np.where(hour_angle<0)
+                hour_angle[index] += 2*np.pi
 
                 y_pa = np.cos(np.radians(self.lat))*np.sin(hour_angle)
-                x_pa = np.sin(np.radians(self.lat))*np.cos(np.radians(self.coord2)) - np.cos(hour_angle)*np.cos(np.radians(self.lat))*np.sin(np.radians(self.coord2))
+                x_pa = np.sin(np.radians(self.lat))*np.cos(np.radians(self.coord2))-np.cos(hour_angle)*np.cos(np.radians(self.lat))*np.sin(np.radians(self.coord2))
                 pa = np.arctan2(y_pa, x_pa)
 
                 if isinstance(pa, np.ndarray):
@@ -131,24 +151,38 @@ class apply_offset(object):
                 else:
                     if pa <= 0:
                         pa += 2*np.pi
-
-                dec_corrected[i,:] = self.coord2-self.det_offset[i,0]*np.sin(pa)+self.det_offset[i,1]*np.cos(pa)
-                ra_corrected[i,:] = self.coord1*15. + (self.det_offset[i,0]*np.cos(pa)+self.det_offset[i,1]*np.sin(pa))/np.cos(dec_corrected[i,:])
                 
-                label_plt = 'DET'+str(i)
-                if i == 0:
-                    plt.plot(ra_corrected[i], 'o', label = label_plt)
-                else:
-                    plt.plot(ra_corrected[i], 'o' , label = label_plt)
+                # dec_corr = self.coord2+np.degrees(-np.radians(self.det_offset[i,0])*np.sin(pa)+np.radians(self.det_offset[i,1])*np.cos(pa))
+                # ra_corr = self.coord1*15+np.((np.radians(self.det_offset[i,0])*np.cos(pa)+\
+                #           np.radians(self.det_offset[i,1])*np.sin(pa))/np.cos(np.radians(dec_corrected[i,:]))))
+
+                # plt.figure(i)
+                # #plt.plot(dec_corr, 'o')
+                # plt.plot(dec_corrected[i,:]-dec_corr)
+
+                # print('min', np.amin(dec_corr), np.amin(np.degrees(ra_corr)))
+
+                # plt.figure(i+1)
+                # #plt.plot(np.degrees(ra_corr), 'o')
+                # plt.plot(ra_corrected[i,:]-np.degrees(ra_corr))
+                # # plt.plot(self.coord1*15, label = 'original')
+                # # plt.legend()
+
+                # # plt.figure(i+2)
+                # # plt.plot((np.radians(self.det_offset[i,0])*np.cos(pa)+\
+                # #           np.radians(self.det_offset[i,1])*np.sin(pa)))
+
+                # plt.show()
+
             del xEL_corrected_temp
             del EL_corrected_temp
             del AZ_corrected_temp
             gc.collect()
 
-            plt.plot(self.coord1*15, label = 'original')
+            # plt.plot(self.coord1*15, label = 'original')
             
-            plt.legend()
-            plt.show()
+            # plt.legend()
+            # plt.show()
 
             return ra_corrected, dec_corrected
 
@@ -188,7 +222,7 @@ class compute_offset(object):
 
         self.coord1_ref = coord1_ref           #Reference value of the map along the x axis in RA and DEC
         self.coord2_ref = coord2_ref           #Reference value of the map along the y axis in RA and DEC
-        self.map_data = map_data               #Maps 
+        self.map_data = -1*map_data               #Maps 
         self.pixel1_coord = pixel1_coord       #Array of the coordinates converted in pixel along the x axis
         self.pixel2_coord = pixel2_coord       #Array of the coordinates converted in pixel along the y axis
         self.wcs_trans = wcs_trans             #WCS transformation 
@@ -229,10 +263,9 @@ class compute_offset(object):
         x_c = np.sum(xx*weight*self.map_data)/flux
         y_c = np.sum(yy*weight*self.map_data)/flux
 
-        # import matplotlib.pyplot as plt
-        # plt.imshow(self.map_data, origin = 'lower', extent=[x_coord_min, x_coord_max, y_coord_min, y_coord_max])
-        # plt.plot(x_c, y_c, 'x')
-        # plt.show()
+        plt.imshow(self.map_data, origin = 'lower', extent=[x_coord_min, x_coord_max, y_coord_min, y_coord_max])
+        plt.plot(x_c, y_c, 'x')
+        plt.show()
 
         return np.rint(x_c), np.rint(y_c)
     
@@ -244,6 +277,7 @@ class compute_offset(object):
         if self.ctype.lower() == 'ra and dec':
             map_center = wcs.utils.pixel_to_skycoord(x_c, y_c, self.wcs_trans)
             print('Centroid', map_center)
+            print(self.wcs_trans.all_pix2world(np.array([[x_c,y_c]]), 0))
             x_map = map_center.ra.hour
             y_map = map_center.dec.degree
             print('b1', x_c, y_c, x_map*15., y_map, np.average(self.lst), np.average(self.lat))

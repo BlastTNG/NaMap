@@ -626,7 +626,7 @@ class MainWindowTab(QTabWidget):
         This function updates the map values everytime that the plot button is pushed
         '''
 
-        if self.tab1.PointingOffsetCheckBox.isChecked():
+        if self.tab1.PointingOffsetCheckBox.isChecked() or self.tab1.DettableCheckBox.isChecked():
             correction = True
         else:
             correction = False
@@ -657,26 +657,35 @@ class MainWindowTab(QTabWidget):
             self.tab2.draw_cleaned_TOD(self.cleandata[0])
 
         try:
+            print('TEST')
             self.tab1.mapvalues(self.cleandata)
 
             #Update Maps
             maps = self.tab1.map_value
             mp_ini = self.tab1.createMapPlotGroup
-            x_min_map = np.floor(np.amin(self.tab1.w[:,0]))
-            x_max_map = np.floor(np.amax(self.tab1.w[:,0])) 
-            y_min_map = np.floor(np.amin(self.tab1.w[:,1]))
-            y_max_map = np.floor(np.amax(self.tab1.w[:,1]))
+            if np.size(self.tab1.det_list) == 1:
+                x_min_map = np.floor(np.amin(self.tab1.w[:,0]))
+                x_max_map = np.floor(np.amax(self.tab1.w[:,0])) 
+                y_min_map = np.floor(np.amin(self.tab1.w[:,1]))
+                y_max_map = np.floor(np.amax(self.tab1.w[:,1]))
+                index1, = np.where(self.tab1.w[:,0]<0)
+                index2, = np.where(self.tab1.w[:,1]<0)
+            else:
+                x_min_map = np.floor(np.amin(self.tab1.w[:,:,0]))
+                x_max_map = np.floor(np.amax(self.tab1.w[:,:,0])) 
+                y_min_map = np.floor(np.amin(self.tab1.w[:,:,1]))
+                y_max_map = np.floor(np.amax(self.tab1.w[:,:,1]))
+                index1, = np.where(self.tab1.w[0,:,0]<0)
+                index2, = np.where(self.tab1.w[0,:,1]<0)
             print('Max', x_max_map, y_max_map)
             print('Min', x_min_map, y_min_map)
-
-            index, = np.where(self.tab1.w[:,0]<0)
-            if np.size(index) > 1:
+ 
+            if np.size(index1) > 1:
                 crpix1_new  = self.tab1.crpix[0]-x_min_map
             else:
                 crpix1_new = copy.copy(self.tab1.crpix[0])
             
-            index, = np.where(self.tab1.w[:,1]<0)
-            if np.size(index) > 1:
+            if np.size(index2) > 1:
                 crpix2_new  = self.tab1.crpix[1]-y_min_map
             else:
                 crpix2_new = copy.copy(self.tab1.crpix[1])
@@ -688,24 +697,21 @@ class MainWindowTab(QTabWidget):
 
             coord_test, self.proj_new = wcsworld.world(np.reshape(self.tab1.crval, (1,2)))
 
-            sel = np.array([])
             if crpix_new[0]*2 < x_max_map:
-                sel = np.append(sel, np.array([crpix_new[0]-self.tab1.pixnum[0]/2, crpix_new[0]+self.tab1.pixnum[0]/2]))
                 x_sel = np.array([crpix_new[0]-self.tab1.pixnum[0]/2, crpix_new[0]+self.tab1.pixnum[0]/2], dtype=int)
             else:
-                sel = np.append(sel, np.array([x_max_map-self.tab1.pixnum[0],x_max_map]))
-                x_sel = np.array([-100,-1], dtype=int)
+                x_sel = np.array([x_max_map-self.tab1.pixnum[0],x_max_map], dtype=int)
 
             if crpix_new[1]*2 < y_max_map:
-                sel = np.append(sel, np.array([crpix_new[1]-self.tab1.pixnum[1]/2, crpix_new[1]+self.tab1.pixnum[1]/2]))
                 y_sel = np.array([crpix_new[1]-self.tab1.pixnum[1]/2, crpix_new[1]+self.tab1.pixnum[1]/2], dtype=int)
             else:
-                sel = np.append(sel, np.array([-self.tab1.pixnum[1],-1]))
-                y_sel = np.array([-100,-1], dtype=int)
+                y_sel = np.array([y_max_map-self.tab1.pixnum[1],y_max_map], dtype=int)
 
-
+            print('SEL', x_sel, y_sel, coord_test)
+            pixcrd = np.array([[x_sel[0],y_sel[0]], [x_sel[1],y_sel[1]]])
+            print(self.proj_new.wcs_pix2world(pixcrd, 0))
             mp_ini.updateTab(data=maps, coord1 = self.tab1.coord1slice, coord2 = self.tab1.coord2slice, \
-                             sel = sel, x_sel = x_sel, y_sel = y_sel, projection = self.proj_new)
+                             x_sel = x_sel, y_sel = y_sel, projection = self.proj_new)
             #Update Offset
 
             if self.tab1.PointingOffsetCalculationCheckBox.isChecked():
@@ -978,7 +984,7 @@ class ParamMapTab(QWidget):
 
         self.DettableCheckBox = QCheckBox("Use Detector Table")
         self.DettableCheckBox.setChecked(False)
-        self.dettablepath = QLineEdit('')
+        self.dettablepath = QLineEdit('/mnt/c/Users/gabri/Documents/GitHub/mapmaker/')
         self.dettablepathlabel = QLabel("Detector Table Path:")
         self.dettablepathlabel.setBuddy(self.dettablepath)
 
@@ -987,7 +993,7 @@ class ParamMapTab(QWidget):
 
         self.PointingOffsetCheckBox = QCheckBox("Use Pointing Offset")
         self.PointingOffsetCheckBox.setChecked(False)
-        self.pointingoffsetnumber = QLineEdit('')
+        self.pointingoffsetnumber = QLineEdit('1')
         self.pointingoffsetnumberlabel = QLabel("StarCamera used for pointing offset:")
         self.pointingoffsetnumberlabel.setBuddy(self.pointingoffsetnumber)
 
@@ -1237,25 +1243,25 @@ class ParamMapTab(QWidget):
         self.coord2typelabel = QLabel("Coordinate 2 DIRFILE data type")
         self.coord2typelabel.setBuddy(self.coord2type)
 
-
         self.DirConvCheckBox = QCheckBox("DIRFILE Conversion factors")
         self.DirConvCheckBox.setChecked(True)
 
         self.adetconv = QLineEdit('')
         self.bdetconv = QLineEdit('')
-        self.detconv = QLabel('Detector conversion factors')
+        self.detconv = QLabel('Det conversion factors')
         self.detconv.setBuddy(self.adetconv)
 
         self.acoord1conv = QLineEdit('')
         self.bcoord1conv = QLineEdit('')
-        self.coord1conv = QLabel('Coordinate 1 conversion factors')
+        self.coord1conv = QLabel('Coord 1 conversion factors')
         self.coord1conv.setBuddy(self.acoord1conv)
 
         self.acoord2conv = QLineEdit('')
         self.bcoord2conv = QLineEdit('')
-        self.coord2conv = QLabel('Coordinate 2 conversion factors')
+        self.coord2conv = QLabel('Coord 2 conversion factors')
         self.coord2conv.setBuddy(self.acoord2conv)
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
         self.configuration_value()
@@ -1265,6 +1271,38 @@ class ParamMapTab(QWidget):
         self.experiment.activated[str].connect(self.configuration_update)
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
 =======
+=======
+        self.HWPCheckBox = QCheckBox("USE HWP")
+        self.HWPCheckBox.setChecked(True)
+
+        self.HWPtype = QLineEdit('')      
+        self.HWPtypelabel = QLabel("HWP DIRFILE data type")
+        self.HWPtypelabel.setBuddy(self.HWPtype)
+
+        self.HWPfreq = QLineEdit('')
+        self.HWPfreqlabel = QLabel("HWP Frequency Sample")
+        self.HWPfreqlabel.setBuddy(self.HWPfreq)
+
+        self.HWPframe = QLineEdit('')
+        self.HWPframelabel = QLabel("HWP Sample Samples per Frame")
+        self.HWPframelabel.setBuddy(self.HWPframe)
+
+        self.aHWPconv = QLineEdit('')
+        self.bHWPconv = QLineEdit('')
+        self.HWPconv = QLabel('HWP conversion factors')
+        self.HWPconv.setBuddy(self.aHWPconv)
+
+        self.HWPCheckBox.toggled.connect(self.HWPtypelabel.setVisible)
+        self.HWPCheckBox.toggled.connect(self.HWPtype.setVisible)
+        self.HWPCheckBox.toggled.connect(self.HWPfreqlabel.setVisible)
+        self.HWPCheckBox.toggled.connect(self.HWPfreq.setVisible)
+        self.HWPCheckBox.toggled.connect(self.HWPframelabel.setVisible)
+        self.HWPCheckBox.toggled.connect(self.HWPframe.setVisible)
+        self.HWPCheckBox.toggled.connect(self.HWPconv.setVisible)
+        self.HWPCheckBox.toggled.connect(self.aHWPconv.setVisible)
+        self.HWPCheckBox.toggled.connect(self.bHWPconv.setVisible)
+
+>>>>>>> d11dfe9... Solved pointing, multidetectors stacking and loading bugs
         self.configuration_update()
         self.experiment.activated[str].connect(self.configuration_update)
 >>>>>>> 4ee3dbe... Fixed bug in selecting data
@@ -1323,6 +1361,17 @@ class ParamMapTab(QWidget):
         self.coord2conv.setVisible(True)
         self.acoord2conv.setVisible(True)
         self.bcoord2conv.setVisible(True)
+
+        self.layout.addWidget(self.HWPCheckBox, 14, 0)
+        self.layout.addWidget(self.HWPtypelabel, 15, 0)
+        self.layout.addWidget(self.HWPtype, 15, 1, 1, 3)
+        self.layout.addWidget(self.HWPfreqlabel, 16, 0)
+        self.layout.addWidget(self.HWPfreq, 16, 1, 1, 3)
+        self.layout.addWidget(self.HWPframelabel, 17, 0)
+        self.layout.addWidget(self.HWPframe, 17, 1, 1, 3)
+        self.layout.addWidget(self.HWPconv, 18, 1)
+        self.layout.addWidget(self.aHWPconv, 18, 2)
+        self.layout.addWidget(self.bHWPconv, 18, 3)
 
         self.ExperimentGroup.setContentsMargins(5, 5, 5, 5)
 
@@ -1424,6 +1473,14 @@ class ParamMapTab(QWidget):
                     self.acsframe_config = float(model.get(section, 'ACS_SAMP_FRAME').split('#')[0])
                     self.coord1type_config = model.get(section,'COOR1_FILE_TYPE').split('#')[0].strip()
                     self.coord2type_config = model.get(section,'COOR2_FILE_TYPE').split('#')[0].strip()
+
+            elif section.lower() == 'hwp parameters':
+                    self.HWPfreq_config = float(model.get(section, 'HWPFREQ').split('#')[0])
+                    hwp_dir_conv = model.get(section,'HWP_DIR_CONV').split('#')[0].strip()
+                    self.HWPconv_config = np.array(hwp_dir_conv.split(',')).astype(float)
+                    self.HWPframe_config = float(model.get(section, 'HWP_SAMP_FRAME').split('#')[0])
+                    self.HWPtype_config = model.get(section,'HWP_FILE_TYPE').split('#')[0].strip()
+
             
 <<<<<<< HEAD
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
@@ -1442,6 +1499,7 @@ class ParamMapTab(QWidget):
         self.bcoord1conv.setText(str(self.coord1conv_config[1]))
         self.acoord2conv.setText(str(self.coord2conv_config[0]))
         self.bcoord2conv.setText(str(self.coord2conv_config[1]))
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 
@@ -1525,6 +1583,13 @@ class ParamMapTab(QWidget):
 >>>>>>> 6c0d8b1... Solved some errors in polarization maps (still some to be corrected)
     def createOffsetGroup(self):
 =======
+=======
+        self.HWPfreq.setText(str(self.HWPfreq_config))
+        self.HWPframe.setText(str(self.HWPframe_config))
+        self.HWPtype.setText(str(self.HWPtype_config))
+        self.aHWPconv.setText(str(self.HWPconv_config[0]))
+        self.bHWPconv.setText(str(self.HWPconv_config[1]))
+>>>>>>> d11dfe9... Solved pointing, multidetectors stacking and loading bugs
           
     def createOffsetGroup(self):
 
@@ -1744,13 +1809,20 @@ class ParamMapTab(QWidget):
 
         label_lst = []
         if correction:
-            try:
-                os.stat(os.getcwd()+'/xsc_'+self.pointingoffsetnumber.text()+'.txt')
-            except OSError:
-                label = 'StarCamera'
-                label_final.append(label)
+            if self.PointingOffsetCalculationCheckBox.isChecked():
+                try:
+                    os.stat(os.getcwd()+'/xsc_'+self.pointingoffsetnumber.text()+'.txt')
+                except OSError:
+                    label = 'StarCamera'
+                    label_final.append(label)
+            if self.DettableCheckBox.isChecked():
+                try:
+                    os.stat(self.dettablepath.text()+'bolotable.tsv')
+                except OSError:
+                    label = 'BoloTable'
+                    label_final.append(label)
         
-        if (correction and self.coord1.lower() == 'ra') or self.PointingOffsetCalculationCheckBox.isChecked():
+        if (correction and self.coord1.lower() == 'ra'):
             try:
                 os.stat(self.coordpath.text()+'/'+'lst')
             except OSError:
@@ -1766,7 +1838,6 @@ class ParamMapTab(QWidget):
                 label_lst = 'Write LST and LAT Parameters from the menubar'
 
         if np.size(label_final)+np.size(label_lst) != 0:
-            
             if np.size(label_final) != 0:
                 self.warningbox = QMessageBox()
                 self.warningbox.setIcon(QMessageBox.Warning)
@@ -1802,6 +1873,7 @@ class ParamMapTab(QWidget):
                 det_path_pickle.append('pickles_object/'+self.det_list[i])
             coord1_path_pickle = 'pickles_object/'+self.coord1
             coord2_path_pickle = 'pickles_object/'+self.coord2
+            hwp_path_pickle = 'pickles_object/hwp'
             lat_path_pickle = 'pickles_object/lat'
             lst_path_pickle = 'pickles_object/lst'
 
@@ -1813,8 +1885,13 @@ class ParamMapTab(QWidget):
                         self.det_data = np.vstack((self.det_data, pickle.load(open(det_path_pickle[i], 'rb')))) 
                 self.coord1_data = pickle.load(open(coord1_path_pickle, 'rb'))
                 self.coord2_data = pickle.load(open(coord2_path_pickle, 'rb'))
+
+                if self.HWPCheckBox.isChecked():
+                    self.hwp_data = pickle.load(open(hwp_path_pickle, 'rb'))
+                else:
+                    self.hwp_data = 0.
                 
-                if (correction and self.coord1.lower() == 'ra') or self.PointingOffsetCalculationCheckBox.isChecked():
+                if (correction and self.coord1.lower() == 'ra'):
                     self.lst_data = pickle.load(open(lst_path_pickle, 'rb'))
                     self.lat_data = pickle.load(open(lat_path_pickle, 'rb'))
                 else:
@@ -1823,7 +1900,7 @@ class ParamMapTab(QWidget):
 
             except FileNotFoundError:
 
-                if (correction and self.coord1.lower() == 'ra') or self.PointingOffsetCalculationCheckBox.isChecked():
+                if (correction and self.coord1.lower() == 'ra'):
                     lat_file_type = LSTtype
                     lst_file_type = LATtype
                 else: 
@@ -1842,33 +1919,35 @@ class ParamMapTab(QWidget):
 >>>>>>> db74452... Solved a bug on applying the offset
                                          self.coord1, self.coord2, self.dettype.text(), \
                                          self.coord1type.text(), self.coord2type.text(), \
-                                         self.experiment.currentText(), lst_file_type, lat_file_type)
+                                         self.experiment.currentText(), lst_file_type, lat_file_type, self.HWPtype.text())
 
-                if (correction and self.coord1.lower() == 'ra') or self.PointingOffsetCalculationCheckBox.isChecked():
-                    self.det_data, self.coord1_data, self.coord2_data, self.lst_data, self.lat_data = dataload.values()
+                if (correction and self.coord1.lower() == 'ra'):
+                    self.det_data, self.coord1_data, self.coord2_data, self.hwp_data, self.lst_data, self.lat_data = dataload.values()
                     pickle.dump(self.lst_data, open(lst_path_pickle, 'wb'))
                     pickle.dump(self.lat_data, open(lat_path_pickle, 'wb'))
                 else:
-                    self.det_data, self.coord1_data, self.coord2_data = dataload.values()
+                    self.det_data, self.coord1_data, self.coord2_data, self.hwp_data = dataload.values()
                     self.lst_data = None
                     self.lat_data = None
-
-                print('Size', np.size(self.det_data), np.shape(self.det_data))
-                
+                print('ARRAY SIZE', self.det_data.nbytes)
                 for i in range(np.size(self.det_list)):
-                    print('lenth', i)
                     if np.size(np.shape(self.det_data)) > 1:
-                        pickle.dump(self.det_data[i, :], open(det_path_pickle[i], 'wb'))
+                        print('PATH', det_path_pickle[i])
+                        pickle.dump(self.det_data[i,:], open(det_path_pickle[i], 'wb'))
                     else:
                         pickle.dump(self.det_data, open(det_path_pickle[i], 'wb'))
 
+                print('DET_OK')
                 pickle.dump(self.coord1_data, open(coord1_path_pickle, 'wb'))
                 pickle.dump(self.coord2_data, open(coord2_path_pickle, 'wb'))
-                
 
+                if self.HWPCheckBox.isChecked():
+                    pickle.dump(self.hwp_data, open(hwp_path_pickle, 'wb'))
+                
                 del dataload
                 gc.collect()
- 
+            import psutil
+            process = psutil.Process(os.getpid())
             if self.experiment.currentText().lower() == 'blast-tng':
                 zoomsyncdata = ld.frame_zoom_sync(self.det_data, self.detfreq.text(), \
                                                   self.detframe.text(), self.coord1_data, \
@@ -1892,13 +1971,15 @@ class ParamMapTab(QWidget):
 =======
                                                   self.endframe.text(), self.experiment.currentText(), \
                                                   self.lst_data, self.lat_data, lstlatfreq, \
-                                                  lstlatsample, offset)
+                                                  lstlatsample, offset, hwp_data=self.hwp_data, hwp_fs=self.HWPfreq.text(),\
+                                                  hwp_sample_frame=self.HWPframe.text())
 
             if (correction and self.coord1.lower() == 'ra') or self.PointingOffsetCalculationCheckBox.isChecked():
                 (self.timemap, self.detslice, self.coord1slice, \
-                 self.coord2slice, self.lstslice, self.latslice) = zoomsyncdata.sync_data()
+                 self.coord2slice, self.hwpslice, self.lstslice, self.latslice) = zoomsyncdata.sync_data()
             else:
                 (self.timemap, self.detslice, self.coord1slice, \
+<<<<<<< HEAD
                  self.coord2slice) = zoomsyncdata.sync_data()
 <<<<<<< HEAD
 >>>>>>> 3f224e8... Added pointing input dialogs and caluclation
@@ -1915,25 +1996,41 @@ class ParamMapTab(QWidget):
 >>>>>>> dfc2e45... Correct pointing offset calculation
 =======
 >>>>>>> db74452... Solved a bug on applying the offset
+=======
+                 self.coord2slice, self.hwpslice) = zoomsyncdata.sync_data()
+                self.lstslice = None
+                self.latslice = None
+
+            
+            print(process.memory_info().rss)
+            del self.det_data
+            gc.collect()
+            print(process.memory_info().rss)
+            print('GARBAGE')
+
+>>>>>>> d11dfe9... Solved pointing, multidetectors stacking and loading bugs
             if self.DirConvCheckBox.isChecked:
                 self.dirfile_conversion(correction = correction, LSTconv = LSTconv, \
                                         LATconv = LATconv)
+            else:
+                if self.HWPCheckBox.isChecked():
+                    self.hwp_slice = (self.hwp_slice-0.451)*(-360.)
 
             if self.DettableCheckBox.isChecked():
                 dettable = ld.det_table(self.det_list, self.experiment.currentText(), self.dettablepath.text())
-                self.det_off, self.noise_det, self.grid_angle = dettable.loadtable()
-
+                self.det_off, self.noise_det, self.grid_angle, self.pol_angle_offset, self.resp = dettable.loadtable()
+                
             else:
                 self.det_off = np.zeros((np.size(self.det_list),2))
                 self.noise_det = np.ones(np.size(self.det_list))
                 self.grid_angle = np.zeros(np.size(self.det_list))
+                self.pol_angle_offset = np.zeros(np.size(self.det_list))
+                self.resp = -1.*np.ones(np.size(self.det_list))
                         
             if self.coord1.lower() == 'cross-el':
                 self.coord1slice = self.coord1slice*np.cos(np.radians(self.coord2slice))
-            
-            if correction is True:
 
-                
+            if correction is True:               
                 xsc_file = ld.xsc_offset(self.pointingoffsetnumber.text(), self.startframe.text(), self.endframe.text())
                 xsc_offset = xsc_file.read_file()
                 xsc_offset = np.zeros(2)
@@ -1946,12 +2043,16 @@ class ParamMapTab(QWidget):
             else:
                 if self.coord1.lower() == 'ra':
                     self.coord1slice = self.coord1slice*15. #Conversion between hours to degree
-            
-            del self.det_data
+
+
             del self.coord1_data
             del self.coord2_data 
             del zoomsyncdata
             gc.collect()
+
+            print(process.memory_info().rss)
+            print('GARBAGE')
+
 
             self.clean_func()
 
@@ -1963,6 +2064,11 @@ class ParamMapTab(QWidget):
 
         det_tod = tod.data_cleaned(self.detslice, self.detfreq.text(), self.highpassfreq.text(), self.det_list)
         self.cleaned_data = det_tod.data_clean()
+        if np.size(self.resp) > 1:
+            self.cleaned_data = np.multiply(self.cleaned_data, np.reshape(self.resp, (np.size(self.resp), 1)))
+        else:
+            self.cleaned_data *= self.resp
+
 
     def dirfile_conversion(self, correction=False, LSTconv=None, LATconv=None):
 
@@ -1986,7 +2092,6 @@ class ParamMapTab(QWidget):
         self.coord2slice = coord2_conv.data
 
         if (correction and self.coord1.lower() == 'ra') or self.PointingOffsetCalculationCheckBox.isChecked():
-            print('TEST_CORRECTION')
             lst_conv = ld.convert_dirfile(self.lstslice, float(LSTconv[0]), \
                                           float(LSTconv[1]))
             lat_conv = ld.convert_dirfile(self.latslice, float(LATconv[0]), \
@@ -1997,6 +2102,14 @@ class ParamMapTab(QWidget):
 
             self.lstslice = lst_conv.data
             self.latslice = lat_conv.data
+
+        if self.HWPCheckBox.isChecked():
+            hwp_conv = ld.convert_dirfile(self.hwpslice, float(self.aHWPconv.text()), \
+                                          float(self.bHWPconv.text()))
+
+            hwp_conv.conversion()
+
+            self.hwpslice = (hwp_conv.data-0.451)*(-360.)
             
     def mapvalues(self, data):
 
@@ -2014,9 +2127,6 @@ class ParamMapTab(QWidget):
                                float(self.crval2.text())])
         self.pixnum = np.array([float(self.pixnum1.text()),\
                                float(self.pixnum2.text())])
-        
-
-        print('OK')
 
         if self.convchoice.currentText().lower() == 'gaussian':
             self.convolution = True
@@ -2024,10 +2134,24 @@ class ParamMapTab(QWidget):
         else:
             self.convolution = False
             self.std = 0
-        print('YES')
+
+        #Compute final polarization angle
+
+        
+        if np.size(self.det_list) == 1:
+            self.pol_angle = np.radians(2*self.hwpslice+(self.grid_angle-2*self.pol_angle_offset))
+        else:
+            self.pol_angle = np.zeros_like(data)
+            for i in range(np.size(self.det_list)):
+                print(self.grid_angle)
+                self.pol_angle[i,:] = np.radians(2*self.hwpslice+(self.grid_angle[i]-2*self.pol_angle_offset[i]))
+            print('DET SHAPE', np.shape(data))
+
+        print('Calculation', self.noise_det)
         self.maps = mp.maps(self.ctype, self.crpix, self.cdelt, self.crval, \
                             data, self.coord1slice, self.coord2slice, \
-                            self.convolution, self.std, self.ICheckBox.isChecked())
+                            self.convolution, self.std, self.ICheckBox.isChecked(), \
+                            pol_angle=self.pol_angle, noise=self.noise_det)
 
         self.maps.wcs_proj()
 
@@ -2786,7 +2910,7 @@ class MapPlotsGroup(QWidget):
 
         self.tab3.setLayout(mainlayout)
 
-    def updateTab(self, data, coord1, coord2, sel, x_sel, y_sel, projection=None):
+    def updateTab(self, data, coord1, coord2, x_sel, y_sel, projection=None):
 
         '''
         Function to updates the I, Q and U plots when the 
@@ -2837,11 +2961,18 @@ class MapPlotsGroup(QWidget):
         data_masked = np.ma.masked_where(data == 0, data)
 
         intervals = 3
-        levels = np.linspace(0.5, 1, intervals)*np.amax(data_masked[x_sel[0]:x_sel[1],y_sel[0]:y_sel[1]])
+        levels = np.linspace(0.5, 1, intervals)*np.amax(data_masked)
 
-        im = axis.imshow(data_masked[x_sel[0]:x_sel[1],y_sel[0]:y_sel[1]], origin='lower', cmap=plt.cm.viridis)
+        # im = axis.imshow(data_masked[x_sel[0]:x_sel[1],y_sel[0]:y_sel[1]], origin='lower', cmap=plt.cm.viridis)
+        # plt.colorbar(im, ax=axis)
+        # axis.contour(data_masked[x_sel[0]:x_sel[1],y_sel[0]:y_sel[1]], levels=levels, colors='white', alpha=0.5)
+
+        im = axis.imshow(-1*data_masked, origin='lower', cmap=plt.cm.viridis)
         plt.colorbar(im, ax=axis)
-        axis.contour(data_masked[x_sel[0]:x_sel[1],y_sel[0]:y_sel[1]], levels=levels, colors='white', alpha=0.5)
+        axis.contour(data_masked, levels=levels, colors='white', alpha=0.5)
+
+        # im = axis.imshow(data_masked, origin='lower', cmap=plt.cm.viridis)
+        # plt.colorbar(im, ax=axis)
         print('TEST')
 
         if self.ctype == 'RA and DEC':
@@ -2849,8 +2980,8 @@ class MapPlotsGroup(QWidget):
             dec = axis.coords[1]
             ra.set_axislabel('RA (deg)')
             dec.set_axislabel('Dec (deg)')
-            dec.set_major_formatter('dd:mm:ss.s')
-            ra.set_major_formatter('dd:mm')
+            dec.set_major_formatter('d.ddd')
+            ra.set_major_formatter('d.ddd')
         elif self.ctype == 'AZ and EL':
             axis.set_xlabel('Azimuth (deg)')
             axis.set_ylabel('Elevation (deg)')
