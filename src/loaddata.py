@@ -12,7 +12,7 @@ class data_value():
 
     def __init__(self, det_path, det_name, coord_path, coord1_name, \
                  coord2_name, det_file_type, coord1_file_type, coord2_file_type, \
-                 experiment, lst_file_type, lat_file_type):
+                 experiment, lst_file_type, lat_file_type, hwp_file_type):
         self.det_path = det_path                    #Path of the detector dirfile
         self.det_name = det_name                    #Detector name to be analyzed
         self.coord_path = coord_path                #Path of the coordinates dirfile
@@ -23,8 +23,10 @@ class data_value():
         self.coord2_file_type = coord2_file_type    #Coordinate 2 DIRFILE datatype
         self.experiment = experiment                #Experiment to be analyzed
 
-        self.lst_file_type = lst_file_type
-        self.lat_file_type = lat_file_type
+        self.lst_file_type = lst_file_type          #LST DIRFILE datatype
+        self.lat_file_type = lat_file_type          #LAT DIRFILE datatype
+
+        self.hwp_file_type = hwp_file_type          #HWP DIRFILE datatype
 
     def conversion_type(self, file_type):
 
@@ -67,14 +69,14 @@ class data_value():
             return np.asarray(values)
         else:
             d = gd.dirfile(filepath, gd.RDWR|gd.UNENCODED)
-            len_det = len(d.getdata(file[0], gd.UINT16, num_frames = d.nframes))
-            values = np.zeros((len(file), len_det))
+            gdtype = self.conversion_type(file_type)
+            values = np.array([])
 
             for i in range(len(file)):
-                gdtype = self.conversion_type(file_type)
-                values[i,:] = np.asarray(d.getdata(file[i], \
-                                         gdtype,num_frames = d.nframes))
-            
+                if i == 0:
+                    values = d.getdata(file[i], gdtype,num_frames = d.nframes)
+                else:
+                    values = np.vstack((values, d.getdata(file[i], gdtype,num_frames = d.nframes)))
             return values
 
     def values(self):
@@ -93,16 +95,21 @@ class data_value():
             coord1_data = self.load(self.coord_path, self.coord1_name.lower(), self.coord1_file_type)
         else:
             coord1_data = self.load(self.coord_path, 'az', self.coord1_file_type)
+
+        if self.hwp_file_type is not None:
+            hwp_data = self.load(self.coord_path, 'pot_hwpr', self.hwp_file_type)
+        else:
+            hwp_data = 0.
         
         if self.lat_file_type is not None and self.lat_file_type is not None:
             
             lat = self.load(self.coord_path, 'lat', self.lat_file_type)
             lst = self.load(self.coord_path, 'lst', self.lst_file_type)
 
-            return det_data, coord1_data, coord2_data, lst, lat
+            return det_data, coord1_data, coord2_data, hwp_data, lst, lat
         
         else:
-            return det_data, coord1_data, coord2_data
+            return det_data, coord1_data, coord2_data, hwp_data
 
 class convert_dirfile():
 
@@ -132,7 +139,8 @@ class frame_zoom_sync():
                  coord1_data, coord2_data, coord_fs, coord_sample_frame, \
                  startframe, endframe, experiment, \
                  lst_data, lat_data, lstlatfreq, lstlat_sample_frame, \
-                 offset =None, roach_number=None, roach_pps_path=None):
+                 offset =None, roach_number=None, roach_pps_path=None, hwp_data=0., \
+                 hwp_fs=None, hwp_sample_frame=None):
 
         self.det_data = det_data                                #Detector data timestream
         self.det_fs = float(det_fs)                             #Detector frequency sampling
@@ -153,14 +161,16 @@ class frame_zoom_sync():
         else:
             self.roach_number = roach_number
         self.roach_pps_path = roach_pps_path                    #Pulse per second of the roach used to sync the data
-        self.offset = offset
+        self.offset = offset                                    #Time offset between detector data and coordinates
+        self.hwp_data = hwp_data
+        self.hwp_fs = float(hwp_fs)
+        self.hwp_sample_frame = float(hwp_sample_frame)
 
     def frame_zoom(self, data, sample_frame, fs, fps, offset = None):
 
         '''
         Selecting the frames of interest and associate a timestamp for each value
         '''
-
         frames = fps.copy()
 
         frames[0] = fps[0]*sample_frame
@@ -174,8 +184,10 @@ class frame_zoom_sync():
             time = (np.arange(np.diff(frames))+frames[0])/np.floor(fs)
             return time, data[int(frames[0]):int(frames[1])]
         else:
+            print('TEST', len(data[0, :]))
             time = np.arange(len(data[0, :]))/np.floor(fs)
             time = time[int(frames[0]):int(frames[1])]
+            print('OK')
             return  time, data[:,int(frames[0]):int(frames[1])]
 
     def det_time(self):
@@ -262,6 +274,8 @@ class frame_zoom_sync():
             dettime, self.det_data = self.frame_zoom(self.det_data, self.det_sample_frame, \
                                                      self.det_fs, np.array([self.startframe,self.endframe]), \
                                                      self.offset)
+
+        print('TEST_2')
         coord1time, coord1 = self.frame_zoom(self.coord1_data, self.coord_sample_frame, \
                                              self.coord_fs, np.array([self.startframe,self.endframe]))
 
@@ -275,6 +289,28 @@ class frame_zoom_sync():
 
         coord1_inter, coord2_inter = self.coord_int(coord1, coord2, \
                                                     coord1time, dettime[index1[0]+10:index2[0]-10])
+
+        if isinstance(self.hwp_data, np.ndarray):
+            print('HWP_data', self.hwp_data)
+            print(self.hwp_sample_frame, type(self.hwp_sample_frame))
+            print(self.hwp_fs, type(self.hwp_fs))
+            hwptime, hwp = self.frame_zoom(self.hwp_data, self.hwp_sample_frame, \
+                                           self.hwp_fs, np.array([self.startframe,self.endframe]))
+            
+            hwptime = hwptime - hwptime[0]
+            index1, = np.where(np.abs(dettime-hwptime[0]) == np.amin(np.abs(dettime-hwptime[0])))
+            index2, = np.where(np.abs(dettime-hwptime[-1]) == np.amin(np.abs(dettime-hwptime[-1])))
+
+            hwp_interpolation = interp1d(hwptime, hwp, kind='linear')
+            hwp_inter = hwp_interpolation(dettime[index1[0]+10:index2[0]-10])
+
+            del hwptime
+            del hwp
+
+        else:
+
+            hwp_inter = np.zeros_like(coord1_inter)
+
 
         del coord1time
         del coord2time
@@ -300,18 +336,18 @@ class frame_zoom_sync():
 
             if np.size(np.shape(self.det_data)) > 1:
                 return (dettime[index1[0]+10:index2[0]-10], self.det_data[:,index1[0]+10:index2[0]-10], \
-                        coord1_inter, coord2_inter, lst_inter, lat_inter)
+                        coord1_inter, coord2_inter, hwp_inter, lst_inter, lat_inter)
             else:
                 return (dettime[index1[0]+10:index2[0]-10], self.det_data[index1[0]+10:index2[0]-10], \
-                        coord1_inter, coord2_inter, lst_inter, lat_inter)
+                        coord1_inter, coord2_inter,  hwp_inter, lst_inter, lat_inter)
         
         else:
             if np.size(np.shape(self.det_data)) > 1:
                 return (dettime[index1[0]+10:index2[0]-10], self.det_data[:,index1[0]+10:index2[0]-10], \
-                        coord1_inter, coord2_inter)
+                        coord1_inter, coord2_inter, hwp_inter)
             else:
                 return (dettime[index1[0]+10:index2[0]-10], self.det_data[index1[0]+10:index2[0]-10], \
-                        coord1_inter, coord2_inter)
+                        coord1_inter, coord2_inter, hwp_inter)
 
 class xsc_offset():
     
@@ -356,18 +392,17 @@ class det_table():
         self.pathtable = pathtable
 
     def loadtable(self):
-        print('NAME', self.name, np.size(self.name))
         det_off = np.zeros((np.size(self.name), 2))
-        noise = np.zeros(np.size(self.name))
+        noise = np.ones(np.size(self.name))
         grid_angle = np.zeros(np.size(self.name))
+        pol_angle_offset = np.zeros(np.size(self.name))
+        resp = np.zeros(np.size(self.name))
 
         if self.experiment.lower() == 'blastpol':
 
-
             for i in range(np.shape(det_off)[0]):
-                print('For', i)
                 if self.name[i][0].lower() == 'n':            
-                    path = self.pathtable+'/bolo_names.txt'
+                    path = self.pathtable+'bolo_names.txt'
                     name_table = np.loadtxt(path, skiprows = 1, dtype = str)
 
                     index, = np.where(self.name[i].upper() == name_table[:,1])
@@ -375,19 +410,17 @@ class det_table():
                 else:
                     real_name = self.name
 
-                path = self.pathtable+'/bolotable.tsv'
+                path = self.pathtable+'bolotable.tsv'
                 btable = tb.Table.read(path, format='ascii.basic')
                 index, = np.where(btable['Name'] == real_name[0].upper())
                 det_off[i, 1] = btable['EL'][index]/3600.       #Conversion from arcsec to degrees
-                det_off[i, 0] = btable['XEL'][index]/3600.     #Conversion from arcsec to degrees
-                # det_off[i, 1] = 0.03843784  
-                # det_off[i, 0] = -0.02526244
-                
-                
+                det_off[i, 0] = btable['XEL'][index]/3600.     #Conversion from arcsec to degrees          
 
                 noise[i] = btable['WhiteNoise'][index]
-                grid_angle = btable['Angle'][index]
+                grid_angle[i] = btable['Angle'][index]
+                pol_angle_offset[i] = btable['Chi'][index]
+                resp[i] = btable['Resp.'][index]*-1.
 
 
-            return det_off, noise, grid_angle
+            return det_off, noise, grid_angle, pol_angle_offset, resp
 

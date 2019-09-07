@@ -1,5 +1,6 @@
 import numpy as np
 import scipy.signal as sgn
+import matplotlib.pyplot as plt
 
 
 class data_cleaned():
@@ -108,10 +109,10 @@ class despike():
         redge = np.array([], dtype='int')
 
         for i in range(len(peaks)):
-            left_edge, = np.where(self.data[peaks[i]-window:peaks[i]] == \
-                                  np.amin(self.data[peaks[i]-window:peaks[i]]))
-            right_edge, = np.where(self.data[peaks[i]:peaks[i]+window] == \
-                                   np.amin(self.data[peaks[i]:peaks[i]+window]))
+            left_edge, = np.where(np.abs(self.data[peaks[i]-window:peaks[i]]) == \
+                                  np.amin(np.abs(self.data[peaks[i]-window:peaks[i]])))
+            right_edge, = np.where(np.abs(self.data[peaks[i]:peaks[i]+window]) == \
+                                   np.amin(np.abs(self.data[peaks[i]:peaks[i]+window])))
 
             left_edge += (peaks[i]-window)
             right_edge += peaks[i]
@@ -137,13 +138,13 @@ class despike():
 
         replaced = self.data.copy()
         for i in range(0, len(peaks)):
-            width = int(np.ceil(widths[0][i]))
-            if width <= 13:
-                interval = 25
-            elif width > 13 and width < 40:
-                interval = width*2
-            else:
-                interval = width*3
+            # width = int(np.ceil(widths[0][i]))
+            # # if width <= 13:
+            # #     interval = 25
+            # # elif width > 13 and width < 40:
+            # #     interval = width*2
+            # # else:
+            # #     interval = width*3
 
             left_edge = int(np.floor(widths[1][i]))
             right_edge = int(np.ceil(widths[2][i]))
@@ -330,4 +331,4 @@ class detector():
         zero_data = self.data.copy()
         zero_data[index] = 0.
 
-        return fitteddata-zero_data
+        return -fitteddata+zero_data
