@@ -1,11 +1,15 @@
 import numpy as np
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 import matplotlib.pyplot as plt
 =======
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
 =======
 >>>>>>> 8989c24... Correct calculation of coordinates
+=======
+from scipy.linalg import svd
+>>>>>>> caf44ca... Solved some bugs
 from scipy.optimize import least_squares
 from photutils import find_peaks
 from astropy.stats import sigma_clipped_stats
@@ -64,7 +68,6 @@ class beam(object):
     def residuals(self, params, x, y, err, maxv):
         dat = self.multivariate_gaussian_2d(params)
         index, = np.where(y>=0.2*maxv)
-
         return (y[index]-dat[index]) / err[index]
 
     def peak_finder(self, map_data, mask_pf = False):
@@ -118,19 +121,28 @@ class beam(object):
 
     def fit(self):
         try:
+            print('PARAM', self.param)
             p = least_squares(self.residuals, x0=self.param, \
                               args=(self.xy_mesh, np.ravel(self.data),\
                                     np.ones(len(np.ravel(self.data))), np.amax(self.data)), \
                               method='lm')
             
-            J = p.jac
-            cov = np.linalg.inv(J.T.dot(J))
-            var = np.sqrt(np.diagonal(cov))
+            # J = p.jac
+            # cov = np.linalg.inv(J.T.dot(J))
+            # var = np.sqrt(np.diagonal(cov))
 
+            _, s, VT = svd(p.jac, full_matrices=False)
+            threshold = np.finfo(float).eps * max(p.jac.shape) * s[0]
+            s = s[s > threshold]
+            VT = VT[:s.size]
+            var = np.dot(VT.T / s**2, VT)
+            print('VAR', np.sqrt(np.diag(var)))
             return p, var
         except np.linalg.LinAlgError:
             msg = 'Fit not converged'
             return msg, 0
+        # except ValueError:
+        #     msg = 'Too Many '
 
     def beam_fit(self, mask_pf= False):
 
@@ -183,9 +195,11 @@ class beam(object):
         if isinstance(fit_param, str):
             return msg, 0, 0
         else:
+            print('PARAM_FIT', fit_param.x)
             return fit_data, fit_param.x, var
         
 
+<<<<<<< HEAD
 class computeoffset():
 
     def __init__(self, data, angX_center, angY_center, ctype):
@@ -327,6 +341,9 @@ class computeoffset():
 =======
                 return coord[0]-self.angX_center, coord[1]-self.angY_center
 >>>>>>> 8989c24... Correct calculation of coordinates
+=======
+
+>>>>>>> caf44ca... Solved some bugs
 
 
 

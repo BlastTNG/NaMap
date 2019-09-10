@@ -51,10 +51,12 @@ class conversion(object):
 
         el = np.arcsin(np.sin(self.coord2)*np.sin(self.lat)+\
                        np.cos(self.lat)*np.cos(self.coord2)*np.cos(hour_angle))
-        x = -np.sin(self.lat)*np.cos(self.coord2)*np.cos(hour_angle) + np.cos(self.lat)*np.sin(self.coord2)
-        y = np.cos(self.coord2)*np.sin(hour_angle)
+        # x = -np.sin(self.lat)*np.cos(self.coord2)*np.cos(hour_angle) + np.cos(self.lat)*np.sin(self.coord2)
+        # y = np.cos(self.coord2)*np.sin(hour_angle)
 
-        az = np.arctan2(y, x)
+        # az = np.arctan2(y, x)
+        az = np.arccos((np.sin(self.coord2)-np.sin(self.lat)*np.sin(el))/(np.cos(self.lat)*np.cos(el)))
+
         if isinstance(az, np.ndarray):
             index, = np.where(np.sin(hour_angle)>0)
             az[index] = 2*np.pi - az[index]
@@ -72,18 +74,20 @@ class conversion(object):
         dec = np.arcsin(np.sin(self.coord2)*np.sin(self.lat)+\
                         np.cos(self.lat)*np.cos(self.coord2)*np.cos(np.radians(self.coord1)))
 
-        x = -np.sin(self.lat)*np.cos(self.coord2)*np.cos(np.radians(self.coord1)) +\
-            np.cos(self.lat)*np.sin(self.coord2)
+        # x = -np.sin(self.lat)*np.cos(self.coord2)*np.cos(np.radians(self.coord1)) +\
+        #     np.cos(self.lat)*np.sin(self.coord2)
 
-        y = -np.cos(self.coord2)*np.sin(np.radians(self.coord1))
+        # y = -np.cos(self.coord2)*np.sin(np.radians(self.coord1))
 
-        hour_angle = np.arctan2(y, x)
+        # hour_angle = np.arctan2(y, x)
+
+        hour_angle = np.arccos((np.sin(self.coord2)-np.sin(self.lat)*np.sin(dec))/(np.cos(self.lat)*np.cos(dec)))
 
         index, = np.where(np.sin(np.radians(self.coord1)) > 0)
         hour_angle[index] = 2*np.pi - hour_angle[index]
 
-        index, = np.where(hour_angle<0)
-        hour_angle += 2.*np.pi
+        # index, = np.where(hour_angle<0)
+        # hour_angle += 2.*np.pi
 
         ra = self.ha2ra(np.degrees(hour_angle)/15.)*15.
 
@@ -152,21 +156,23 @@ class apply_offset(object):
                     if pa <= 0:
                         pa += 2*np.pi
                 
-                # dec_corr = self.coord2+np.degrees(-np.radians(self.det_offset[i,0])*np.sin(pa)+np.radians(self.det_offset[i,1])*np.cos(pa))
-                # ra_corr = self.coord1*15+np.((np.radians(self.det_offset[i,0])*np.cos(pa)+\
-                #           np.radians(self.det_offset[i,1])*np.sin(pa))/np.cos(np.radians(dec_corrected[i,:]))))
+                dec_corr= self.coord2+np.degrees(-np.radians(self.det_offset[i,0])*np.sin(pa)+np.radians(self.det_offset[i,1])*np.cos(pa))
+                ra_corr = self.coord1*15+np.degrees((np.radians(self.det_offset[i,0])*np.cos(pa)+\
+                          np.radians(self.det_offset[i,1])*np.sin(pa))/np.cos(np.radians(dec_corrected[i,:])))
 
-                # plt.figure(i)
-                # #plt.plot(dec_corr, 'o')
-                # plt.plot(dec_corrected[i,:]-dec_corr)
+                plt.figure(i)
+                #plt.plot(dec_corr, 'o')
+                plt.plot(dec_corrected[i,:]-dec_corr)
 
                 # print('min', np.amin(dec_corr), np.amin(np.degrees(ra_corr)))
 
-                # plt.figure(i+1)
-                # #plt.plot(np.degrees(ra_corr), 'o')
-                # plt.plot(ra_corrected[i,:]-np.degrees(ra_corr))
-                # # plt.plot(self.coord1*15, label = 'original')
-                # # plt.legend()
+                plt.figure(i+1)
+                #plt.plot(np.degrees(ra_corr), 'o')
+                plt.plot(ra_corrected[i,:]-ra_corr)
+                # plt.plot(self.coord1*15, label = 'original')
+                # plt.legend()
+
+                plt.show()
 
                 # # plt.figure(i+2)
                 # # plt.plot((np.radians(self.det_offset[i,0])*np.cos(pa)+\
@@ -222,7 +228,7 @@ class compute_offset(object):
 
         self.coord1_ref = coord1_ref           #Reference value of the map along the x axis in RA and DEC
         self.coord2_ref = coord2_ref           #Reference value of the map along the y axis in RA and DEC
-        self.map_data = -1*map_data               #Maps 
+        self.map_data = map_data               #Maps 
         self.pixel1_coord = pixel1_coord       #Array of the coordinates converted in pixel along the x axis
         self.pixel2_coord = pixel2_coord       #Array of the coordinates converted in pixel along the y axis
         self.wcs_trans = wcs_trans             #WCS transformation 
