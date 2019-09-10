@@ -37,8 +37,6 @@ hour_angle[index] += 2*np.pi
 
 el_conv = np.arcsin(np.sin(decf)*np.sin(latf)+np.cos(latf)*np.cos(decf)*np.cos(hour_angle))
 
-az_conv1 = np.arccos((np.sin(decf)-np.sin(latf)*np.sin(el_conv))/(np.cos(latf)*np.cos(el_conv)))
-
 x_ae = -np.sin(latf)*np.cos(decf)*np.cos(hour_angle) + np.cos(latf)*np.sin(decf)
 y_ae = np.cos(decf)*np.sin(hour_angle)
 

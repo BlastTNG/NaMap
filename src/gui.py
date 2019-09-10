@@ -451,7 +451,7 @@ class MainWindowTab(QTabWidget):
 
         self.refpoint = None
 
-        self.tab3 = BeamTab(checkbox=checkI)
+        self.tab3 = BeamTab(checkbox=checkI, ctype=self.tab1.coordchoice.currentText())
         self.addTab(self.tab3, "Beam")
 
         self.tab1.plotbutton.clicked.connect(self.updatedata)
@@ -555,8 +555,8 @@ class MainWindowTab(QTabWidget):
             print(self.proj_new.wcs_pix2world(pixcrd, 0))
             mp_ini.updateTab(data=maps, coord1 = self.tab1.coord1slice, coord2 = self.tab1.coord2slice, \
                              x_sel = x_sel, y_sel = y_sel, projection = self.proj_new)
+            
             #Update Offset
-
             if self.tab1.PointingOffsetCalculationCheckBox.isChecked():
                 if self.refpoint is not None:
                     self.tab1.updateOffsetValue(self.refpoint[0], self.refpoint[1])
@@ -567,8 +567,11 @@ class MainWindowTab(QTabWidget):
 
             #Create Beams
             if checkBeam.isChecked():
+                print('BEAM')
                 beam_value = bm.beam(maps, param = self.beamparam)
                 beam_map = beam_value.beam_fit()
+
+                param = beam_map[1]
 
                 beams = self.tab3.beammaps
 
@@ -586,7 +589,9 @@ class MainWindowTab(QTabWidget):
                     self.warningbox.exec_()
 
                 else:
-                    beams.updateTab(data=beam_map[0])
+                    beams.updateTab(data=beam_map[0], coord1 = self.tab1.coord1slice, coord2 = self.tab1.coord2slice, \
+                                    x_sel = x_sel, y_sel = y_sel, projection = self.proj_new)
+                    self.tab3.updateTable(param)
 
         except AttributeError:
             pass
@@ -1191,7 +1196,9 @@ class ParamMapTab(QWidget):
         print('OFFSET', xel_offset, el_offset)
 
         self.CROSSELoffset.setText(str(xel_offset))
+        self.CROSSELoffset.setStyleSheet("color: red;")
         self.ELxoffset.setText(str(el_offset))
+        self.ELxoffset.setStyleSheet("color: red;")
 
     def load_func(self, offset = None, correction=False, LSTtype=None, LATtype=None,\
                   LSTconv=None, LATconv=None, lstlatfreq=None, lstlatsample = None):
@@ -1476,7 +1483,6 @@ class ParamMapTab(QWidget):
         else:
             self.cleaned_data *= self.resp
 
-
     def dirfile_conversion(self, correction=False, LSTconv=None, LATconv=None):
 
         '''
@@ -1670,18 +1676,48 @@ class BeamTab(ParamMapTab):
     Layout for the tab used to show the calculated beams
     '''
 
-
-    def __init__(self, parent=None, checkbox=None):
+    def __init__(self, parent=None, checkbox=None, ctype=None):
 
         super(QWidget, self).__init__(parent)
 
-        self.beammaps = MapPlotsGroup(checkbox=checkbox, data=None)
+        self.beammaps = MapPlotsGroup(checkbox=checkbox, data=None, ctype=ctype)
+
+        self.table = QTableWidget()
 
         mainlayout = QGridLayout()
         mainlayout.addWidget(self.beammaps, 0, 0)
+        mainlayout.addWidget(self.table, 1, 0)
         
         self.setLayout(mainlayout)
-        
+
+    def configureTable(self, table, rows):
+        table.setColumnCount(6)
+        table.setRowCount(rows)
+        table.setHorizontalHeaderItem(0, QTableWidgetItem("Amplitude"))
+        table.setHorizontalHeaderItem(1, QTableWidgetItem("X0 (in pixel)"))
+        table.setHorizontalHeaderItem(2, QTableWidgetItem("Y0 (in pixel)"))
+        table.setHorizontalHeaderItem(3, QTableWidgetItem("SigmaX (in pixel)"))
+        table.setHorizontalHeaderItem(4, QTableWidgetItem("SigmaY (in pixel)"))
+        table.setHorizontalHeaderItem(5, QTableWidgetItem("Theta"))
+
+    def updateTable(self, gauss_param):
+        try:
+            self.configureTable(self.table, int(np.size(gauss_param)/6))
+            self.updateParamValues(gauss_param)
+        except ValueError:
+            pass
+
+    def updateParamValues(self, gauss_param):
+
+        rows_number = self.table.rowCount()
+        column_number = self.table.columnCount()
+        count =0
+        for i in range(rows_number):
+            for j in range(column_number):
+                print('OK')
+                self.table.setItem(i,j, QTableWidgetItem(str(format(gauss_param[count],'.3f'))))
+                count +=1
+
 class MapPlotsGroup(QWidget):
 
     '''
@@ -1834,7 +1870,7 @@ class MapPlotsGroup(QWidget):
         # plt.colorbar(im, ax=axis)
         # axis.contour(data_masked[x_sel[0]:x_sel[1],y_sel[0]:y_sel[1]], levels=levels, colors='white', alpha=0.5)
 
-        im = axis.imshow(-1*data_masked, origin='lower', cmap=plt.cm.viridis)
+        im = axis.imshow(data_masked, origin='lower', cmap=plt.cm.viridis)
         plt.colorbar(im, ax=axis)
         axis.contour(data_masked, levels=levels, colors='white', alpha=0.5)
 

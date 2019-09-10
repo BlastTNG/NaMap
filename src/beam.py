@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.linalg import svd
 from scipy.optimize import least_squares
 from photutils import find_peaks
 from astropy.stats import sigma_clipped_stats
@@ -42,7 +43,6 @@ class beam(object):
     def residuals(self, params, x, y, err, maxv):
         dat = self.multivariate_gaussian_2d(params)
         index, = np.where(y>=0.2*maxv)
-
         return (y[index]-dat[index]) / err[index]
 
     def peak_finder(self, map_data, mask_pf = False):
@@ -88,19 +88,28 @@ class beam(object):
 
     def fit(self):
         try:
+            print('PARAM', self.param)
             p = least_squares(self.residuals, x0=self.param, \
                               args=(self.xy_mesh, np.ravel(self.data),\
                                     np.ones(len(np.ravel(self.data))), np.amax(self.data)), \
                               method='lm')
             
-            J = p.jac
-            cov = np.linalg.inv(J.T.dot(J))
-            var = np.sqrt(np.diagonal(cov))
+            # J = p.jac
+            # cov = np.linalg.inv(J.T.dot(J))
+            # var = np.sqrt(np.diagonal(cov))
 
+            _, s, VT = svd(p.jac, full_matrices=False)
+            threshold = np.finfo(float).eps * max(p.jac.shape) * s[0]
+            s = s[s > threshold]
+            VT = VT[:s.size]
+            var = np.dot(VT.T / s**2, VT)
+            print('VAR', np.sqrt(np.diag(var)))
             return p, var
         except np.linalg.LinAlgError:
             msg = 'Fit not converged'
             return msg, 0
+        # except ValueError:
+        #     msg = 'Too Many '
 
     def beam_fit(self, mask_pf= False):
 
@@ -135,71 +144,11 @@ class beam(object):
         if isinstance(fit_param, str):
             return msg, 0, 0
         else:
+            print('PARAM_FIT', fit_param.x)
             return fit_data, fit_param.x, var
         
 
-class computeoffset():
 
-    def __init__(self, data, angX_center, angY_center, ctype):
-
-        self.data = data
-        self.angX_center = angX_center #coord1 center map 
-        self.angY_center = angY_center #coord2 center map
-        self.ctype = ctype
-
-    def centroid(self, threshold=0.275):
-
-        '''
-        For more information about centroid calculation see Shariff, PhD Thesis, 2016
-        '''
-
-        maxval = np.max(self.data)
-        minval = np.min(self.data)
-        y_max, x_max = np.where(self.data == maxval)
-
-        lt_inds = np.where(self.data < threshold*maxval)
-        gt_inds = np.where(self.data > threshold*maxval)
-
-        weight = np.zeros((self.data.shape[0], self.data.shape[1]))
-        weight[gt_inds] = 1.
-        a = self.data[gt_inds]
-        flux = np.sum(a)
-        x_range = np.arange(0, self.data.shape[0])
-        y_range = np.arange(0, self.data.shape[1])
-
-        yy, xx = np.meshgrid(y_range, x_range)
-
-        x_c = np.sum(xx*weight*self.data)/flux
-        y_c = np.sum(yy*weight*self.data)/flux
-
-        return np.rint(x_c), np.rint(y_c)
-
-    def offset(self, wcs_trans, threshold=0.275, return_pixel=False, altitude=0., lon=0., lat=0.):
-        x_c, y_c = self.centroid(threshold=threshold)
-
-        coord_centre = coordinates.SkyCoord(self.angX_center, self.angY_center, unit='deg')
-
-        if return_pixel is True:
-        
-            x_map, y_map = wcs.utils.skycoord_to_pixel(coord_centre, wcs_trans)
-
-            x_off = x_map-x_c
-            y_off = y_map-y_c
-
-            return x_off, y_off
-        
-        else:
-
-            if self.ctype == 'RA and DEC':
-                coord = wcs.utils.pixel_to_skycoord(x_c, y_c, wcs_trans)
-                offset_angle = coord_centre.spherical_offsets_to(coord)
-
-                return offset_angle[0].degree, offset_angle[1].degree
-
-            elif self.ctype == 'CROSS-EL and EL':
-                coord = wcs_trans.wcs_pix2world(x_c, y_c, 1.)
-
-                return coord[0]-self.angX_center, coord[1]-self.angY_center
 
 
 
