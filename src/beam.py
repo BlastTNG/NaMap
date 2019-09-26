@@ -3,10 +3,6 @@ from scipy.linalg import svd
 from scipy.optimize import least_squares
 from photutils import find_peaks
 from astropy.stats import sigma_clipped_stats
-from astropy import wcs, coordinates
-
-#import matplotlib.pyplot as plt
-
 
 class beam(object):
 
@@ -94,22 +90,18 @@ class beam(object):
                                     np.ones(len(np.ravel(self.data))), np.amax(self.data)), \
                               method='lm')
             
-            # J = p.jac
-            # cov = np.linalg.inv(J.T.dot(J))
-            # var = np.sqrt(np.diagonal(cov))
-
             _, s, VT = svd(p.jac, full_matrices=False)
             threshold = np.finfo(float).eps * max(p.jac.shape) * s[0]
             s = s[s > threshold]
             VT = VT[:s.size]
             var = np.dot(VT.T / s**2, VT)
-            print('VAR', np.sqrt(np.diag(var)))
             return p, var
         except np.linalg.LinAlgError:
             msg = 'Fit not converged'
             return msg, 0
-        # except ValueError:
-        #     msg = 'Too Many '
+        except ValueError:
+            msg = 'Too Many parameters',
+            return msg, 0
 
     def beam_fit(self, mask_pf= False):
 

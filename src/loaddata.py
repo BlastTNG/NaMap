@@ -318,6 +318,7 @@ class frame_zoom_sync():
         del coord2
 
         if self.lat_data is not None and self.lat_data is not None:
+            print('LST/LAT')
             lsttime, lst = self.frame_zoom(self.lst_data, self.lstlat_sample_frame, \
                                            self.lstlatfreq, np.array([self.startframe,self.endframe]))
 

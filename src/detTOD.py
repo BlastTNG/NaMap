@@ -10,12 +10,14 @@ class data_cleaned():
     the next classes. Check them for more explanations
     '''
 
-    def __init__(self, data, fs, cutoff, detlist):
+    def __init__(self, data, fs, cutoff, detlist, polynomialorder, sigma):
 
         self.data = data                #detector TOD
         self.fs = float(fs)             #frequency sampling of the detector
         self.cutoff = float(cutoff)     #cutoff frequency of the highpass filter
         self.detlist = detlist          #detector name list
+        self.polynomialorder = polynomialorder #polynomial order for fitting
+        self.sigma = sigma #polynomial order for fitting
 
     def data_clean(self):
 
@@ -27,10 +29,13 @@ class data_cleaned():
 
         if np.size(self.detlist) == 1:
             det_data = detector(self.data, 0, 0)
-            residual_data = det_data.fit_residual()
+            if self.polynomialorder != 0:
+                residual_data = det_data.fit_residual(order=self.polynomialorder)
+            else:
+                residual_data = det_data.copy()
 
             desp = despike(residual_data)
-            data_despiked = desp.replace_peak()
+            data_despiked = desp.replace_peak(hthres=self.sigma)
 
             filterdat = filterdata(data_despiked, self.cutoff, self.fs)
             cleaned_data = filterdat.ifft_filter(window=True)

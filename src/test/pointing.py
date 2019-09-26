@@ -70,12 +70,12 @@ y_pa = np.cos(latf)*np.sin(hour_angle)
 x_pa = np.sin(latf)*np.cos(decf) - np.cos(hour_angle)*np.cos(latf)*np.sin(decf)
 pa = np.arctan2(y_pa, x_pa)
 
-if isinstance(pa, np.ndarray):
-    index, = np.where(pa<0)
-    pa[index] += 2*np.pi
-else:
-    if pa <= 0:
-        pa += 2*np.pi
+# if isinstance(pa, np.ndarray):
+#     index, = np.where(pa<0)
+#     pa[index] += 2*np.pi
+# else:
+#     if pa <= 0:
+#         pa += 2*np.pi
 
 dec_naive = decf-xEL_offset*np.sin(pa)+EL_offset*np.cos(pa)
 ra_naive = np.radians(raf*15.) + (xEL_offset*np.cos(pa)+EL_offset*np.sin(pa))/np.cos(dec_naive)
