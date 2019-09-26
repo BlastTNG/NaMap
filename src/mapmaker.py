@@ -142,15 +142,12 @@ class wcs_world():
                 w.wcs.ctype = ["TLON-ARC", "TLAT-ARC"]
             elif self.ctype == 'CROSS-EL and EL':
                 w.wcs.ctype = ["TLON-CAR", "TLAT-CAR"]
-            print('WORLD_BUILT', coord)
             world = w.all_world2pix(coord, 1)
             
         else:
             w.wcs.ctype = ["TLON-TAN", "TLAT-TAN"]
             world = np.zeros_like(coord)
             px = w.wcs.s2p(coord, 1)
-            print('COORD', coord)
-            print('PIXEL', px['imgcrd'][:,0])
             #Use the parallactic angle to rotate the projected plane
             world[:,0] = (px['imgcrd'][:,0]*np.cos(self.parang)-px['imgcrd'][:,1]*np.sin(self.parang))/self.crdelt[0]+self.crpix[0]
             world[:,1] = (px['imgcrd'][:,0]*np.sin(self.parang)+px['imgcrd'][:,1]*np.cos(self.parang))/self.crdelt[1]+self.crpix[1]
