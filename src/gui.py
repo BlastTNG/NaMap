@@ -837,7 +837,8 @@ class MainWindowTab(QTabWidget):
 
                 else:
                     beams.updateTab(data=beam_map[0], coord1 = self.tab1.coord1slice, coord2 = self.tab1.coord2slice, \
-                                    x_sel = x_sel, y_sel = y_sel, projection = self.proj_new)
+                                    crval = self.tab1.crval, pixnum = self.tab1.pixnum, telcoord = self.tab1.telescopecoordinateCheckBox.isChecked(),\
+                                    crpix = crpix_new, cdelt = self.tab1.cdelt, projection = self.proj_new)
                     self.tab3.updateTable(param)
 
         except AttributeError:
@@ -2286,7 +2287,7 @@ class ParamMapTab(QWidget):
 
         self.proj = self.maps.proj
         self.w = self.maps.w
-        
+
         self.map_value = self.maps.map2d()
 
 class TODTab(QWidget):
@@ -2377,13 +2378,11 @@ class TODTab(QWidget):
         self.matplotlibWidget_cleaned_TOD.canvas.draw()
 
     def detlist_selection(self, detlist):
-        print('DETLIST', detlist, np.size(detlist))
         self.detcombolist.clear()
         if np.size(detlist) == 1:
             self.detcombolist.addItem(str(detlist))
         else:
             for i in range(np.size(detlist)):
-                print('CYCLE', i)
                 self.detcombolist.addItem(str(detlist[i]))
 
 class BeamTab(ParamMapTab):
