@@ -1,12 +1,11 @@
 import numpy as np
 import gc
 from astropy import wcs
-import matplotlib.pyplot as plt
 
-class conversion(object):
+class utils(object):
 
     '''
-    class to handle convesion between different coodinates sytem 
+    class to handle conversion between different coodinates sytem 
     '''
 
     def __init__(self, coord1, coord2, lst = None, lat = None):
@@ -51,10 +50,7 @@ class conversion(object):
 
         el = np.arcsin(np.sin(self.coord2)*np.sin(self.lat)+\
                        np.cos(self.lat)*np.cos(self.coord2)*np.cos(hour_angle))
-        # x = -np.sin(self.lat)*np.cos(self.coord2)*np.cos(hour_angle) + np.cos(self.lat)*np.sin(self.coord2)
-        # y = np.cos(self.coord2)*np.sin(hour_angle)
 
-        # az = np.arctan2(y, x)
         az = np.arccos((np.sin(self.coord2)-np.sin(self.lat)*np.sin(el))/(np.cos(self.lat)*np.cos(el)))
 
         if isinstance(az, np.ndarray):
@@ -74,20 +70,11 @@ class conversion(object):
         dec = np.arcsin(np.sin(self.coord2)*np.sin(self.lat)+\
                         np.cos(self.lat)*np.cos(self.coord2)*np.cos(np.radians(self.coord1)))
 
-        # x = -np.sin(self.lat)*np.cos(self.coord2)*np.cos(np.radians(self.coord1)) +\
-        #     np.cos(self.lat)*np.sin(self.coord2)
-
-        # y = -np.cos(self.coord2)*np.sin(np.radians(self.coord1))
-
-        # hour_angle = np.arctan2(y, x)
 
         hour_angle = np.arccos((np.sin(self.coord2)-np.sin(self.lat)*np.sin(dec))/(np.cos(self.lat)*np.cos(dec)))
 
         index, = np.where(np.sin(np.radians(self.coord1)) > 0)
         hour_angle[index] = 2*np.pi - hour_angle[index]
-
-        # index, = np.where(hour_angle<0)
-        # hour_angle += 2.*np.pi
 
         ra = self.ha2ra(np.degrees(hour_angle)/15.)*15.
 
@@ -95,6 +82,59 @@ class conversion(object):
         ra[index] += 360.
 
         return ra, np.degrees(dec)
+
+    def parallactic_angle(self):
+
+        '''
+        Compute the parallactic angle which is returned in radians
+        '''
+
+        hour_angle = np.radians((self.ra2ha())*15)
+
+        if isinstance(hour_angle, np.ndarray):
+            try:
+                index, = np.where(hour_angle<0)
+                hour_angle[index] += 2*np.pi
+            except ValueError:
+                index, = np.where(hour_angle[0]<0)
+                hour_angle[0,index] += 2*np.pi
+        else:
+            if hour_angle<=0:
+                hour_angle += 2*np.pi
+
+        y_pa = np.cos(self.lat)*np.sin(hour_angle)
+        x_pa = np.sin(self.lat)*np.cos(self.coord2)-np.cos(hour_angle)*np.cos(self.lat)*np.sin(self.coord2)
+
+        pa = np.arctan2(y_pa, x_pa)
+
+        return np.degrees(pa)
+
+class convert_to_telescope(object):
+
+    '''
+    Class to convert from sky equatorial coordinates to telescope coordinates
+    '''
+
+    def __init__(self, coord1, coord2, lst, lat):
+
+        self.coord1 = coord1           #RA, needs to be in hours       
+        self.coord2 = coord2           #DEC
+        self.lst = lst 
+        self.lat = lat
+
+    def conversion(self):
+
+        '''
+        This function rotates the coordinates projected on the plane using the parallactic angle
+        '''
+        
+        parang = utils(self.coord1, self.coord2, self.lst, self.lat)
+        pa = parang.parallactic_angle()
+
+        x_tel = np.radians(self.coord1*15)*np.cos(pa)-np.radians(self.coord2)*np.sin(pa)
+        y_tel = np.radians(self.coord2)*np.cos(pa)+np.radians(self.coord1*15)*np.sin(pa)
+
+        return np.degrees(x_tel), np.degrees(y_tel)
 
 class apply_offset(object):
 
@@ -117,12 +157,11 @@ class apply_offset(object):
 
         if self.ctype.lower() == 'ra and dec':
 
-            conv2azel = conversion(self.coord1, self.coord2, self.lst, self.lat)
+            conv2azel = utils(self.coord1, self.coord2, self.lst, self.lat)
 
             az, el = conv2azel.radec2azel()
 
             xEL = np.degrees(np.radians(az)*np.cos(np.radians(el)))
-            print('STARCAMER', self.xsc_offset)
             xEL_corrected = xEL-self.xsc_offset[0]
             EL_corrected = el+self.xsc_offset[1]
             
@@ -130,69 +169,37 @@ class apply_offset(object):
             dec_corrected = np.zeros((int(np.size(self.det_offset)/2), len(xEL_corrected)))
 
             for i in range(int(np.size(self.det_offset)/2)):
-                print('DET_OFF', self.det_offset[i])
+
                 xEL_corrected_temp = xEL_corrected-self.det_offset[i, 0]
                 EL_corrected_temp = EL_corrected+self.det_offset[i, 1]
                 AZ_corrected_temp = np.degrees(np.radians(xEL_corrected_temp)/np.cos(np.radians(el)))
 
-                conv2radec = conversion(AZ_corrected_temp, EL_corrected_temp, \
-                                        self.lst, self.lat)
+                conv2radec = utils(AZ_corrected_temp, EL_corrected_temp, \
+                                   self.lst, self.lat)
 
                 ra_corrected[i,:], dec_corrected[i,:] = conv2radec.azel2radec()
 
-                hour_angle = np.radians((self.lst-self.coord1)*15)
-                print('hour', hour_angle)
-                index, = np.where(hour_angle<0)
-                hour_angle[index] += 2*np.pi
+                # hour_angle = np.radians((self.lst-self.coord1)*15)
+                # print('hour', hour_angle)
+                # index, = np.where(hour_angle<0)
+                # hour_angle[index] += 2*np.pi
 
-                y_pa = np.cos(np.radians(self.lat))*np.sin(hour_angle)
-                x_pa = np.sin(np.radians(self.lat))*np.cos(np.radians(self.coord2))-np.cos(hour_angle)*np.cos(np.radians(self.lat))*np.sin(np.radians(self.coord2))
-                pa = np.arctan2(y_pa, x_pa)
-
-                if isinstance(pa, np.ndarray):
-                    index, = np.where(pa<0)
-                    pa[index] += 2*np.pi
-                else:
-                    if pa <= 0:
-                        pa += 2*np.pi
+                # y_pa = np.cos(np.radians(self.lat))*np.sin(hour_angle)
+                # x_pa = np.sin(np.radians(self.lat))*np.cos(np.radians(self.coord2))-np.cos(hour_angle)*np.cos(np.radians(self.lat))*np.sin(np.radians(self.coord2))
+                # pa = np.arctan2(y_pa, x_pa)
                 
-                dec_corr= self.coord2+np.degrees(-np.radians(self.det_offset[i,0])*np.sin(pa)+np.radians(self.det_offset[i,1])*np.cos(pa))
-                ra_corr = self.coord1*15+np.degrees((np.radians(self.det_offset[i,0])*np.cos(pa)+\
-                          np.radians(self.det_offset[i,1])*np.sin(pa))/np.cos(np.radians(dec_corrected[i,:])))
-
-                plt.figure(i)
-                #plt.plot(dec_corr, 'o')
-                plt.plot(dec_corrected[i,:]-dec_corr)
-
-                # print('min', np.amin(dec_corr), np.amin(np.degrees(ra_corr)))
-
-                plt.figure(i+1)
-                #plt.plot(np.degrees(ra_corr), 'o')
-                plt.plot(ra_corrected[i,:]-ra_corr)
-                # plt.plot(self.coord1*15, label = 'original')
-                # plt.legend()
-
-                plt.show()
-
-                # # plt.figure(i+2)
-                # # plt.plot((np.radians(self.det_offset[i,0])*np.cos(pa)+\
-                # #           np.radians(self.det_offset[i,1])*np.sin(pa)))
-
-                # plt.show()
+                # dec_corrected[i,:]= self.coord2+np.degrees(-np.radians(self.det_offset[i,0])*np.sin(pa)+np.radians(self.det_offset[i,1])*np.cos(pa))
+                # ra_corrected[i,:] = self.coord1*15+np.degrees((np.radians(self.det_offset[i,0])*np.cos(pa)+\
+                #           np.radians(self.det_offset[i,1])*np.sin(pa))/np.cos(np.radians(dec_corrected[i,:])))
 
             del xEL_corrected_temp
             del EL_corrected_temp
             del AZ_corrected_temp
             gc.collect()
 
-            # plt.plot(self.coord1*15, label = 'original')
-            
-            # plt.legend()
-            # plt.show()
-
             return ra_corrected, dec_corrected
 
-        elif self.cype.lower() == 'az and el':
+        elif self.ctype.lower() == 'az and el':
 
             el_corrected = np.zeros((int(np.size(self.det_offset)/2), len(self.coord1)))
             az_corrected = np.zeros((int(np.size(self.det_offset)/2), len(self.coord2)))
@@ -218,7 +225,6 @@ class apply_offset(object):
 
 
             return xel_corrected,el_corrected
-
 
 class compute_offset(object):
 
@@ -269,10 +275,6 @@ class compute_offset(object):
         x_c = np.sum(xx*weight*self.map_data)/flux
         y_c = np.sum(yy*weight*self.map_data)/flux
 
-        plt.imshow(self.map_data, origin = 'lower', extent=[x_coord_min, x_coord_max, y_coord_min, y_coord_max])
-        plt.plot(x_c, y_c, 'x')
-        plt.show()
-
         return np.rint(x_c), np.rint(y_c)
     
     def value(self):
@@ -287,7 +289,7 @@ class compute_offset(object):
             x_map = map_center.ra.hour
             y_map = map_center.dec.degree
             print('b1', x_c, y_c, x_map*15., y_map, np.average(self.lst), np.average(self.lat))
-            centroid_conv = conversion(x_map, y_map, np.average(self.lst), np.average(self.lat))
+            centroid_conv = utils(x_map, y_map, np.average(self.lst), np.average(self.lat))
 
             coord1_reference = self.coord1_ref/15.
 
@@ -304,14 +306,12 @@ class compute_offset(object):
                 xel_centr = x_map/np.cos(np.radians(el_centr))
             
 
-        ref_conv = conversion(coord1_reference, self.coord2_ref, np.average(self.lst), \
-                              np.average(self.lat))
+        ref_conv = utils(coord1_reference, self.coord2_ref, np.average(self.lst), \
+                         np.average(self.lat))
 
         az_ref, el_ref = ref_conv.radec2azel()
 
         xel_ref = az_ref*np.cos(np.radians(el_ref))
-
-        print('TEST_REF')
 
         return xel_centr-xel_ref, el_ref-el_centr
 

@@ -31,6 +31,7 @@ from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 import numpy as np
 import os
@@ -38,8 +39,12 @@ import configparser
 =======
 =======
 >>>>>>> 11cb7f9... removed test button
+=======
+from astropy import wcs 
+>>>>>>> 59060e4... Correct telescope coordinates calculation
 from astropy.io import fits
-from functools import partial
+from astropy.nddata import Cutout2D
+from astropy.coordinates import SkyCoord
 
 import numpy as np
 import os
@@ -206,9 +211,12 @@ class AppWindow(QMainWindow):
         beamfit.triggered.connect(self.beam_fit_param_menu)
         
         self.detmenu = menubar.addMenu('TOD Functions')
-        todfunc = QAction('Time offset between TOD and Pointing',  self)
-        self.detmenu.addAction(todfunc)
-        todfunc.triggered.connect(self.tod_func_offset)
+        todoff = QAction('Time offset between TOD and Pointing',  self)
+        self.detmenu.addAction(todoff)
+        todoff.triggered.connect(self.tod_func_offset)
+        todproc = QAction('TOD processing parameters',  self)
+        self.detmenu.addAction(todproc)
+        todproc.triggered.connect(self.tod_func_processing)
 
         self.pointingmenu = menubar.addMenu('Pointing Functions')
         lstlatfunc = QAction('LAT and LST paramters',  self)
@@ -242,6 +250,7 @@ class AppWindow(QMainWindow):
     @pyqtSlot()
     def tod_func_offset(self):
         dialog = TODoffsetWindow()
+        
         try:
             if self.TabLayout.todoffsetvalue is not None:
                 dialog.todoffsetvalue.setText(str(self.TabLayout.todoffsetvalue))
@@ -250,6 +259,29 @@ class AppWindow(QMainWindow):
         except AttributeError:
             pass
         dialog.todoffsetsignal.connect(self.connection_tod_off)
+        dialog.exec_()
+
+    @pyqtSlot()
+    def tod_func_processing(self):
+        dialog = TOD_processing()
+        try:
+            if self.TabLayout.todpolynomialvalue is not None:
+                dialog.polynomialvalue.setText(str(self.TabLayout.todpolynomialvalue))
+            else:
+                dialog.polynomialvalue.setText('5')
+        except AttributeError:
+            pass
+
+        try:
+            if self.TabLayout.todpolynomialvalue is not None:
+                dialog.sigmavalue.setText(str(self.TabLayout.todsigmavalue))
+            else:
+                dialog.sigmavalue.setText('5')
+        except AttributeError:
+            pass
+
+        dialog.polynomialordersignal.connect(self.connection_tod_polynomial)
+        dialog.sigmasignal.connect(self.connection_tod_sigma)
         dialog.exec_()
 
     @pyqtSlot()
@@ -265,6 +297,14 @@ class AppWindow(QMainWindow):
     @pyqtSlot(float)
     def connection_tod_off(self, val):
         self.TabLayout.todoffsetvalue = copy.copy(val)
+
+    @pyqtSlot(int)
+    def connection_tod_polynomial(self, val):
+        self.TabLayout.todpolynomialvalue = copy.copy(val)
+
+    @pyqtSlot(int)
+    def connection_tod_sigma(self, val):
+        self.TabLayout.todsigmavalue = copy.copy(val)
 
     @pyqtSlot(str)
     def connection_LST_type(self, val):
@@ -573,6 +613,52 @@ class TODoffsetWindow(QDialog):
         self.todoffsetsignal.emit(self.value)
         self.close()
 
+class TOD_processing(QDialog):
+
+    polynomialordersignal = pyqtSignal(int)
+    sigmasignal = pyqtSignal(int)
+
+    def __init__(self, parent = None):
+        super(QDialog, self).__init__(parent)
+
+        self.setWindowTitle('TOD Processing Parameters')
+
+        self.polynomialorder = QLineEdit('')
+        self.polynomialorderlabel = QLabel('Order of the trend line to be removed')
+
+        self.sigma = QLineEdit('')
+        self.sigmalabel = QLabel('Heigth of a peak in unit of sigma')
+
+        self.savebutton = QPushButton('Write Parameters')
+
+        layout = QGridLayout(self)
+
+        layout.addWidget(self.polynomialorderlabel, 0, 0)
+        layout.addWidget(self.polynomialorder, 0, 1)
+        layout.addWidget(self.sigmalabel, 1, 0)
+        layout.addWidget(self.sigma, 1, 1)
+        layout.addWidget(self.savebutton)
+
+        self.setLayout(layout)
+
+        self.savebutton.clicked.connect(self.updateParamValues)
+
+    def updateParamValues(self):
+
+        if np.size(self.polynomialorder.text().strip()) == 0:
+            self.polynomialvalue = 5
+        else:
+            self.polynomialvalue = int(self.polynomialorder.text())
+        
+        if np.size(self.sigma.text().strip()) == 0:
+            self.sigmavalue = 5
+        else:
+            self.sigmavalue = int(self.sigma.text())
+
+        self.polynomiaordersignal.emit(self.polynomialvalue)
+        self.sigmasignal.emit(self.sigmavalue)
+        self.close()
+
 class MainWindowTab(QTabWidget):
 
     '''
@@ -597,6 +683,8 @@ class MainWindowTab(QTabWidget):
 
         self.beamparam = None
         self.todoffsetvalue = None 
+        self.todpolynomialvalue = 5
+        self.todsigmavalue = 5
 
         #LAT and LST parameters
         self.LSTtype = None
@@ -635,7 +723,8 @@ class MainWindowTab(QTabWidget):
         self.tab1.load_func(offset = self.todoffsetvalue, correction = correction, \
                             LSTtype=self.LSTtype, LATtype=self.LATtype,\
                             LSTconv=self.LSTconv, LATconv=self.LATconv, \
-                            lstlatfreq=self.lstlatfreq, lstlatsample = self.lstlatsampleframe)
+                            lstlatfreq=self.lstlatfreq, lstlatsample = self.lstlatsampleframe, \
+                            polynomialorder = int(self.todpolynomialvalue), sigma = int(self.todsigmavalue))
 
         self.data = self.tab1.detslice
         self.lst = self.tab1.lstslice
@@ -657,7 +746,7 @@ class MainWindowTab(QTabWidget):
             self.tab2.draw_cleaned_TOD(self.cleandata[0])
 
         try:
-            print('TEST')
+            print('TEST_MAPS')
             self.tab1.mapvalues(self.cleandata)
 
             #Update Maps
@@ -677,16 +766,15 @@ class MainWindowTab(QTabWidget):
                 y_max_map = np.floor(np.amax(self.tab1.w[:,:,1]))
                 index1, = np.where(self.tab1.w[0,:,0]<0)
                 index2, = np.where(self.tab1.w[0,:,1]<0)
-            print('Max', x_max_map, y_max_map)
-            print('Min', x_min_map, y_min_map)
  
             if np.size(index1) > 1:
-                crpix1_new  = self.tab1.crpix[0]-x_min_map
+                print('IDX', x_min_map)
+                crpix1_new  = (self.tab1.crpix[0]-x_min_map)
             else:
                 crpix1_new = copy.copy(self.tab1.crpix[0])
             
             if np.size(index2) > 1:
-                crpix2_new  = self.tab1.crpix[1]-y_min_map
+                crpix2_new  = (self.tab1.crpix[1]-y_min_map)
             else:
                 crpix2_new = copy.copy(self.tab1.crpix[1])
 
@@ -707,12 +795,14 @@ class MainWindowTab(QTabWidget):
             else:
                 y_sel = np.array([y_max_map-self.tab1.pixnum[1],y_max_map], dtype=int)
 
-            print('SEL', x_sel, y_sel, coord_test)
-            pixcrd = np.array([[x_sel[0],y_sel[0]], [x_sel[1],y_sel[1]]])
-            print(self.proj_new.wcs_pix2world(pixcrd, 0))
             mp_ini.updateTab(data=maps, coord1 = self.tab1.coord1slice, coord2 = self.tab1.coord2slice, \
-                             x_sel = x_sel, y_sel = y_sel, projection = self.proj_new)
+                             crval = self.tab1.crval, pixnum = self.tab1.pixnum, telcoord = self.tab1.telescopecoordinateCheckBox.isChecked(),\
+                             crpix = crpix_new, cdelt = self.tab1.cdelt, projection = self.proj_new)
             
+            # cutout = mp_ini.cutout
+
+            # self.proj_new = cutout.wcs
+
             #Update Offset
             if self.tab1.PointingOffsetCalculationCheckBox.isChecked():
                 if self.refpoint is not None:
@@ -768,22 +858,11 @@ class MainWindowTab(QTabWidget):
             self.tab2.draw_cleaned_TOD(self.cleandata[index])
 
     def save2fits(self): #function to save the map as a FITS file
-        hdr = self.proj_new.to_header() #grabs the projection information for header
+        hdr = self.tab1.proj.to_header() #grabs the projection information for header
         maps = self.tab1.map_value #grabs the actual map for the fits img
         hdu = fits.PrimaryHDU(maps, header = hdr)
         print('FITS')
         hdu.writeto('./'+self.tab1.fitsname.text())
-
-    def printvalue(self):
-        print('OFFset', self.todoffsetvalue)
-        print('REF Point', self.refpoint)
-        print(self.LSTtype)
-        print(self.LATtype)
-        print(self.LSTconv)
-        print(self.LATconv)
-        print(self.lstlatfreq)
-        print(self.lstlatsampleframe)
-        print('offset Checkbox', self.tab1.PointingOffsetCheckBox.isChecked())
 
 class ParamMapTab(QWidget):
 
@@ -954,11 +1033,15 @@ class ParamMapTab(QWidget):
         self.detpathlabel = QLabel("Detector Path:")
         self.detpathlabel.setBuddy(self.detpath)
 
+<<<<<<< HEAD
         self.detname = QLineEdit('n31c04')
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
 =======
         self.detname = QLineEdit('n31c04')
 >>>>>>> 6ecb5ac... Added FITS file generator and field
+=======
+        self.detname = QLineEdit('n23c13')
+>>>>>>> 59060e4... Correct telescope coordinates calculation
         self.detnamelabel = QLabel("Detector Name:")
         self.detnamelabel.setBuddy(self.detname)
 
@@ -1056,6 +1139,7 @@ class ParamMapTab(QWidget):
         self.coordchoice.addItem('CROSS-EL and EL')
         coordLabel = QLabel("Coordinates System:")
         coordLabel.setBuddy(self.coordchoice)
+        self.telescopecoordinateCheckBox = QCheckBox('Use Telescope Coordinates')
 
         self.convchoice = QComboBox()
         self.convchoice.addItem('Not Apply')
@@ -1072,13 +1156,13 @@ class ParamMapTab(QWidget):
         self.crpixlabel = QLabel("CRpix of the Map:")
         self.crpixlabel.setBuddy(self.crpix1)
 
-        self.cdelt1 = QLineEdit('0.00189')
-        self.cdelt2 = QLineEdit('0.00189')
+        self.cdelt1 = QLineEdit('0.003')
+        self.cdelt2 = QLineEdit('0.003')
         self.cdeltlabel = QLabel("Cdelt of the Map in deg:")
         self.cdeltlabel.setBuddy(self.cdelt1)
 
         self.crval1 = QLineEdit('132.20')
-        self.crval2 = QLineEdit('-42.54')
+        self.crval2 = QLineEdit('-42.9')
         self.crvallabel = QLabel("Cval of the Map in deg:")
         self.crvallabel.setBuddy(self.crval1)
 
@@ -1109,6 +1193,7 @@ class ParamMapTab(QWidget):
         self.layout = QGridLayout()
         self.layout.addWidget(coordLabel, 0, 0)
         self.layout.addWidget(self.coordchoice, 0, 1, 1, 2)
+<<<<<<< HEAD
         self.layout.addWidget(convLabel, 1, 0)
         self.layout.addWidget(self.convchoice, 1, 1, 1, 2)
         self.layout.addWidget(self.gaussianLabel, 2, 1)
@@ -1137,6 +1222,28 @@ class ParamMapTab(QWidget):
 =======
         self.layout.addWidget(self.PointingOffsetCalculationCheckBox, 9, 0)
 >>>>>>> 63d0b03... Added pointing offset calculation
+=======
+        self.layout.addWidget(self.telescopecoordinateCheckBox, 1, 0)
+        self.layout.addWidget(convLabel, 2, 0)
+        self.layout.addWidget(self.convchoice, 2, 1, 1, 2)
+        self.layout.addWidget(self.gaussianLabel, 3, 1)
+        self.layout.addWidget(self.GaussianSTD, 3, 2)
+        self.layout.addWidget(self.crpixlabel, 4, 0)
+        self.layout.addWidget(self.crpix1, 4, 1)
+        self.layout.addWidget(self.crpix2, 4, 2)
+        self.layout.addWidget(self.cdeltlabel, 5, 0)
+        self.layout.addWidget(self.cdelt1, 5, 1)
+        self.layout.addWidget(self.cdelt2, 5, 2)
+        self.layout.addWidget(self.crvallabel, 6, 0)
+        self.layout.addWidget(self.crval1, 6, 1)
+        self.layout.addWidget(self.crval2, 6, 2)
+        self.layout.addWidget(self.pixnumlabel, 7, 0)
+        self.layout.addWidget(self.pixnum1, 7, 1)
+        self.layout.addWidget(self.pixnum2, 7, 2)
+        self.layout.addWidget(self.ICheckBox, 8, 0)
+        self.layout.addWidget(self.BeamCheckBox, 9, 0)
+        self.layout.addWidget(self.PointingOffsetCalculationCheckBox, 10, 0)
+>>>>>>> 59060e4... Correct telescope coordinates calculation
 
 >>>>>>> fbc01b1... Gui updated with polarizarion maps tabs
         self.GaussianSTD.setVisible(False)
@@ -1731,8 +1838,6 @@ class ParamMapTab(QWidget):
             coord1_ref = coord1_ref
             coord2_ref = coord2_ref
 
-        print('REF',coord1_ref, coord2_ref)
-
         offset = pt.compute_offset(coord1_ref, coord2_ref, self.map_value, self.w[:,0], self.w[:,1],\
                                    self.proj, self.ctype, self.lstslice, self.latslice)
 
@@ -1750,10 +1855,13 @@ class ParamMapTab(QWidget):
         
         xel_offset, el_offset = offset.value()
 <<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> 63d0b03... Added pointing offset calculation
 =======
         print('OFFSET', xel_offset, el_offset)
 >>>>>>> cbc2d94... Solved some bugs in computing offset
+=======
+>>>>>>> 59060e4... Correct telescope coordinates calculation
 
         self.CROSSELoffset.setText(str(xel_offset))
         self.CROSSELoffset.setStyleSheet("color: red;")
@@ -1761,7 +1869,8 @@ class ParamMapTab(QWidget):
         self.ELxoffset.setStyleSheet("color: red;")
 
     def load_func(self, offset = None, correction=False, LSTtype=None, LATtype=None,\
-                  LSTconv=None, LATconv=None, lstlatfreq=None, lstlatsample = None):
+                  LSTconv=None, LATconv=None, lstlatfreq=None, lstlatsample = None, 
+                  polynomialorder=int(5), sigma=int(5)):
 
 
         '''
@@ -1829,7 +1938,7 @@ class ParamMapTab(QWidget):
                     label = 'BoloTable'
                     label_final.append(label)
         
-        if (correction and self.coord1.lower() == 'ra'):
+        if (correction and self.coord1.lower() == 'ra') or self.telescopecoordinateCheckBox.isChecked():
             try:
                 os.stat(self.coordpath.text()+'/'+'lst')
             except OSError:
@@ -1898,7 +2007,7 @@ class ParamMapTab(QWidget):
                 else:
                     self.hwp_data = 0.
                 
-                if (correction and self.coord1.lower() == 'ra'):
+                if (correction and self.coord1.lower() == 'ra') or self.telescopecoordinateCheckBox.isChecked():
                     self.lst_data = pickle.load(open(lst_path_pickle, 'rb'))
                     self.lat_data = pickle.load(open(lat_path_pickle, 'rb'))
                 else:
@@ -1907,7 +2016,7 @@ class ParamMapTab(QWidget):
 
             except FileNotFoundError:
 
-                if (correction and self.coord1.lower() == 'ra'):
+                if (correction and self.coord1.lower() == 'ra') or self.telescopecoordinateCheckBox.isChecked():
                     lat_file_type = LSTtype
                     lst_file_type = LATtype
                 else: 
@@ -1928,7 +2037,7 @@ class ParamMapTab(QWidget):
                                          self.coord1type.text(), self.coord2type.text(), \
                                          self.experiment.currentText(), lst_file_type, lat_file_type, self.HWPtype.text())
 
-                if (correction and self.coord1.lower() == 'ra'):
+                if (correction and self.coord1.lower() == 'ra') or self.telescopecoordinateCheckBox.isChecked():
                     self.det_data, self.coord1_data, self.coord2_data, self.hwp_data, self.lst_data, self.lat_data = dataload.values()
                     pickle.dump(self.lst_data, open(lst_path_pickle, 'wb'))
                     pickle.dump(self.lat_data, open(lat_path_pickle, 'wb'))
@@ -1939,12 +2048,11 @@ class ParamMapTab(QWidget):
                 print('ARRAY SIZE', self.det_data.nbytes)
                 for i in range(np.size(self.det_list)):
                     if np.size(np.shape(self.det_data)) > 1:
-                        print('PATH', det_path_pickle[i])
+
                         pickle.dump(self.det_data[i,:], open(det_path_pickle[i], 'wb'))
                     else:
                         pickle.dump(self.det_data, open(det_path_pickle[i], 'wb'))
 
-                print('DET_OK')
                 pickle.dump(self.coord1_data, open(coord1_path_pickle, 'wb'))
                 pickle.dump(self.coord2_data, open(coord2_path_pickle, 'wb'))
 
@@ -1953,8 +2061,7 @@ class ParamMapTab(QWidget):
                 
                 del dataload
                 gc.collect()
-            import psutil
-            process = psutil.Process(os.getpid())
+
             if self.experiment.currentText().lower() == 'blast-tng':
                 zoomsyncdata = ld.frame_zoom_sync(self.det_data, self.detfreq.text(), \
                                                   self.detframe.text(), self.coord1_data, \
@@ -1981,7 +2088,8 @@ class ParamMapTab(QWidget):
                                                   lstlatsample, offset, hwp_data=self.hwp_data, hwp_fs=self.HWPfreq.text(),\
                                                   hwp_sample_frame=self.HWPframe.text())
 
-            if (correction and self.coord1.lower() == 'ra') or self.PointingOffsetCalculationCheckBox.isChecked():
+            if (correction and self.coord1.lower() == 'ra') or self.PointingOffsetCalculationCheckBox.isChecked() or \
+               self.telescopecoordinateCheckBox.isChecked():
                 (self.timemap, self.detslice, self.coord1slice, \
                  self.coord2slice, self.hwpslice, self.lstslice, self.latslice) = zoomsyncdata.sync_data()
             else:
@@ -2008,12 +2116,8 @@ class ParamMapTab(QWidget):
                 self.lstslice = None
                 self.latslice = None
 
-            
-            print(process.memory_info().rss)
             del self.det_data
             gc.collect()
-            print(process.memory_info().rss)
-            print('GARBAGE')
 
 >>>>>>> d11dfe9... Solved pointing, multidetectors stacking and loading bugs
             if self.DirConvCheckBox.isChecked:
@@ -2037,11 +2141,13 @@ class ParamMapTab(QWidget):
             if self.coord1.lower() == 'cross-el':
                 self.coord1slice = self.coord1slice*np.cos(np.radians(self.coord2slice))
 
-            if correction is True:               
-                xsc_file = ld.xsc_offset(self.pointingoffsetnumber.text(), self.startframe.text(), self.endframe.text())
-                xsc_offset = xsc_file.read_file()
-                xsc_offset = np.zeros(2)
-                print('XSC', xsc_offset)
+            if correction is True:
+                if self.PointingOffsetCalculationCheckBox.isChecked():               
+                    xsc_file = ld.xsc_offset(self.pointingoffsetnumber.text(), self.startframe.text(), self.endframe.text())
+                    xsc_offset = xsc_file.read_file()
+                else:
+                    xsc_offset = np.zeros(2)
+
                 corr = pt.apply_offset(self.coord1slice, self.coord2slice, coord_type,\
                                        xsc_offset, det_offset = self.det_off, lst = self.lstslice, \
                                        lat = self.latslice)
@@ -2051,25 +2157,42 @@ class ParamMapTab(QWidget):
                 if self.coord1.lower() == 'ra':
                     self.coord1slice = self.coord1slice*15. #Conversion between hours to degree
 
+            if self.telescopecoordinateCheckBox.isChecked():
+                
+                self.parallactic = np.zeros_like(self.coord1slice)
+                print('PARALLACTIC SHAPE', np.shape(self.parallactic))
+                if np.size(np.shape(self.detslice)) == 1:
+                    tel = pt.utils(self.coord1slice/15., self.coord2slice, \
+                                   self.lstslice, self.latslice)
+                    self.parallactic = tel.parallactic_angle()
+                else:
+                    if np.size(np.shape(self.coord1slice)) == 1:
+                        tel = pt.utils(self.coord1slice/15., self.coord2slice, \
+                                       self.lstslice, self.latslice)
+                        self.parallactic = tel.parallactic_angle()
+                    else:
+                        for i in range(np.size(np.shape(self.data))):
+                            tel = pt.utils(self.coord1slice[i]/15., self.coord2slice[i], \
+                                           self.lstslice, self.latslice)
+                            self.parallactic[i,:] = tel.parallactic_angle()
+            else:
+                self.parallactic = None
 
             del self.coord1_data
             del self.coord2_data 
             del zoomsyncdata
             gc.collect()
 
-            print(process.memory_info().rss)
-            print('GARBAGE')
+            self.clean_func(polynomialorder, sigma)
 
-
-            self.clean_func()
-
-    def clean_func(self):
+    def clean_func(self, polynomialorder, sigma):
 
         '''
         Function to compute the cleaned detector TOD
         '''
 
-        det_tod = tod.data_cleaned(self.detslice, self.detfreq.text(), self.highpassfreq.text(), self.det_list)
+        det_tod = tod.data_cleaned(self.detslice, self.detfreq.text(), self.highpassfreq.text(), self.det_list,
+                                   polynomialorder, sigma)
         self.cleaned_data = det_tod.data_clean()
         if np.size(self.resp) > 1:
             self.cleaned_data = np.multiply(self.cleaned_data, np.reshape(self.resp, (np.size(self.resp), 1)))
@@ -2097,7 +2220,8 @@ class ParamMapTab(QWidget):
         self.coord1slice = coord1_conv.data
         self.coord2slice = coord2_conv.data
 
-        if (correction and self.coord1.lower() == 'ra') or self.PointingOffsetCalculationCheckBox.isChecked():
+        if (correction and self.coord1.lower() == 'ra') or self.PointingOffsetCalculationCheckBox.isChecked() \
+           or self.telescopecoordinateCheckBox.isChecked():
             lst_conv = ld.convert_dirfile(self.lstslice, float(LSTconv[0]), \
                                           float(LSTconv[1]))
             lat_conv = ld.convert_dirfile(self.latslice, float(LATconv[0]), \
@@ -2129,6 +2253,7 @@ class ParamMapTab(QWidget):
                                int(float(self.crpix2.text()))])
         self.cdelt = np.array([float(self.cdelt1.text()),\
                                float(self.cdelt2.text())])
+        # if self.crval is None:
         self.crval = np.array([float(self.crval1.text()),\
                                float(self.crval2.text())])
         self.pixnum = np.array([float(self.pixnum1.text()),\
@@ -2142,28 +2267,26 @@ class ParamMapTab(QWidget):
             self.std = 0
 
         #Compute final polarization angle
-
         
         if np.size(self.det_list) == 1:
             self.pol_angle = np.radians(2*self.hwpslice+(self.grid_angle-2*self.pol_angle_offset))
         else:
             self.pol_angle = np.zeros_like(data)
             for i in range(np.size(self.det_list)):
-                print(self.grid_angle)
                 self.pol_angle[i,:] = np.radians(2*self.hwpslice+(self.grid_angle[i]-2*self.pol_angle_offset[i]))
-            print('DET SHAPE', np.shape(data))
 
-        print('Calculation', self.noise_det)
         self.maps = mp.maps(self.ctype, self.crpix, self.cdelt, self.crval, \
                             data, self.coord1slice, self.coord2slice, \
                             self.convolution, self.std, self.ICheckBox.isChecked(), \
-                            pol_angle=self.pol_angle, noise=self.noise_det)
+                            pol_angle=self.pol_angle, noise=self.noise_det, \
+                            telcoord = self.telescopecoordinateCheckBox.isChecked(), \
+                            parang=self.parallactic)
 
         self.maps.wcs_proj()
 
         self.proj = self.maps.proj
         self.w = self.maps.w
-
+        
         self.map_value = self.maps.map2d()
 
 class TODTab(QWidget):
@@ -2345,6 +2468,7 @@ class MapPlotsGroup(QWidget):
         the software is closed
         '''
         
+<<<<<<< HEAD
 <<<<<<< HEAD
         label_final = []
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
@@ -2879,6 +3003,12 @@ class MapPlotsGroup(QWidget):
         self.checkbox = checkbox
         self.ctype = ctype
 >>>>>>> 26b52b6... Solved projections in plotting and add plotting functions
+=======
+        self.data = data
+        self.checkbox = checkbox
+        self.ctype = ctype
+        self.cutout = None
+>>>>>>> 59060e4... Correct telescope coordinates calculation
 
         self.tabvisible()
 
@@ -2952,7 +3082,7 @@ class MapPlotsGroup(QWidget):
 
         self.tab3.setLayout(mainlayout)
 
-    def updateTab(self, data, coord1, coord2, x_sel, y_sel, projection=None):
+    def updateTab(self, data, coord1, coord2, crval, pixnum, telcoord=False, cdelt=None, crpix=None, projection=None):
 
         '''
         Function to updates the I, Q and U plots when the 
@@ -2963,33 +3093,83 @@ class MapPlotsGroup(QWidget):
             idx_list = ['I', 'Q', 'U']
 
             for i in range(len(idx_list)):
-                self.map2d(data=data[i], coord1=coord1, coord2=coord2, x_sel=x_sel, y_sel=y_sel, idx=idx_list[i],\
-                           projection=projection)
+                self.map2d(data=data[i], coord1=coord1, coord2=coord2, crval=crval, pixnum=pixnum, idx=idx_list[i],\
+                           telcoord=telcoord, cdelt=cdelt, crpix=crpix, projection=projection)
         else:
-            self.map2d(data=data, coord1=coord1, coord2=coord2, x_sel=x_sel, y_sel=y_sel, projection=projection)
+            self.map2d(data=data, coord1=coord1, coord2=coord2, crval=crval, pixnum=pixnum, telcoord=telcoord, cdelt=cdelt, crpix=crpix, projection=projection)
 
-    def map2d(self, data=None, coord1=None, coord2=None, x_sel=None, y_sel=None, idx='I', projection=None):
+    def map2d(self, data=None, coord1=None, coord2=None, crval=None, pixnum=None, idx='I', telcoord=False, cdelt=None, crpix=None, projection=None):
 
         '''
         Function to generate the map plots (I,Q and U) 
         when the plot button is pushed
         '''
-        
-        #register_projection(projection)
+
+        intervals = 3   
+
+        if telcoord is False:
+            position = SkyCoord(crval[0], crval[1], unit='deg', frame='icrs')
+            
+            size = (pixnum[1], pixnum[0])     # pixels
+            
+            cutout = Cutout2D(data, position, size, wcs=projection)
+            proj = cutout.wcs
+
+            self.mapdata = cutout.data
+       
+        else:
+            idx_xmin = crval[0]-cdelt*pixnum[0]/2   
+            idx_xmax = crval[0]+cdelt*pixnum[0]/2
+            idx_ymin = crval[1]-cdelt*pixnum[1]/2
+            idx_ymax = crval[1]+cdelt*pixnum[1]/2
+
+            proj = None
+
+            idx_xmin = np.amax(np.array([np.ceil(crpix[0]-1-pixnum[0]/2), 0.], dtype=int))
+            idx_xmax = np.amin(np.array([np.ceil(crpix[0]-1+pixnum[0]/2), np.shape(data)[1]], dtype=int))
+            
+            if np.abs(idx_xmax-idx_xmin) != pixnum[0]:
+                if idx_xmin != 0 and idx_xmax == np.shape(data)[1]:
+                    idx_xmin = np.amax(np.array([0., np.shape(data)[1]-pixnum[0]], dtype=int))
+                if idx_xmin == 0 and idx_xmax != np.shape(data)[1]:
+                    idx_xmax = np.amin(np.array([pixnum[0], np.shape(data)[1]], dtype=int))
+            
+            idx_ymin = np.amax(np.array([np.ceil(crpix[1]-1-pixnum[1]/2), 0.], dtype=int))
+            idx_ymax = np.amin(np.array([np.ceil(crpix[1]-1+pixnum[1]/2), np.shape(data)[0]], dtype=int))
+            
+            if np.abs(idx_ymax-idx_ymin) != pixnum[1]:
+                if idx_ymin != 0 and idx_ymax == np.shape(data)[0]:
+                    idx_ymin = np.amax(np.array([0., np.shape(data)[0]-pixnum[1]], dtype=int))
+                if idx_ymin == 0 and idx_ymax != np.shape(data)[0]:
+                    idx_ymax = np.amin(np.array([pixnum[1], np.shape(data)[0]], dtype=int))
+
+            self.mapdata = data[idx_ymin:idx_ymax, idx_xmin:idx_xmax]
+            crpix[0] -= idx_xmin
+            crpix[1] -= idx_ymin
+
+            w = wcs.WCS(naxis=2)
+            w.wcs.crpix = crpix
+            w.wcs.cdelt = cdelt
+            w.wcs.crval = crval
+            w.wcs.ctype = ["TLON-TAN", "TLAT-TAN"]
+            proj = w
+
+        levels = np.linspace(0.5, 1, intervals)*np.amax(self.mapdata)
+
         if idx == 'I':
             self.matplotlibWidget_Imap.figure.clear()
             self.axis_Imap = (self.matplotlibWidget_Imap.figure.add_subplot(111, \
-                              projection=projection))
+                              projection=proj))
             axis = self.axis_Imap
         elif idx == 'Q':
             self.matplotlibWidget_Qmap.figure.clear()
             self.axis_Qmap = (self.matplotlibWidget_Qmap.figure.add_subplot(111, \
-                              projection=projection))
+                              projection=proj))
             axis = self.axis_Qmap
         elif idx == 'U':
             self.matplotlibWidget_Umap.figure.clear()
             self.axis_Umap = (self.matplotlibWidget_Umap.figure.add_subplot(111, \
-                              projection=projection))
+                              projection=proj))
 
             axis = self.axis_Umap
 
@@ -2999,37 +3179,33 @@ class MapPlotsGroup(QWidget):
             cb.remove()
 
         axis.set_axis_on()
-        
-        data_masked = np.ma.masked_where(data == 0, data)
-
-        intervals = 3
-        levels = np.linspace(0.5, 1, intervals)*np.amax(data_masked)
-
-        # im = axis.imshow(data_masked[x_sel[0]:x_sel[1],y_sel[0]:y_sel[1]], origin='lower', cmap=plt.cm.viridis)
-        # plt.colorbar(im, ax=axis)
-        # axis.contour(data_masked[x_sel[0]:x_sel[1],y_sel[0]:y_sel[1]], levels=levels, colors='white', alpha=0.5)
-
-        im = axis.imshow(data_masked, origin='lower', cmap=plt.cm.viridis)
+        if telcoord is False:
+            im = axis.imshow(self.mapdata, origin='lower', cmap=plt.cm.viridis)
+            axis.contour(self.mapdata, levels=levels, colors='white', alpha=0.5)
+        else:
+            im = axis.imshow(self.mapdata, origin='lower', cmap=plt.cm.viridis)
+            axis.contour(self.mapdata, levels=levels, colors='white', alpha=0.5)
         plt.colorbar(im, ax=axis)
-        axis.contour(data_masked, levels=levels, colors='white', alpha=0.5)
-
-        # im = axis.imshow(data_masked, origin='lower', cmap=plt.cm.viridis)
-        # plt.colorbar(im, ax=axis)
-        print('TEST')
 
         if self.ctype == 'RA and DEC':
+            #if telcoord is False:
+            print('TEST_COORD')
             ra = axis.coords[0]
             dec = axis.coords[1]
             ra.set_axislabel('RA (deg)')
             dec.set_axislabel('Dec (deg)')
             dec.set_major_formatter('d.ddd')
             ra.set_major_formatter('d.ddd')
-        elif self.ctype == 'AZ and EL':
-            axis.set_xlabel('Azimuth (deg)')
-            axis.set_ylabel('Elevation (deg)')
-        elif self.ctype == 'CROSS-EL and EL':
-            axis.set_xlabel('Cross Elevation (deg)')
-            axis.set_ylabel('Elevation (deg)')
+            # else:
+            #     axis.set_xlabel('RA (deg)')
+            #     axis.set_ylabel('Dec (deg)')
+
+        # elif self.ctype == 'AZ and EL':
+        #     axis.set_xlabel('Azimuth (deg)')
+        #     axis.set_ylabel('Elevation (deg)')
+        # elif self.ctype == 'CROSS-EL and EL':
+        #     axis.set_xlabel('Cross Elevation (deg)')
+        #     axis.set_ylabel('Elevation (deg)')
 
         self.matplotlibWidget_Imap.canvas.draw()
 
