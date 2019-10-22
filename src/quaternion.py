@@ -12,7 +12,7 @@ class quaternions(object):
     '''
 
 
-    def eul2quat(yaw, pitch, roll):
+    def eul2quat(self, yaw, pitch, roll):
 
         '''
         Function to compute a quaternion from euler angles. Given how yaw, pitch and roll are defined, 
@@ -26,15 +26,23 @@ class quaternions(object):
 
         return np.array([qw, qx, qy, qz])
 
-    def quat2eul(q):
+    def quat2eul(self, q):
+
+        '''
+        Return the euler angles in degrees 
+        '''
 
         pitch = np.arcsin(2*q[0]*q[1]-2*q[2]*q[3])
         roll = np.arctan2(2*q[0]*q[2]+2*q[1]*q[3], q[0]**2-q[1]**2-q[2]**2-q[3]**2)
         yaw = np.arctan2(2*q[0]*q[3]+2*q[1]*q[2], q[0]**2-q[1]**2-q[2]**2-q[3]**2)
 
-        return yaw, pitch, roll
+        return np.degrees(yaw), np.degrees(pitch), np.degrees(roll)
 
-    def product(q1, q2):
+    def product(self, q1, q2):
+
+        '''
+        return the product of q1*q2. The input order matter
+        '''
 
         w0, x0, y0, z0 = q1
         w1, x1, y1, z1 = q2
@@ -43,6 +51,6 @@ class quaternions(object):
                          -x1 * z0 + y1 * w0 + z1 * x0 + w1 * y0,
                          x1 * y0 - y1 * x0 + z1 * w0 + w1 * z0], dtype=np.float64)
 
-    def reciprocal(q):
+    def reciprocal(self, q):
 
         return q*np.array([1,-1,-1,-1])/np.sum(q**2)
