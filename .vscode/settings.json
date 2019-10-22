@@ -3,6 +3,7 @@
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
     "python.pythonPath": "/home/gabrielecoppi/anaconda3/bin/python"
 =======
     "python.pythonPath": "/anaconda3/bin/python",
@@ -19,6 +20,9 @@
 =======
     "python.pythonPath": "C:\\ProgramData\\Anaconda3\\python.exe",
 >>>>>>> 3f224e8... Added pointing input dialogs and caluclation
+=======
+    "python.pythonPath": "/home/gabriele/anaconda3/bin/python",
+>>>>>>> a0cec29... Created a quaternion class
     "python.linting.pylintEnabled": false,
     "python.linting.enabled": true,
     "python.linting.flake8Enabled": true,
