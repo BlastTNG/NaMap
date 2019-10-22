@@ -2,6 +2,8 @@ import numpy as np
 import gc
 from astropy import wcs
 
+import src.quaternion as quat
+
 class utils(object):
 
     '''
@@ -162,16 +164,24 @@ class apply_offset(object):
             az, el = conv2azel.radec2azel()
 
             xEL = np.degrees(np.radians(az)*np.cos(np.radians(el)))
-            xEL_corrected = xEL-self.xsc_offset[0]
-            EL_corrected = el+self.xsc_offset[1]
+            #xEL_corrected = xEL-self.xsc_offset[0]
+            #EL_corrected = el+self.xsc_offset[1]
             
-            ra_corrected = np.zeros((int(np.size(self.det_offset)/2), len(xEL_corrected)))
-            dec_corrected = np.zeros((int(np.size(self.det_offset)/2), len(xEL_corrected)))
+            ra_corrected = np.zeros((int(np.size(self.det_offset)/2), len(az)))
+            dec_corrected = np.zeros((int(np.size(self.det_offset)/2), len(az)))
 
             for i in range(int(np.size(self.det_offset)/2)):
+                
+                quaternion = quat.quaternions()
+                xsc_quat = quaternion.eul2quat(self.xsc_offset[0], self.xsc_offset[1], 0)
+                det_quat = quaternion.eul2quat(self.det_offset[i,0], self.det_offset[i,1], 0)
+                off_quat = quaternion.product(det_quat, xsc_quat)
 
-                xEL_corrected_temp = xEL_corrected-self.det_offset[i, 0]
-                EL_corrected_temp = EL_corrected+self.det_offset[i, 1]
+                xEL_offset, EL_offset, roll_offset = quaternion.quat2eul(off_quat)
+
+
+                xEL_corrected_temp = xEL-xEL_offset
+                EL_corrected_temp = el+EL_offset
                 AZ_corrected_temp = np.degrees(np.radians(xEL_corrected_temp)/np.cos(np.radians(el)))
 
                 conv2radec = utils(AZ_corrected_temp, EL_corrected_temp, \
