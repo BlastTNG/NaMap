@@ -1413,7 +1413,7 @@ class ParamMapTab(QWidget):
                 if self.HWPCheckBox.isChecked():
                     self.hwp_data = pickle.load(open(hwp_path_pickle, 'rb'))
                 else:
-                    self.hwp_data = 0.
+                    self.hwp_data = None
                 
                 if (correction and self.coord1.lower() == 'ra') or self.telescopecoordinateCheckBox.isChecked():
                     self.lst_data = pickle.load(open(lst_path_pickle, 'rb'))
@@ -1432,10 +1432,15 @@ class ParamMapTab(QWidget):
                     lst_file_type = None
 
 
+                if self.HWPCheckBox.isChecked():
+                    hwptype = self.hwptype.text()
+                else:
+                    hwptype=None
+
                 dataload = ld.data_value(self.detpath.text(), self.det_list, self.coordpath.text(), \
                                          self.coord1, self.coord2, self.dettype.text(), \
                                          self.coord1type.text(), self.coord2type.text(), \
-                                         self.experiment.currentText(), lst_file_type, lat_file_type, self.HWPtype.text())
+                                         self.experiment.currentText(), lst_file_type, lat_file_type, hwptype)
 
                 if (correction and self.coord1.lower() == 'ra') or self.telescopecoordinateCheckBox.isChecked():
                     self.det_data, self.coord1_data, self.coord2_data, self.hwp_data, self.lst_data, self.lat_data = dataload.values()
