@@ -79,6 +79,7 @@ class maps():
         Function to compute the projection and the pixel coordinates
         '''
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 <<<<<<< HEAD
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
@@ -91,6 +92,9 @@ class maps():
         print('IN')
         wcsworld = wcs_world(self.ctype, self.crpix, self.cdelt, self.crval, self.telcoord, self.parang)
 >>>>>>> 59060e4... Correct telescope coordinates calculation
+=======
+        wcsworld = wcs_world(self.ctype, self.crpix, self.cdelt, self.crval, self.telcoord)
+>>>>>>> 5af97ad... Corrected calculation of Polarization Angle and bug fix
 
         if np.size(np.shape(self.data)) == 1:
 
@@ -99,16 +103,16 @@ class maps():
             else:
                 coord_array = np.transpose(np.array([self.coord1, self.coord2]))
             try:
-                self.w, self.proj = wcsworld.world(coord_array)
+                self.w, self.proj = wcsworld.world(coord_array, self.parang)
             except RuntimeError:
-                self.w, self.proj = wcsworld.world(coord_array)
+                self.w, self.proj = wcsworld.world(coord_array, self.parang)
         else:
             if np.size(np.shape(self.coord1)) == 1:
-                self.w, self.proj = wcsworld.world(np.transpose(np.array([self.coord1, self.coord2])))
+                self.w, self.proj = wcsworld.world(np.transpose(np.array([self.coord1, self.coord2])), self.parang[i,:])
             else:
                 self.w = np.zeros((np.size(np.shape(self.data)), len(self.coord1[0]), 2))
                 for i in range(np.size(np.shape(self.data))):
-                    self.w[i,:,:], self.proj = wcsworld.world(np.transpose(np.array([self.coord1[i], self.coord2[i]])))
+                    self.w[i,:,:], self.proj = wcsworld.world(np.transpose(np.array([self.coord1[i], self.coord2[i]])), self.parang[i,:])
 
     def map2d(self):
 
@@ -205,7 +209,6 @@ class maps():
         else:
             mapmaker = mapmaking(self.data, self.noise, self.pol_angle, np.size(np.shape(self.data)), np.floor(self.w).astype(int))
             if self.Ionly:
-                print('Multi', np.size(np.shape(self.data)))
                 Imap = mapmaker.map_multidetectors_Ionly(self.crpix)
 
                 if not self.convolution:
@@ -235,20 +238,23 @@ class wcs_world():
     '''
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> 651e1e6... Commented files
     def __init__(self, ctype, crpix, crdelt, crval):
 =======
     def __init__(self, ctype, crpix, crdelt, crval, telcoord=False, parang=None):
 >>>>>>> 59060e4... Correct telescope coordinates calculation
+=======
+    def __init__(self, ctype, crpix, crdelt, crval, telcoord=False):
+>>>>>>> 5af97ad... Corrected calculation of Polarization Angle and bug fix
 
         self.ctype = ctype    #ctype of the map, which projection is used to convert coordinates to pixel numbers
         self.crdelt = crdelt  #cdelt of the map, distance in deg between two close pixels
         self.crpix = crpix    #crpix of the map, central pixel of the map in pixel coordinates
         self.crval = crval    #crval of the map, central pixel of the map in sky/telescope (depending on the system) coordinates
         self.telcoord = telcoord #Telescope coordinates boolean value. Check map class for more explanation
-        self.parang = parang  #Parallactic angle. Check map class for more explanation
 
-    def world(self, coord):
+    def world(self, coord, parang):
         
 <<<<<<< HEAD
 =======
@@ -334,8 +340,8 @@ class wcs_world():
             world = np.zeros_like(coord)
             px = w.wcs.s2p(coord, 1)
             #Use the parallactic angle to rotate the projected plane
-            world[:,0] = (px['imgcrd'][:,0]*np.cos(self.parang)-px['imgcrd'][:,1]*np.sin(self.parang))/self.crdelt[0]+self.crpix[0]
-            world[:,1] = (px['imgcrd'][:,0]*np.sin(self.parang)+px['imgcrd'][:,1]*np.cos(self.parang))/self.crdelt[1]+self.crpix[1]
+            world[:,0] = (px['imgcrd'][:,0]*np.cos(parang)-px['imgcrd'][:,1]*np.sin(parang))/self.crdelt[0]+self.crpix[0]
+            world[:,1] = (px['imgcrd'][:,0]*np.sin(parang)+px['imgcrd'][:,1]*np.cos(parang))/self.crdelt[1]+self.crpix[1]
         
         print('WORLD', world, np.shape(world))
         return world, w

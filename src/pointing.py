@@ -88,7 +88,7 @@ class utils(object):
     def parallactic_angle(self):
 
         '''
-        Compute the parallactic angle which is returned in radians
+        Compute the parallactic angle which is returned in degrees
         '''
 
         hour_angle = np.radians((self.ra2ha())*15)
@@ -179,6 +179,7 @@ class apply_offset(object):
 
                 xEL_offset, EL_offset, roll_offset = quaternion.quat2eul(off_quat)
 
+                print('OFFSET', xEL_offset, EL_offset)
 
                 xEL_corrected_temp = xEL-xEL_offset
                 EL_corrected_temp = el+EL_offset
