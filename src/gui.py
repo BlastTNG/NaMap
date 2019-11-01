@@ -1433,7 +1433,7 @@ class ParamMapTab(QWidget):
 
 
                 if self.HWPCheckBox.isChecked():
-                    hwptype = self.hwptype.text()
+                    hwptype = self.HWPtype.text()
                 else:
                     hwptype=None
 
@@ -1537,10 +1537,9 @@ class ParamMapTab(QWidget):
                 if self.coord1.lower() == 'ra':
                     self.coord1slice = self.coord1slice*15. #Conversion between hours to degree
 
-            if self.telescopecoordinateCheckBox.isChecked():
+            if self.telescopecoordinateCheckBox.isChecked() or self.ICheckBox.isChecked() is False:
                 
                 self.parallactic = np.zeros_like(self.coord1slice)
-                print('PARALLACTIC SHAPE', np.shape(self.parallactic))
                 if np.size(np.shape(self.detslice)) == 1:
                     tel = pt.utils(self.coord1slice/15., self.coord2slice, \
                                    self.lstslice, self.latslice)
@@ -1556,8 +1555,13 @@ class ParamMapTab(QWidget):
                                            self.lstslice, self.latslice)
                             self.parallactic[i,:] = tel.parallactic_angle()
             else:
-                self.parallactic = None
-
+                if np.size(np.shape(self.detslice)) == 1:
+                    self.parallactic = 0.
+                else:
+                    if np.size(np.shape(self.coord1slice)) == 1:
+                        self.parallactic = 0.
+                    else:
+                        self.parallactic = np.zeros_like(self.data)
             del self.coord1_data
             del self.coord2_data 
             del zoomsyncdata
@@ -1649,11 +1653,15 @@ class ParamMapTab(QWidget):
         #Compute final polarization angle
         
         if np.size(self.det_list) == 1:
-            self.pol_angle = np.radians(2*self.hwpslice+(self.grid_angle-2*self.pol_angle_offset))
+            self.pol_angle = np.radians(self.parallactic+2*self.hwpslice+(self.grid_angle-2*self.pol_angle_offset))
         else:
             self.pol_angle = np.zeros_like(data)
             for i in range(np.size(self.det_list)):
                 self.pol_angle[i,:] = np.radians(2*self.hwpslice+(self.grid_angle[i]-2*self.pol_angle_offset[i]))
+                if np.size(np.shape(self.coord1slice)) == 1:
+                    self.pol_angle[i, :] += np.radians(self.parallactic)
+                else:
+                    self.pol_angle[i, :] += np.radians(self.parallactic[i,:])
 
         self.maps = mp.maps(self.ctype, self.crpix, self.cdelt, self.crval, \
                             data, self.coord1slice, self.coord2slice, \

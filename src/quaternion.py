@@ -17,8 +17,13 @@ class quaternions(object):
         '''
         Function to compute a quaternion from euler angles. Given how yaw, pitch and roll are defined, 
         the quaternion is equivalent to Q=q_yaw*q_pitch*q_roll
+        Input of the function in degrees
         '''
-        
+
+        yaw = np.radians(yaw)
+        roll = np.radians(roll)
+        pitch = np.radians(pitch)
+
         qw = np.cos(roll/2) * np.cos(pitch/2) * np.cos(yaw/2) + np.sin(roll/2) * np.sin(pitch/2) * np.sin(yaw/2)
         qx = np.cos(roll/2) * np.sin(pitch/2) * np.cos(yaw/2) + np.sin(roll/2) * np.cos(pitch/2) * np.sin(yaw/2)
         qy = np.sin(roll/2) * np.cos(pitch/2) * np.cos(yaw/2) - np.cos(roll/2) * np.sin(pitch/2) * np.sin(yaw/2)
