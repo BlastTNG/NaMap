@@ -783,7 +783,7 @@ class MainWindowTab(QTabWidget):
             print('CRPIX', self.tab1.crpix, crpix_new)
             wcsworld = mp.wcs_world(self.tab1.ctype, crpix_new, self.tab1.cdelt, self.tab1.crval)
 
-            coord_test, self.proj_new = wcsworld.world(np.reshape(self.tab1.crval, (1,2)))
+            coord_test, self.proj_new = wcsworld.world(np.reshape(self.tab1.crval, (1,2)), self.tab1.parallactic)
 
             if crpix_new[0]*2 < x_max_map:
                 x_sel = np.array([crpix_new[0]-self.tab1.pixnum[0]/2, crpix_new[0]+self.tab1.pixnum[0]/2], dtype=int)
@@ -951,6 +951,7 @@ class ParamMapTab(QWidget):
         self.fitsnamelabel = QLabel("FITS name")
         self.fitsnamelabel.setBuddy(self.fitsname)
 
+<<<<<<< HEAD
         scroll = QScrollArea()
         scroll.setWidget(self.ExperimentGroup)
         scroll.setWidgetResizable(True)
@@ -963,9 +964,22 @@ class ParamMapTab(QWidget):
 =======
         scroll.setFixedHeight(200)
 >>>>>>> 6c0d8b1... Solved some errors in polarization maps (still some to be corrected)
+=======
+        scroll2 = QScrollArea()
+        scroll2.setWidget(self.ExperimentGroup)
+        scroll2.setWidgetResizable(True)
+        scroll2.setFixedHeight(200)
+
+        # scroll0 = QScrollArea()
+        # scroll0.setWidget(self.DataRepository)
+        # scroll2.setWidgetResizable(True)
+        # scroll2.setFixedHeight(200)
+>>>>>>> 6f562c7... Solved array shape issue with parallactic angle
 
         ExperimentGroup_Scroll = QGroupBox("Experiment Parameters")
+        ExperimentGroup_Scroll.setFlat(True)
         ExperimentGroup_Scroll.setLayout(QVBoxLayout())
+<<<<<<< HEAD
         ExperimentGroup_Scroll.layout().addWidget(scroll)
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -1005,9 +1019,12 @@ class ParamMapTab(QWidget):
 <<<<<<< HEAD
         self.detname = QLineEdit('')
 =======
+=======
+        ExperimentGroup_Scroll.layout().addWidget(scroll2)
+>>>>>>> 6f562c7... Solved array shape issue with parallactic angle
         mainlayout.addWidget(self.DataRepository, 0, 0)
         mainlayout.addWidget(self.AstroGroup, 1, 0)
-        mainlayout.addWidget(ExperimentGroup_Scroll, 2, 0)
+        mainlayout.addWidget(scroll2, 2, 0)
         mainlayout.addWidget(self.plotbutton, 3, 0)
         mainlayout.addWidget(self.createMapPlotGroup, 0, 1, 2, 1)
         mainlayout.addWidget(self.OffsetGroup, 2, 1)
@@ -1191,6 +1208,7 @@ class ParamMapTab(QWidget):
         self.coordchoice.activated[str].connect(self.configuration_update)
 >>>>>>> 4ee3dbe... Fixed bug in selecting data
            
+<<<<<<< HEAD
         self.layout = QGridLayout()
         self.layout.addWidget(coordLabel, 0, 0)
         self.layout.addWidget(self.coordchoice, 0, 1, 1, 2)
@@ -1245,12 +1263,37 @@ class ParamMapTab(QWidget):
         self.layout.addWidget(self.BeamCheckBox, 9, 0)
         self.layout.addWidget(self.PointingOffsetCalculationCheckBox, 10, 0)
 >>>>>>> 59060e4... Correct telescope coordinates calculation
+=======
+        layout = QGridLayout()
+        layout.addWidget(coordLabel, 0, 0)
+        layout.addWidget(self.coordchoice, 0, 1, 1, 2)
+        layout.addWidget(self.telescopecoordinateCheckBox, 1, 0)
+        layout.addWidget(convLabel, 2, 0)
+        layout.addWidget(self.convchoice, 2, 1, 1, 2)
+        layout.addWidget(self.gaussianLabel, 3, 1)
+        layout.addWidget(self.GaussianSTD, 3, 2)
+        layout.addWidget(self.crpixlabel, 4, 0)
+        layout.addWidget(self.crpix1, 4, 1)
+        layout.addWidget(self.crpix2, 4, 2)
+        layout.addWidget(self.cdeltlabel, 5, 0)
+        layout.addWidget(self.cdelt1, 5, 1)
+        layout.addWidget(self.cdelt2, 5, 2)
+        layout.addWidget(self.crvallabel, 6, 0)
+        layout.addWidget(self.crval1, 6, 1)
+        layout.addWidget(self.crval2, 6, 2)
+        layout.addWidget(self.pixnumlabel, 7, 0)
+        layout.addWidget(self.pixnum1, 7, 1)
+        layout.addWidget(self.pixnum2, 7, 2)
+        layout.addWidget(self.ICheckBox, 8, 0)
+        layout.addWidget(self.BeamCheckBox, 9, 0)
+        layout.addWidget(self.PointingOffsetCalculationCheckBox, 10, 0)
+>>>>>>> 6f562c7... Solved array shape issue with parallactic angle
 
 >>>>>>> fbc01b1... Gui updated with polarizarion maps tabs
         self.GaussianSTD.setVisible(False)
         self.gaussianLabel.setVisible(False)
         
-        self.AstroGroup.setLayout(self.layout)
+        self.AstroGroup.setLayout(layout)
 
     def updateGaussian(self, text=None):
 <<<<<<< HEAD
@@ -1306,6 +1349,7 @@ class ParamMapTab(QWidget):
 =======
 >>>>>>> 651e1e6... Commented files
         self.ExperimentGroup = QGroupBox()
+        self.ExperimentGroup.setFlat(True)
 
         self.experiment = QComboBox()
         self.experiment.addItem('BLASTPol')
@@ -1486,7 +1530,7 @@ class ParamMapTab(QWidget):
         self.layout.addWidget(self.aHWPconv, 18, 2)
         self.layout.addWidget(self.bHWPconv, 18, 3)
 
-        self.ExperimentGroup.setContentsMargins(5, 5, 5, 5)
+        #self.ExperimentGroup.setContentsMargins(5, 5, 5, 5)
 
         self.ExperimentGroup.setLayout(self.layout)
 
@@ -1588,11 +1632,11 @@ class ParamMapTab(QWidget):
                     self.coord2type_config = model.get(section,'COOR2_FILE_TYPE').split('#')[0].strip()
 
             elif section.lower() == 'hwp parameters':
-                    self.HWPfreq_config = float(model.get(section, 'HWPFREQ').split('#')[0])
-                    hwp_dir_conv = model.get(section,'HWP_DIR_CONV').split('#')[0].strip()
-                    self.HWPconv_config = np.array(hwp_dir_conv.split(',')).astype(float)
-                    self.HWPframe_config = float(model.get(section, 'HWP_SAMP_FRAME').split('#')[0])
-                    self.HWPtype_config = model.get(section,'HWP_FILE_TYPE').split('#')[0].strip()
+                self.HWPfreq_config = float(model.get(section, 'HWPFREQ').split('#')[0])
+                hwp_dir_conv = model.get(section,'HWP_DIR_CONV').split('#')[0].strip()
+                self.HWPconv_config = np.array(hwp_dir_conv.split(',')).astype(float)
+                self.HWPframe_config = float(model.get(section, 'HWP_SAMP_FRAME').split('#')[0])
+                self.HWPtype_config = model.get(section,'HWP_FILE_TYPE').split('#')[0].strip()
 
             
 <<<<<<< HEAD
@@ -2139,7 +2183,6 @@ class ParamMapTab(QWidget):
             if self.DettableCheckBox.isChecked():
                 dettable = ld.det_table(self.det_list, self.experiment.currentText(), self.dettablepath.text())
                 self.det_off, self.noise_det, self.grid_angle, self.pol_angle_offset, self.resp = dettable.loadtable()
-                
             else:
                 self.det_off = np.zeros((np.size(self.det_list),2))
                 self.noise_det = np.ones(np.size(self.det_list))
@@ -2283,6 +2326,8 @@ class ParamMapTab(QWidget):
         
         if np.size(self.det_list) == 1:
             self.pol_angle = np.radians(self.parallactic+2*self.hwpslice+(self.grid_angle-2*self.pol_angle_offset))
+            if np.size(np.shape(self.coord1slice)) != 1:
+                self.pol_angle = np.reshape(self.pol_angle, np.size(self.pol_angle))
         else:
             self.pol_angle = np.zeros_like(data)
             for i in range(np.size(self.det_list)):
@@ -3204,7 +3249,6 @@ class MapPlotsGroup(QWidget):
 
         if self.ctype == 'RA and DEC':
             #if telcoord is False:
-            print('TEST_COORD')
             ra = axis.coords[0]
             dec = axis.coords[1]
             ra.set_axislabel('RA (deg)')
