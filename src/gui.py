@@ -576,6 +576,34 @@ class BeamFitParamWindow(QDialog):
         self.fitparam = values.copy()
         self.fitparamsignal.emit(values)
 
+class ProgressBarWindow(QDialog):
+
+    def __init__(self, parent = None):
+        super(ProgressBarWindow, self).__init__(parent)
+        self.setGeometry(150, 150, 300, 100)
+        self.setWindowTitle('Current Progress')
+
+        self.progress = QProgressBar()
+        
+        self.strstatus = 'Current Status   '
+        self.currentstatus = QLabel(self.strstatus)
+
+        layout = QGridLayout(self)
+
+        layout.addWidget(self.currentstatus)
+        layout.addWidget(self.progress)
+
+        self.setLayout(layout)
+
+        self.show()
+
+    def setValue(self, val): 
+        self.progress.setValue(val)
+
+    def setCurrentAction(self, action):
+        string = self.strstatus+action
+        self.currentstatus.setText(string)
+
 class TODoffsetWindow(QDialog):
 
     '''
@@ -700,7 +728,6 @@ class MainWindowTab(QTabWidget):
         self.addTab(self.tab3, "Beam")
 
         self.tab1.plotbutton.clicked.connect(self.updatedata)
-        # self.tab1.plotbutton.clicked.connect(self.emitdetlist)
         self.tab1.fitsbutton.clicked.connect(self.save2fits)
 
         self.tab2.detcombolist.activated[str].connect(self.drawdetTOD)
@@ -718,7 +745,9 @@ class MainWindowTab(QTabWidget):
             correction = True
         else:
             correction = False
-
+        pb =  ProgressBarWindow()
+        pb.setCurrentAction('Loading Data')
+        pb.setValue(0)
         #functions to compute the updated values
         self.tab1.load_func(offset = self.todoffsetvalue, correction = correction, \
                             LSTtype=self.LSTtype, LATtype=self.LATtype,\
@@ -730,11 +759,17 @@ class MainWindowTab(QTabWidget):
         self.lst = self.tab1.lstslice
         self.lat = self.tab1.latslice
 
+        pb.setCurrentAction('Processing Data')
+        pb.setValue(25)
+
         print('TAB',self.tab1.det_list)
 
         self.cleandata = self.tab1.cleaned_data
 
         self.tab2.detlist_selection(self.tab1.det_list)
+
+        pb.setCurrentAction('Drawing TOD')
+        pb.setValue(50)
 
         if np.size(np.shape(self.data)) == 1:
             print('SIZE',np.size(np.shape(self.tab1.det_list)))
@@ -744,6 +779,9 @@ class MainWindowTab(QTabWidget):
             print('DATA',self.data[0])
             self.tab2.draw_TOD(self.data[0])
             self.tab2.draw_cleaned_TOD(self.cleandata[0])
+
+        pb.setCurrentAction('Drawing Maps')
+        pb.setValue(75)
 
         try:
             print('TEST_MAPS')
@@ -843,7 +881,8 @@ class MainWindowTab(QTabWidget):
 
         except AttributeError:
             pass
-    
+        
+        pb.close()
     def drawdetTOD(self):
         
         index = self.tab2.detcombolist.currentIndex()
