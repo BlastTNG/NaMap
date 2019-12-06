@@ -177,8 +177,8 @@ class frame_zoom_sync():
         frames[1] = fps[1]*sample_frame+1
 
         if offset is not None:
-                delay = offset*np.floor(fs)/1000.
-                frames = frames.astype(float)+delay
+            delay = offset*np.floor(fs)/1000.
+            frames = frames.astype(float)+delay
 
         if len(np.shape(data)) == 1:
             time = (np.arange(np.diff(frames))+frames[0])/np.floor(fs)
@@ -187,7 +187,6 @@ class frame_zoom_sync():
             print('TEST', len(data[0, :]))
             time = np.arange(len(data[0, :]))/np.floor(fs)
             time = time[int(frames[0]):int(frames[1])]
-            print('OK')
             return  time, data[:,int(frames[0]):int(frames[1])]
 
     def det_time(self):

@@ -34,7 +34,7 @@ class quaternions(object):
     def quat2eul(self, q):
 
         '''
-        Return the euler angles in degrees 
+        Return the euler angles in degrees, 
         '''
 
         pitch = np.arcsin(2*q[0]*q[1]-2*q[2]*q[3])

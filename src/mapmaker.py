@@ -51,7 +51,7 @@ class maps():
                 self.w, self.proj = wcsworld.world(coord_array, self.parang)
         else:
             if np.size(np.shape(self.coord1)) == 1:
-                self.w, self.proj = wcsworld.world(np.transpose(np.array([self.coord1, self.coord2])), self.parang[i,:])
+                self.w, self.proj = wcsworld.world(np.transpose(np.array([self.coord1, self.coord2])), self.parang[0,:])
             else:
                 self.w = np.zeros((np.size(np.shape(self.data)), len(self.coord1[0]), 2))
                 for i in range(np.size(np.shape(self.data))):
@@ -211,6 +211,9 @@ class mapmaking(object):
         sin = np.sin(2.*angle)
 
         I_est_flat = np.bincount(param, weights=flux)*sigma
+        print('ARRAY', param, np.size(param))
+        print('FLUX', flux, np.size(flux))
+        print('COS', cos, np.size(cos))
         Q_est_flat = np.bincount(param, weights=flux*cos)*sigma
         U_est_flat = np.bincount(param, weights=flux*sin)*sigma
 
