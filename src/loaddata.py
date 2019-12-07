@@ -87,8 +87,20 @@ class data_value():
         Function to return the timestreams for detector and coordinates
         '''
         if self.experiment.lower() == 'blast-tng':
-            # Temporary function 
-            det_data = np.loadtxt(self.det_path+self.det_name)
+ 
+            list_conv = [['A', 'B'], ['D', 'E'], ['G', 'H'], ['K', 'I'], ['M', 'N']]
+            kid_num  = int(self.det_name[-1])
+
+            det_I_string = 'kid'+list_conv[kid_num][0]+'_roachN'
+            det_Q_string = 'kid'+list_conv[kid_num][1]+'_roachN'
+
+            I_data = self.load(self.det_path, det_I_string, self.det_file_type)
+            Q_data = self.load(self.det_path, det_Q_string, self.det_file_type)
+
+            kidutils = det.kidsutils(I_data, Q_data)
+
+            det_data = kidutils.KIDphase()
+
         else:
             det_data = self.load(self.det_path, self.det_name, self.det_file_type)
         coord2_data = self.load(self.coord_path, self.coord2_name.lower(), self.coord2_file_type)
