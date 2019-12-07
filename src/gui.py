@@ -790,23 +790,22 @@ class MainWindowTab(QTabWidget):
             #Update Maps
             maps = self.tab1.map_value
             mp_ini = self.tab1.createMapPlotGroup
-            # if np.size(self.tab1.det_list) == 1:
-            #     x_min_map = np.floor(np.amin(self.tab1.w[:,0]))
-            #     x_max_map = np.floor(np.amax(self.tab1.w[:,0])) 
-            #     y_min_map = np.floor(np.amin(self.tab1.w[:,1]))
-            #     y_max_map = np.floor(np.amax(self.tab1.w[:,1]))
-            #     index1, = np.where(self.tab1.w[:,0]<0)
-            #     index2, = np.where(self.tab1.w[:,1]<0)
-            # else:
-            #     x_min_map = np.floor(np.amin(self.tab1.w[:,:,0]))
-            #     x_max_map = np.floor(np.amax(self.tab1.w[:,:,0])) 
-            #     y_min_map = np.floor(np.amin(self.tab1.w[:,:,1]))
-            #     y_max_map = np.floor(np.amax(self.tab1.w[:,:,1]))
-            #     index1, = np.where(self.tab1.w[0,:,0]<0)
-            #     index2, = np.where(self.tab1.w[0,:,1]<0)
+            if np.size(self.tab1.det_list) == 1:
+                x_min_map = np.floor(np.amin(self.tab1.w[:,0]))
+                # x_max_map = np.floor(np.amax(self.tab1.w[:,0])) 
+                y_min_map = np.floor(np.amin(self.tab1.w[:,1]))
+                # y_max_map = np.floor(np.amax(self.tab1.w[:,1]))
+                index1, = np.where(self.tab1.w[:,0]<0)
+                index2, = np.where(self.tab1.w[:,1]<0)
+            else:
+                x_min_map = np.floor(np.amin(self.tab1.w[:,:,0]))
+                # x_max_map = np.floor(np.amax(self.tab1.w[:,:,0])) 
+                y_min_map = np.floor(np.amin(self.tab1.w[:,:,1]))
+                # y_max_map = np.floor(np.amax(self.tab1.w[:,:,1]))
+                index1, = np.where(self.tab1.w[0,:,0]<0)
+                index2, = np.where(self.tab1.w[0,:,1]<0)
  
             if np.size(index1) > 1:
-                print('IDX', x_min_map)
                 crpix1_new  = (self.tab1.crpix[0]-x_min_map)
             else:
                 crpix1_new = copy.copy(self.tab1.crpix[0])

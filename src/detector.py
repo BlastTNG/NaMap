@@ -620,7 +620,7 @@ class kidsutils():
         self.I = E.real
         self.Q = E.imag
 
-    def phasetopower(self):
+    def KIDphase(self):
 
         '''
         Compute the phase of a KID. This is proportional to power, in particular
