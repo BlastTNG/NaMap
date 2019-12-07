@@ -26,6 +26,10 @@
     "python.linting.pylintEnabled": false,
     "python.linting.enabled": true,
     "python.linting.flake8Enabled": true,
+<<<<<<< HEAD
     "python.linting.flake8Args": ["--ignore=E2,E3,E5,W2,W3,F403,F405"]
 >>>>>>> 1531050... Added option to choose beam fitting parameters
+=======
+    "python.linting.flake8Args": ["--ignore=E2,E3,E5,W2,W3,F403,F405,E741"]
+>>>>>>> 49d1f43... Cleaned some part of the code and start to include KIDs functions
 }

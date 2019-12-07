@@ -4,6 +4,8 @@ from scipy.interpolate import interp1d
 import os
 import astropy.table as tb
 
+import src.detector as det
+
 class data_value():
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -817,4 +819,8 @@ class det_table():
 
             return det_off, noise, grid_angle, pol_angle_offset, resp
 
+<<<<<<< HEAD
 >>>>>>> db74452... Solved a bug on applying the offset
+=======
+
+>>>>>>> 49d1f43... Cleaned some part of the code and start to include KIDs functions

@@ -9,8 +9,6 @@ import os
 =======
 >>>>>>> 651e1e6... Commented files
 import scipy.signal as sgn
-import matplotlib.pyplot as plt
-
 
 class data_cleaned():
 
@@ -71,7 +69,7 @@ class data_cleaned():
 
 
         if np.size(self.detlist) == 1:
-            det_data = detector(self.data, 0, 0)
+            det_data = detector_trend(self.data)
             if self.polynomialorder != 0:
                 residual_data = det_data.fit_residual(order=self.polynomialorder)
             else:
@@ -87,7 +85,7 @@ class data_cleaned():
 
         else:
             for i in range(np.size(self.detlist)):
-                det_data = detector(self.data[i,:], 0, 0)
+                det_data = detector_trend(self.data[i,:])
                 residual_data = det_data.fit_residual()
 
                 desp = despike(residual_data)
@@ -468,7 +466,7 @@ class filterdata():
 
         return ifft_data
 
-class detector():
+class detector_trend():
 
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -479,23 +477,17 @@ class detector():
     Class to load detector properties from a detectortable (need to be implemented)
     '''
 
+<<<<<<< HEAD:src/detTOD.py
 <<<<<<< HEAD
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
 =======
 >>>>>>> 651e1e6... Commented files
     def __init__(self, data, responsivity, grid):
+=======
+    def __init__(self, data):
+>>>>>>> 49d1f43... Cleaned some part of the code and start to include KIDs functions:src/detector.py
 
         self.data = data
-        self.responsivity = responsivity
-        self.grid = grid
-
-    def calibrate(self):
-
-        return self.data*self.responsivity
-
-    def polangle(self, roll, hwp_angle):
-
-        return self.grid-2*hwp_angle+roll
 
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -613,3 +605,30 @@ class detector():
         zero_data[index] = 0.
 
         return -fitteddata+zero_data
+
+class kidsutils():
+
+    def __init__(self, I, Q):
+
+        self.I = I
+        self.Q = Q
+
+    def rotatePhase(self):
+        X = self.I+1j*self.Q
+        phi_avg = np.arctan2(np.mean(self.Q),np.mean(self.I))
+        E = X*np.exp(-1j*phi_avg)
+        self.I = E.real
+        self.Q = E.imag
+
+    def phasetopower(self):
+
+        '''
+        Compute the phase of a KID. This is proportional to power, in particular
+        Power = Phase/Responsivity
+        '''
+
+        phibar = np.arctan2(np.mean(self.Q),np.mean(self.I))
+        self.rotatePhase(self.I, self.Q)
+        phi = np.arctan2(self.Q,self.I)
+
+        return phi-phibar
