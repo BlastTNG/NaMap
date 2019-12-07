@@ -18,7 +18,7 @@ import configparser
 import gc
 import copy
 
-import src.detTOD as tod
+import src.detector as tod
 import src.loaddata as ld
 import src.mapmaker as mp
 import src.beam as bm
@@ -630,20 +630,20 @@ class MainWindowTab(QTabWidget):
             #Update Maps
             maps = self.tab1.map_value
             mp_ini = self.tab1.createMapPlotGroup
-            if np.size(self.tab1.det_list) == 1:
-                x_min_map = np.floor(np.amin(self.tab1.w[:,0]))
-                x_max_map = np.floor(np.amax(self.tab1.w[:,0])) 
-                y_min_map = np.floor(np.amin(self.tab1.w[:,1]))
-                y_max_map = np.floor(np.amax(self.tab1.w[:,1]))
-                index1, = np.where(self.tab1.w[:,0]<0)
-                index2, = np.where(self.tab1.w[:,1]<0)
-            else:
-                x_min_map = np.floor(np.amin(self.tab1.w[:,:,0]))
-                x_max_map = np.floor(np.amax(self.tab1.w[:,:,0])) 
-                y_min_map = np.floor(np.amin(self.tab1.w[:,:,1]))
-                y_max_map = np.floor(np.amax(self.tab1.w[:,:,1]))
-                index1, = np.where(self.tab1.w[0,:,0]<0)
-                index2, = np.where(self.tab1.w[0,:,1]<0)
+            # if np.size(self.tab1.det_list) == 1:
+            #     x_min_map = np.floor(np.amin(self.tab1.w[:,0]))
+            #     x_max_map = np.floor(np.amax(self.tab1.w[:,0])) 
+            #     y_min_map = np.floor(np.amin(self.tab1.w[:,1]))
+            #     y_max_map = np.floor(np.amax(self.tab1.w[:,1]))
+            #     index1, = np.where(self.tab1.w[:,0]<0)
+            #     index2, = np.where(self.tab1.w[:,1]<0)
+            # else:
+            #     x_min_map = np.floor(np.amin(self.tab1.w[:,:,0]))
+            #     x_max_map = np.floor(np.amax(self.tab1.w[:,:,0])) 
+            #     y_min_map = np.floor(np.amin(self.tab1.w[:,:,1]))
+            #     y_max_map = np.floor(np.amax(self.tab1.w[:,:,1]))
+            #     index1, = np.where(self.tab1.w[0,:,0]<0)
+            #     index2, = np.where(self.tab1.w[0,:,1]<0)
  
             if np.size(index1) > 1:
                 print('IDX', x_min_map)
@@ -663,15 +663,15 @@ class MainWindowTab(QTabWidget):
 
             coord_test, self.proj_new = wcsworld.world(np.reshape(self.tab1.crval, (1,2)), self.tab1.parallactic)
 
-            if crpix_new[0]*2 < x_max_map:
-                x_sel = np.array([crpix_new[0]-self.tab1.pixnum[0]/2, crpix_new[0]+self.tab1.pixnum[0]/2], dtype=int)
-            else:
-                x_sel = np.array([x_max_map-self.tab1.pixnum[0],x_max_map], dtype=int)
+            # if crpix_new[0]*2 < x_max_map:
+            #     x_sel = np.array([crpix_new[0]-self.tab1.pixnum[0]/2, crpix_new[0]+self.tab1.pixnum[0]/2], dtype=int)
+            # else:
+            #     x_sel = np.array([x_max_map-self.tab1.pixnum[0],x_max_map], dtype=int)
 
-            if crpix_new[1]*2 < y_max_map:
-                y_sel = np.array([crpix_new[1]-self.tab1.pixnum[1]/2, crpix_new[1]+self.tab1.pixnum[1]/2], dtype=int)
-            else:
-                y_sel = np.array([y_max_map-self.tab1.pixnum[1],y_max_map], dtype=int)
+            # if crpix_new[1]*2 < y_max_map:
+            #     y_sel = np.array([crpix_new[1]-self.tab1.pixnum[1]/2, crpix_new[1]+self.tab1.pixnum[1]/2], dtype=int)
+            # else:
+            #     y_sel = np.array([y_max_map-self.tab1.pixnum[1],y_max_map], dtype=int)
 
             mp_ini.updateTab(data=maps, coord1 = self.tab1.coord1slice, coord2 = self.tab1.coord2slice, \
                              crval = self.tab1.crval, pixnum = self.tab1.pixnum, telcoord = self.tab1.telescopecoordinateCheckBox.isChecked(),\
@@ -1624,9 +1624,15 @@ class ParamMapTab(QWidget):
                                    polynomialorder, sigma)
         self.cleaned_data = det_tod.data_clean()
         if np.size(self.resp) > 1:
-            self.cleaned_data = np.multiply(self.cleaned_data, np.reshape(self.resp, (np.size(self.resp), 1)))
+            if self.experiment.currentText().lower() == 'blast-tng':
+                self.cleaned_data = np.multiply(self.cleaned_data, np.reshape(1/self.resp, (np.size(1/self.resp), 1)))
+            else:
+                self.cleaned_data = np.multiply(self.cleaned_data, np.reshape(self.resp, (np.size(self.resp), 1)))
         else:
-            self.cleaned_data *= self.resp
+            if self.experiment.currentText().lower() == 'blast-tng':
+                self.cleaned_data /= self.resp
+            else:
+                self.cleaned_data *= self.resp
 
     def dirfile_conversion(self, correction=False, LSTconv=None, LATconv=None):
 

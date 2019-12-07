@@ -4,6 +4,8 @@ from scipy.interpolate import interp1d
 import os
 import astropy.table as tb
 
+import src.detector as det
+
 class data_value():
     
     '''
@@ -423,4 +425,5 @@ class det_table():
 
 
             return det_off, noise, grid_angle, pol_angle_offset, resp
+
 
