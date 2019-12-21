@@ -1,6 +1,7 @@
 import numpy as np
 from astropy import wcs
 from astropy.convolution import Gaussian2DKernel, convolve
+import matplotlib.pyplot as plt
 
 class maps():
 
@@ -133,14 +134,39 @@ class wcs_world():
         w.wcs.crval = self.crval
 
         if self.telcoord is False:
-            if self.ctype == 'RA and DEC':
-                w.wcs.ctype = ["RA---TAN", "DEC--TAN"]
-            elif self.ctype == 'AZ and EL':
-                w.wcs.ctype = ["TLON-ARC", "TLAT-ARC"]
-            elif self.ctype == 'CROSS-EL and EL':
+            if self.ctype == 'XY Stage':
+                world = np.zeros_like(coord)
+                try:
+                    world[:,0] = coord[:,0]/(np.amax(coord[:,0]))*360.
+                    world[:,1] = coord[:,1]/(np.amax(coord[:,1]))*360.
+                    print('WORLD_2', world[:, 0], len(world[:,0]))
+                    # import matplotlib.pyplot as plt
+                    # plt.plot(coord[:,0])
+                    # plt.show()
+                except IndexError:
+                    print('COORD', coord)
+                    world[0,0] = coord[0,0]/(np.amax(coord[0,0]))*360.
+                    world[0,1] = coord[0,1]/(np.amax(coord[0,1]))*360.
                 w.wcs.ctype = ["TLON-CAR", "TLAT-CAR"]
-            world = w.all_world2pix(coord, 1)
-            
+            else:
+                if self.ctype == 'RA and DEC':
+                    w.wcs.ctype = ["RA---TAN", "DEC--TAN"]
+                elif self.ctype == 'AZ and EL':
+                    w.wcs.ctype = ["TLON-ARC", "TLAT-ARC"]
+                elif self.ctype == 'CROSS-EL and EL':
+                    w.wcs.ctype = ["TLON-CAR", "TLAT-CAR"]
+                elif self.ctype == 'XY Stage':
+                    w.wcs.ctype = ["TLON-CAR", "TLAT-CAR"]
+                    try:
+                        coord[:,0] = coord[:,0]/(np.amax(coord[:,0]))*360.
+                        coord[:,1] = coord[:,1]/(np.amax(coord[:,1]))*360.
+                        print('COORD_TEST_CARTESIAN', coord, np.amax(coord[:,0]), np.amax(coord[:,1]),np.amin(coord[:,0]), np.amin(coord[:,1]) )
+                    except IndexError:
+                        print('COORD', coord)
+                        coord[0,0] = coord[0,0]/(np.amax(coord[0,0]))*360.
+                        coord[0,1] = coord[0,1]/(np.amax(coord[0,1]))*300.
+                world = w.all_world2pix(coord, 1)
+                
         else:
             w.wcs.ctype = ["TLON-TAN", "TLAT-TAN"]
             world = np.zeros_like(coord)
@@ -149,7 +175,6 @@ class wcs_world():
             world[:,0] = (px['imgcrd'][:,0]*np.cos(parang)-px['imgcrd'][:,1]*np.sin(parang))/self.crdelt[0]+self.crpix[0]
             world[:,1] = (px['imgcrd'][:,0]*np.sin(parang)+px['imgcrd'][:,1]*np.cos(parang))/self.crdelt[1]+self.crpix[1]
         
-        print('WORLD', world, np.shape(world))
         return world, w
 
 class mapmaking(object):
@@ -191,6 +216,10 @@ class mapmaking(object):
         
         x_map = idxpixel[:,0]   #RA 
         y_map = idxpixel[:,1]   #DEC
+    	
+        # index_1 = np.arange(0, len(x_map), 50)
+        # plt.scatter(x_map[index_1], y_map[index_1], c=self.data[index_1])
+        # plt.show()
         
         if (np.amin(x_map)) <= 0:
             x_map = np.floor(x_map+np.abs(np.amin(x_map)))
@@ -271,7 +300,7 @@ class mapmaking(object):
             I_flat = np.append(I_flat, I_fin)
 
         I_pixel = np.reshape(I_flat, (y_len+1,x_len+1))
-    
+
         return I_pixel
 
     def map_multidetectors_Ionly(self, crpix):

@@ -324,7 +324,7 @@ class compute_offset(object):
 
         xel_ref = az_ref*np.cos(np.radians(el_ref))
 
-        return xel_centr-xel_ref, el_ref-el_centr
+        return xel_centr-xel_ref, el_ref+el_centr
 
 
 
