@@ -9,6 +9,7 @@ import os
 =======
 >>>>>>> 651e1e6... Commented files
 import scipy.signal as sgn
+import pygetdata as gd
 
 class data_cleaned():
 
@@ -17,14 +18,17 @@ class data_cleaned():
     the next classes. Check them for more explanations
     '''
 
-    def __init__(self, data, fs, cutoff, detlist, polynomialorder, sigma):
+    def __init__(self, data, fs, cutoff, detlist, polynomialorder, despike, sigma, prominence):
 
         self.data = data                #detector TOD
         self.fs = float(fs)             #frequency sampling of the detector
         self.cutoff = float(cutoff)     #cutoff frequency of the highpass filter
         self.detlist = detlist          #detector name list
         self.polynomialorder = polynomialorder #polynomial order for fitting
-        self.sigma = sigma #polynomial order for fitting
+        self.sigma = sigma                  #height in std value to look for spikes
+        self.prominence = prominence        #prominence in std value to look for spikes
+        self.despike = despike              #if True despikes the data 
+        
 
     def data_clean(self):
 <<<<<<< HEAD
@@ -73,13 +77,22 @@ class data_cleaned():
             if self.polynomialorder != 0:
                 residual_data = det_data.fit_residual(order=self.polynomialorder)
             else:
-                residual_data = det_data.copy()
+                residual_data = self.data
 
-            desp = despike(residual_data)
-            data_despiked = desp.replace_peak(hthres=self.sigma)
+            if self.despike is True:
+                desp = despike(residual_data)
+                data_despiked = desp.replace_peak(hthres=self.sigma, ptresh=self.prominence)
+            else:
+                print('OK, NO DESPIKE')
+                data_despiked = residual_data.copy()
+            
+            #data_despiked = residual_data.copy()
 
-            filterdat = filterdata(data_despiked, self.cutoff, self.fs)
-            cleaned_data = filterdat.ifft_filter(window=True)
+            if self.cutoff != 0:
+                filterdat = filterdata(data_despiked, self.cutoff, self.fs)
+                cleaned_data = filterdat.ifft_filter(window=True)
+            else:
+                cleaned_data = data_despiked
 
             return cleaned_data
 
@@ -245,7 +258,7 @@ class despike():
 
         return param[0].copy(), ledge, redge
 
-    def replace_peak(self, hthres=5, pthres = 0, peaks = np.array([]), widths = np.array([])):
+    def replace_peak(self, hthres=5, pthres = 5, peaks = np.array([]), widths = np.array([])):
 
         '''
         This function replaces the spikes data with noise realization. Noise can be gaussian
@@ -474,7 +487,7 @@ class detector_trend():
 =======
 >>>>>>> 651e1e6... Commented files
     '''
-    Class to load detector properties from a detectortable (need to be implemented)
+    Class to detrend a TOD
     '''
 
 <<<<<<< HEAD:src/detTOD.py
@@ -608,27 +621,93 @@ class detector_trend():
 
 class kidsutils():
 
-    def __init__(self, I, Q):
+    '''
+    Class containing useful functions for KIDs
+    '''
 
-        self.I = I
-        self.Q = Q
+    def rotatePhase(self, I, Q):
 
-    def rotatePhase(self):
-        X = self.I+1j*self.Q
-        phi_avg = np.arctan2(np.mean(self.Q),np.mean(self.I))
+        '''
+        Rotate phase for a KID
+        '''
+
+        X = I+1j*Q
+        phi_avg = np.arctan2(np.mean(Q),np.mean(I))
         E = X*np.exp(-1j*phi_avg)
-        self.I = E.real
-        self.Q = E.imag
+        I = E.real
+        Q = E.imag
 
-    def KIDphase(self):
+        return I, Q
+
+    def KIDphase(self, I, Q):
 
         '''
         Compute the phase of a KID. This is proportional to power, in particular
         Power = Phase/Responsivity
         '''
 
-        phibar = np.arctan2(np.mean(self.Q),np.mean(self.I))
-        self.rotatePhase(self.I, self.Q)
-        phi = np.arctan2(self.Q,self.I)
+        phibar = np.arctan2(np.mean(Q),np.mean(I))
+        I_rot, Q_rot = self.rotatePhase(I, Q)
+        phi = np.arctan2(Q,I)
 
         return phi-phibar
+
+    def KIDmag(self, I, Q):
+
+        ''' 
+        Compute the magnitude response of a KID
+        '''
+
+        return np.sqrt(I**2+Q**2 )
+
+    def interpolation_roach(self, data, bins, sampling):
+
+        '''
+        data: values that need to be interpolated
+        bins: bins of data coming from the pps signal
+        sampling: frequency sampling of the detectors 
+        '''
+
+        start = np.append(0, np.cumsum(bins[:-1]))
+        end = np.cumsum(bins)
+
+        ln = np.linspace(start, end-1, sampling)
+        idx = np.reshape(np.transpose(ln), np.size(ln))
+        idx_plus = np.append(idx[:-1]+1, idx[-1])
+        
+        return (data[idx_plus.astype(int)]-data[idx.astype(int)])*(idx-idx.astype(int))+data[idx.astype(int)]
+     
+    def det_time(self, path, roach_number, frames, ctime_start, ctime_end, sampling):
+
+        roach_string_ctime = 'ctime_packet_roach'+str(int(roach_number))
+        pps_roach_string = 'pps_count_roach'+str(int(roach_number))
+
+        d = gd.dirfile(path)
+        num_frames= int(frames[1]-frames[0])
+        ctime_roach = d.getdata(roach_string_ctime, first_frame=frames[0], num_frames=num_frames)
+        pps = d.getdata(pps_roach_string, first_frame=frames[0], num_frames=num_frames)
+
+        bn = np.bincount(pps)
+        bins = bn[bn>0]
+
+        if bins[0] < 350:
+            pps = pps[bins[0]:]
+            ctime_roach = ctime_roach[bins[0]:]
+
+        if bins[-1] < 350:
+            pps = pps[:-bins[-1]]
+            ctime_roach = ctime_roach[:-bins[-1]]
+
+        #idx_roach_start, = np.where(np.abs(ctime_roach-ctime_start) == np.amin(np.abs(ctime_roach-ctime_start)))
+        #idx_roach_end, = np.where(np.abs(ctime_roach-ctime_end) == np.amin(np.abs(ctime_roach-ctime_end)))
+
+        ctime_roach = ctime_roach*1e-2
+        ctime_roach += 1570000000
+
+        pps_duration = pps[-1]-pps[0]+1
+        pps_final = pps[0]+np.arange(0, pps_duration, 1/488)
+
+        ctime_roach = self.interpolation_roach(ctime_roach, bins[bins>350], sampling)
+        ctime_roach += pps_final
+
+        return ctime_roach, bins
