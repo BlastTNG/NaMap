@@ -10,7 +10,6 @@ from astropy import wcs, coordinates
 from astropy import wcs
 >>>>>>> 8989c24... Correct calculation of coordinates
 from astropy.convolution import Gaussian2DKernel, convolve
-import matplotlib.pyplot as plt
 
 class maps():
 
@@ -333,12 +332,7 @@ class wcs_world():
                 try:
                     world[:,0] = coord[:,0]/(np.amax(coord[:,0]))*360.
                     world[:,1] = coord[:,1]/(np.amax(coord[:,1]))*360.
-                    print('WORLD_2', world[:, 0], len(world[:,0]))
-                    # import matplotlib.pyplot as plt
-                    # plt.plot(coord[:,0])
-                    # plt.show()
                 except IndexError:
-                    print('COORD', coord)
                     world[0,0] = coord[0,0]/(np.amax(coord[0,0]))*360.
                     world[0,1] = coord[0,1]/(np.amax(coord[0,1]))*360.
                 w.wcs.ctype = ["TLON-CAR", "TLAT-CAR"]
@@ -349,18 +343,10 @@ class wcs_world():
                     w.wcs.ctype = ["TLON-ARC", "TLAT-ARC"]
                 elif self.ctype == 'CROSS-EL and EL':
                     w.wcs.ctype = ["TLON-CAR", "TLAT-CAR"]
-                elif self.ctype == 'XY Stage':
-                    w.wcs.ctype = ["TLON-CAR", "TLAT-CAR"]
-                    try:
-                        coord[:,0] = coord[:,0]/(np.amax(coord[:,0]))*360.
-                        coord[:,1] = coord[:,1]/(np.amax(coord[:,1]))*360.
-                        print('COORD_TEST_CARTESIAN', coord, np.amax(coord[:,0]), np.amax(coord[:,1]),np.amin(coord[:,0]), np.amin(coord[:,1]) )
-                    except IndexError:
-                        print('COORD', coord)
-                        coord[0,0] = coord[0,0]/(np.amax(coord[0,0]))*360.
-                        coord[0,1] = coord[0,1]/(np.amax(coord[0,1]))*300.
+                print(self.crpix, self.crdelt, self.crval)
+                print('TEST', coord[:,0], coord[:,1])
                 world = w.all_world2pix(coord, 1)
-                
+                print('WORLD', world[:,0])
         else:
             w.wcs.ctype = ["TLON-TAN", "TLAT-TAN"]
             world = np.zeros_like(coord)
@@ -442,7 +428,6 @@ class mapmaking(object):
         
         x_map = idxpixel[:,0]   #RA 
         y_map = idxpixel[:,1]   #DEC
-    	
         # index_1 = np.arange(0, len(x_map), 50)
         # plt.scatter(x_map[index_1], y_map[index_1], c=self.data[index_1])
         # plt.show()
@@ -453,9 +438,14 @@ class mapmaking(object):
 =======
         if (np.amin(x_map)) <= 0:
 <<<<<<< HEAD
+<<<<<<< HEAD
             print('MIN')
 >>>>>>> 4ee3dbe... Fixed bug in selecting data
+=======
+            print(x_map+np.abs(np.amin(x_map)), np.abs(np.amin(x_map)))
+>>>>>>> 30ad9b0... Final version with sync
             x_map = np.floor(x_map+np.abs(np.amin(x_map)))
+            print(x_map)
         else:
             x_map = np.floor(x_map-np.amin(x_map))
         if (np.amin(y_map)) <= 0:
@@ -487,6 +477,7 @@ class mapmaking(object):
 
         cos = np.cos(2.*angle)
         sin = np.sin(2.*angle)
+<<<<<<< HEAD
 
         I_est_flat = np.bincount(param, weights=flux)*sigma
 <<<<<<< HEAD
@@ -500,6 +491,11 @@ class mapmaking(object):
         print('FLUX', flux, np.size(flux))
         print('COS', cos, np.size(cos))
 >>>>>>> 6f562c7... Solved array shape issue with parallactic angle
+=======
+        print('ARRAY', param, np.size(param))
+        print('FLUX', flux, np.size(flux))
+        I_est_flat = np.bincount(param, weights=flux)*sigma
+>>>>>>> 30ad9b0... Final version with sync
         Q_est_flat = np.bincount(param, weights=flux*cos)*sigma
         U_est_flat = np.bincount(param, weights=flux*sin)*sigma
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
@@ -705,8 +701,6 @@ class mapmaking(object):
 >>>>>>> db74452... Solved a bug on applying the offset
             else:
                 idxpixel = self.pixelmap[i].copy()
-            print('Pixel_MIN', np.amin(idxpixel[:,0]), np.amin(idxpixel[:,1]))
-            print('Pixel_MIN', np.amax(idxpixel[:,0]), np.amax(idxpixel[:,1]))
             # mapvalues = self.map_singledetector_Ionly(crpix = crpix, value=self.data[i],noise=1/self.weight[i],\
             #                                           angle=self.polangle[i], idxpixel = idxpixel)
 
@@ -725,7 +719,6 @@ class mapmaking(object):
             index2x = int(index1x + np.abs(Xmax_map_temp-Xmin_map_temp))
             index1y = int(Ymin_map_temp-Ymin)
             index2y = int(index1y + np.abs(Ymax_map_temp-Ymin_map_temp))
-            print('Indices', index1x,index2x,index1y,index2y)
 
             x_len = Xmax_map_temp-Xmin_map_temp
             y_len = Ymax_map_temp-Ymin_map_temp

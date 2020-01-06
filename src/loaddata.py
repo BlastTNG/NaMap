@@ -96,7 +96,10 @@ class data_value():
         self.startframe = int(startframe)           #Starting frame to be analyzed
         self.endframe = int(endframe)               #Ending frame to be analyzed
 
-        self.bufferframe = 100                      #Buffer frames to be loaded before and after the starting and ending frame
+        if self.startframe < 100:
+            self.bufferframe = int(0)                      #Buffer frames to be loaded before and after the starting and ending frame
+        else:
+            self.bufferframe = int(100)
 
     def conversion_type(self, file_type):
 
@@ -144,6 +147,7 @@ class data_value():
         if np.size(file) == 1: 
             d = gd.dirfile(filepath, gd.RDONLY)
 <<<<<<< HEAD
+<<<<<<< HEAD
             vectors = d.field_list()
             for i in range (len(vectors)):
                 if str(vectors[i])[2:-1] == file:
@@ -168,6 +172,12 @@ class data_value():
 >>>>>>> 6c0d8b1... Solved some errors in polarization maps (still some to be corrected)
 =======
             gdtype = self.conversion_type(file_type)
+=======
+            if file_type is not None:
+                gdtype = self.conversion_type(file_type)
+            else:
+                gdtype = gd.FLOAT64
+>>>>>>> 30ad9b0... Final version with sync
             if self.experiment.lower()=='blast-tng':
                 num = self.endframe-self.startframe+2*self.bufferframe
                 first_frame = self.startframe-self.bufferframe
@@ -255,21 +265,47 @@ class data_value():
         print('COORDINATES', self.coord1_name.lower(), self.coord2_name.lower())
 
         if self.coord2_name.lower() == 'dec':
-            coord2_data = self.load(self.coord_path, self.coord2_name.lower(), self.coord2_file_type)
+            if self.experiment.lower()=='blast-tng':
+                coord2 = 'DEC'
+                filetype = None
+            else:
+                coord2 = 'dec'
+                filetype = self.coord2_file_type
+            coord2_data = self.load(self.coord_path, coord2, filetype)
         elif self.coord2_name.lower() == 'y':
             coord2_data = self.load(self.coord_path, 'y_stage', self.coord2_file_type)
         else:
+<<<<<<< HEAD
             coord2_data = self.load(self.coord_path, self.coord2_name.lower(), self.coord2_file_type)
 >>>>>>> 02b0274... Added KIDs sync and XY Stage Coordinate System
+=======
+            if self.experiment.lower()=='blast-tng':
+                coord2 = 'EL'
+                filetype = None
+            else:
+                coord2 = 'el'
+                filetype = self.coord2_file_type
+            coord2_data = self.load(self.coord_path, coord2, filetype)
+>>>>>>> 30ad9b0... Final version with sync
 
         if self.coord1_name.lower() == 'ra':
-            coord1_data = self.load(self.coord_path, self.coord1_name.lower(), self.coord1_file_type)
+            if self.experiment.lower()=='blast-tng':
+                coord1 = 'RA'
+                filetype = None
+            else:
+                coord1 = 'ra'
+                filetype = self.coord1_file_type
+            coord1_data = self.load(self.coord_path, coord1, filetype)
         elif self.coord1_name.lower() == 'x':
-            print('X STAGE')
             coord1_data = self.load(self.coord_path, 'x_stage', self.coord1_file_type)
-            print('COORD1', coord1_data[500:])
         else:
-            coord1_data = self.load(self.coord_path, 'az', self.coord1_file_type)
+            if self.experiment.lower()=='blast-tng':
+                coord1 = 'AZ'
+                filetype = None
+            else:
+                coord1 = 'az'
+                filetype = self.coord1_file_type
+            coord1_data = self.load(self.coord_path, coord1, filetype)
 
         if self.hwp_file_type is not None:
             hwp_data = self.load(self.coord_path, 'pot_hwpr', self.hwp_file_type)
@@ -366,7 +402,10 @@ class frame_zoom_sync():
 
         self.xystage=xystage                                   #Flag to check if the coordinates data are coming from an xy stage scan
 
-        self.bufferframe = 100
+        if self.startframe < 100:
+            self.bufferframe = int(0)
+        else:
+            self.bufferframe = int(100)
 
 <<<<<<< HEAD
     def frame_zoom(self, data, sample_frame, fs, fps):
@@ -598,23 +637,25 @@ class frame_zoom_sync():
 
         if self.experiment.lower() == 'blast-tng':
             d = gd.dirfile(self.roach_pps_path)
-
+            
             first_frame = self.startframe-self.bufferframe
             num_frames = self.endframe-self.startframe+2*self.bufferframe
             interval = self.endframe-self.startframe
+            print('FRAMES', first_frame, num_frames, interval)
             ctime_mcp = d.getdata('time', first_frame=first_frame, num_frames=num_frames)
             ctime_usec = d.getdata('time_usec', first_frame=first_frame, num_frames=num_frames)
             framecount_100hz = d.getdata('mcp_100hz_framecount', first_frame=first_frame, num_frames=num_frames)
-
+            print('LEN', len(ctime_mcp), len(ctime_usec), len(framecount_100hz))
             if self.xystage is True:
-                frequency_ctime = 100
+                #frequency_ctime = 100
                 sample_ctime = 100
             else:
-                frequency_ctime = self.coord_fs
+                #frequency_ctime = self.coord_fs
                 sample_ctime = self.coord_sample_frame
-            ctime_start_temp = ctime_mcp[0]+ctime_usec[0]/1e6+0.2
-            ctime_mcp = ctime_start_temp + (framecount_100hz-framecount_100hz[0])/frequency_ctime
-            ctime_mcp = ctime_mcp[self.bufferframe*sample_ctime:self.bufferframe*sample_ctime+num_frames*sample_ctime]
+            #ctime_start_temp = ctime_mcp[0]+ctime_usec[0]/1e6+0.2
+            #ctime_mcp = ctime_start_temp + (framecount_100hz-framecount_100hz[0])/frequency_ctime
+            ctime_start = ctime_mcp+ctime_usec/1e6+0.2
+            ctime_mcp = ctime_mcp[self.bufferframe*sample_ctime:self.bufferframe*sample_ctime+interval*sample_ctime]
  
             if self.offset is not None:
                 ctime_mcp += self.offset/1000.
@@ -626,7 +667,6 @@ class frame_zoom_sync():
                                       interval*self.coord_sample_frame]
             coord2 = self.coord2_data[self.bufferframe*self.coord_sample_frame:self.bufferframe*self.coord_sample_frame+\
                                       interval*self.coord_sample_frame]
-            print(coord1)
                                     
             if self.xystage is True:
                 freq_array = np.append(0, np.cumsum(np.repeat(1/self.coord_sample_frame, self.coord_sample_frame*interval-1)))
@@ -640,6 +680,8 @@ class frame_zoom_sync():
                 else:
                     coord1time = ctime_mcp.copy()
                     coord2time = ctime_mcp.copy()
+
+            print(coord1, len(self.coord1_data), len(coord1), len(coord1time))
 
             kidutils = det.kidsutils()
             
@@ -673,7 +715,7 @@ class frame_zoom_sync():
             coord2_inter = coord2int(dettime[index1[0]+200:index2[0]-200])
             dettime = dettime[index1[0]+200:index2[0]-200]
 
-            print('COORDINATES', coord1_inter, len(coord1_inter))
+            print('COORDINATES', np.amin(coord2_inter), np.amax(coord2_inter), len(coord2_inter))
 
             if len(np.shape(self.det_data)) == 1:
                 self.det_data = self.det_data[index1[0]+200:index2[0]-200]

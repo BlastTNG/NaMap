@@ -10,6 +10,7 @@ import os
 >>>>>>> 651e1e6... Commented files
 import scipy.signal as sgn
 import pygetdata as gd
+import matplotlib.pyplot as plt
 
 class data_cleaned():
 
@@ -81,12 +82,9 @@ class data_cleaned():
 
             if self.despike is True:
                 desp = despike(residual_data)
-                data_despiked = desp.replace_peak(hthres=self.sigma, ptresh=self.prominence)
+                data_despiked = desp.replace_peak(hthres=self.sigma, pthres=self.prominence)
             else:
-                print('OK, NO DESPIKE')
                 data_despiked = residual_data.copy()
-            
-            #data_despiked = residual_data.copy()
 
             if self.cutoff != 0:
                 filterdat = filterdata(data_despiked, self.cutoff, self.fs)
@@ -162,40 +160,61 @@ class despike():
 >>>>>>> cafb487... Solved a bug in passing the WCS to the gui
 
         index = np.ones(1)
+<<<<<<< HEAD
         ledge = np.array([], dtype = 'int')
         redge = np.array([], dtype = 'int')
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
 =======
 >>>>>>> 651e1e6... Commented files
+=======
+        # ledge = np.array([], dtype = 'int')
+        # redge = np.array([], dtype = 'int')
+>>>>>>> 30ad9b0... Final version with sync
 
         y_std = np.std(self.data)
         y_mean = np.mean(self.data)
 
+        print('MEAN and STD', y_mean, y_std)
+
+        if np.amin(self.data) > 0:
+            data_to_despike = self.data-y_mean
+        else:
+            data_to_despike = self.data.copy()
+
+        # plt.plot(np.abs(data_to_despike))
+        # plt.show()
+
         if hthres != 0 and pthres == 0:
-            index, param = sgn.find_peaks(np.abs(self.data), height = y_mean + hthres*y_std, distance=100)
+            index, param = sgn.find_peaks(np.abs(data_to_despike), height = hthres*y_std, distance=100)
         elif pthres != 0 and hthres == 0:
-            index, param = sgn.find_peaks(np.abs(self.data), prominence = pthres*y_std)
+            index, param = sgn.find_peaks(np.abs(data_to_despike), prominence = pthres*y_std)
         elif hthres != 0 and pthres != 0:
+<<<<<<< HEAD
             index, param = sgn.find_peaks(np.abs(self.data), height = y_mean + hthres*y_std, \
 <<<<<<< HEAD
 <<<<<<< HEAD
                                             prominence = pthres*y_std)
 =======
+=======
+            index, param = sgn.find_peaks(np.abs(data_to_despike), height = hthres*y_std, \
+>>>>>>> 30ad9b0... Final version with sync
                                           prominence = pthres*y_std)
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
 =======
                                           prominence = pthres*y_std)
 >>>>>>> 4ee3dbe... Fixed bug in selecting data
 
-        ledget = sgn.peak_widths(np.abs(self.data),index)[2]
-        redget = sgn.peak_widths(np.abs(self.data),index)[3]
+        # ledget = sgn.peak_widths(np.abs(data_to_despike),index)[2]
+        # redget = sgn.peak_widths(np.abs(data_to_despike),index)[3]
 
-        ledge = np.append(ledge, np.floor(ledget).astype(int))
-        redge = np.append(redge, np.ceil(redget).astype(int))
+        # ledge = np.append(ledge, np.floor(ledget).astype(int))
+        # redge = np.append(redge, np.ceil(redget).astype(int))
+
+        print('INDEX', index)
 
         return index
 
-    def peak_width(self, hthres=5, pthres=0, window = 100):
+    def peak_width(self, peaks, hthres=5, pthres=0, window = 100):
 
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -215,8 +234,13 @@ class despike():
 =======
 >>>>>>> 651e1e6... Commented files
         
-        peaks = self.findpeak(hthres=hthres, pthres=pthres)
-        param = sgn.peak_widths(np.abs(self.data),peaks, rel_height = 1.0)
+        #peaks = self.findpeak(hthres=hthres, pthres=pthres)
+        y_mean = np.mean(self.data)
+        if np.amin(self.data) > 0:
+            data_to_despike = self.data-y_mean
+        else:
+            data_to_despike = self.data.copy()
+        param = sgn.peak_widths(np.abs(data_to_despike),peaks, rel_height = 1.0)
 
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -230,6 +254,7 @@ class despike():
         redge = np.array([], dtype='int')
 
         for i in range(len(peaks)):
+<<<<<<< HEAD
 <<<<<<< HEAD
             left_edge, = np.where(self.data[peaks[i]-window:peaks[i]] == \
                                   np.amin(self.data[peaks[i]-window:peaks[i]]))
@@ -249,13 +274,21 @@ class despike():
             right_edge, = np.where(np.abs(self.data[peaks[i]:peaks[i]+window]) == \
                                    np.amin(np.abs(self.data[peaks[i]:peaks[i]+window])))
 >>>>>>> d11dfe9... Solved pointing, multidetectors stacking and loading bugs
+=======
+            left_edge, = np.where(np.abs(data_to_despike[peaks[i]-window:peaks[i]]) == \
+                                  np.amin(np.abs(data_to_despike[peaks[i]-window:peaks[i]])))
+            right_edge, = np.where(np.abs(data_to_despike[peaks[i]:peaks[i]+window]) == \
+                                   np.amin(np.abs(data_to_despike[peaks[i]:peaks[i]+window])))
+>>>>>>> 30ad9b0... Final version with sync
 
             left_edge += (peaks[i]-window)
             right_edge += peaks[i]
 
-            ledge = np.append(ledge, left_edge)
-            redge = np.append(redge, right_edge)
-
+            ledge = np.append(ledge, left_edge[-1])
+            redge = np.append(redge, right_edge[-1])
+            print('INDEX', i, peaks[i], left_edge, right_edge)
+        print('PEAKS', left_edge, right_edge, peaks[i])
+        print(len(peaks), len(ledge), len(redge))
         return param[0].copy(), ledge, redge
 
     def replace_peak(self, hthres=5, pthres = 5, peaks = np.array([]), widths = np.array([])):
@@ -275,12 +308,15 @@ class despike():
 >>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
         x_inter = np.array([], dtype = 'int')
 
+        ledge = np.array([], 'int')
+        redge = np.array([], 'int')
+        replaced = self.data.copy()
+
         if np.size(peaks) == 0:
             peaks = self.findpeak(hthres=hthres, pthres=pthres)
         if np.size(widths) == 0:
-            widths = self.peak_width(hthres=hthres, pthres=pthres)
+            widths = self.peak_width(peaks=peaks, hthres=hthres, pthres=pthres)
 
-        replaced = self.data.copy()
         for i in range(0, len(peaks)):
             # width = int(np.ceil(widths[0][i]))
             # # if width <= 13:
@@ -292,6 +328,8 @@ class despike():
 
             left_edge = int(np.floor(widths[1][i]))
             right_edge = int(np.ceil(widths[2][i]))
+            ledge = np.append(ledge, left_edge)
+            redge = np.append(redge, right_edge)
 
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -314,7 +352,7 @@ class despike():
         final_var = np.var(replaced)
 
         p_stat = np.abs(final_mean/final_var-1.)
-
+        print('CHAR', p_stat, final_mean, final_std, final_var)
         if p_stat <=1e-2:
             '''
             This means that the variance and the mean are approximately the 
@@ -327,6 +365,8 @@ class despike():
 
         if np.size(y_sub) > 0:
             replaced[x_inter] = y_sub
+        #print(left_edge, right_edge)
+        #print('TEST', x_inter, ledge, redge)
 
         return replaced
 
@@ -686,24 +726,22 @@ class kidsutils():
         num_frames= int(frames[1]-frames[0])
         ctime_roach = d.getdata(roach_string_ctime, first_frame=frames[0], num_frames=num_frames)
         pps = d.getdata(pps_roach_string, first_frame=frames[0], num_frames=num_frames)
+        ctime_roach = np.ones_like(pps)*ctime_roach[0]
 
         bn = np.bincount(pps)
         bins = bn[bn>0]
-
+        
         if bins[0] < 350:
             pps = pps[bins[0]:]
             ctime_roach = ctime_roach[bins[0]:]
-
         if bins[-1] < 350:
             pps = pps[:-bins[-1]]
             ctime_roach = ctime_roach[:-bins[-1]]
 
         #idx_roach_start, = np.where(np.abs(ctime_roach-ctime_start) == np.amin(np.abs(ctime_roach-ctime_start)))
         #idx_roach_end, = np.where(np.abs(ctime_roach-ctime_end) == np.amin(np.abs(ctime_roach-ctime_end)))
-
         ctime_roach = ctime_roach*1e-2
         ctime_roach += 1570000000
-
         pps_duration = pps[-1]-pps[0]+1
         pps_final = pps[0]+np.arange(0, pps_duration, 1/488)
 

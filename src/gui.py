@@ -59,10 +59,13 @@ import gc
 =======
 import copy
 <<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> 77760bc... Add TOD timing offset
 =======
 import time
 >>>>>>> 02b0274... Added KIDs sync and XY Stage Coordinate System
+=======
+>>>>>>> 30ad9b0... Final version with sync
 
 import src.detector as tod
 import src.loaddata as ld
@@ -823,7 +826,7 @@ class MainWindowTab(QTabWidget):
         pb.setValue(75)
 
         try:
-            print('TEST_MAPS')
+            
             self.tab1.mapvalues(self.cleandata)
 
             #Update Maps
@@ -869,9 +872,17 @@ class MainWindowTab(QTabWidget):
             # else:
             #     y_sel = np.array([y_max_map-self.tab1.pixnum[1],y_max_map], dtype=int)
 
+            if self.tab1.coordchoice.currentText() == 'XY Stage':
+                xystagebool = True
+            else:
+                xystagebool = False
+            
+            ctype = self.tab1.coordchoice.currentText()
+            print('CTYPE_1', ctype)
             mp_ini.updateTab(data=maps, coord1 = self.tab1.coord1slice, coord2 = self.tab1.coord2slice, \
-                             crval = self.tab1.crval, pixnum = self.tab1.pixnum, telcoord = self.tab1.telescopecoordinateCheckBox.isChecked(),\
-                             crpix = crpix_new, cdelt = self.tab1.cdelt, projection = self.proj_new, full_map=True)
+                             crval = self.tab1.crval, ctype = ctype, pixnum = self.tab1.pixnum, \
+                             telcoord = self.tab1.telescopecoordinateCheckBox.isChecked(),\
+                             crpix = crpix_new, cdelt = self.tab1.cdelt, projection = self.proj_new, xystage=xystagebool)
             # cutout = mp_ini.cutout
 
             # self.proj_new = cutout.wcs
@@ -910,8 +921,8 @@ class MainWindowTab(QTabWidget):
 
                 else:
                     beams.updateTab(data=beam_map[0], coord1 = self.tab1.coord1slice, coord2 = self.tab1.coord2slice, \
-                                    crval = self.tab1.crval, pixnum = self.tab1.pixnum, telcoord = self.tab1.telescopecoordinateCheckBox.isChecked(),\
-                                    crpix = crpix_new, cdelt = self.tab1.cdelt, projection = self.proj_new)
+                                    crval = self.tab1.crval, ctype=ctype, pixnum = self.tab1.pixnum, telcoord = self.tab1.telescopecoordinateCheckBox.isChecked(),\
+                                    crpix = crpix_new, cdelt = self.tab1.cdelt, projection = self.proj_new, xystage=xystagebool)
                     self.tab3.updateTable(param)
 
         except AttributeError:
@@ -1009,8 +1020,8 @@ class ParamMapTab(QWidget):
 
         self.createOffsetGroup()
         mainlayout = QGridLayout(self)
-        self.createMapPlotGroup = (MapPlotsGroup(checkbox=self.ICheckBox, ctype=self.coordchoice.currentText(), \
-                                   data=self.map_value))
+
+        self.createMapPlotGroup = MapPlotsGroup(checkbox=self.ICheckBox, data=self.map_value)
 
         self.fitsname = QLineEdit('')
         self.fitsnamelabel = QLabel("FITS name")
@@ -1141,7 +1152,7 @@ class ParamMapTab(QWidget):
         self.DataRepository = QGroupBox("Data Repository")
         
         #self.detpath = QLineEdit('/mnt/c/Users/gabri/Documents/GitHub/mapmaking/2012_data/bolo_data/')
-        self.detpath = QLineEdit('/mnt/d/xystage/')
+        self.detpath = QLineEdit('/mnt/d/data/etc/mole.lnk')
         self.detpathlabel = QLabel("Detector Path:")
         self.detpathlabel.setBuddy(self.detpath)
 
@@ -1183,8 +1194,12 @@ class ParamMapTab(QWidget):
 >>>>>>> cbc2d94... Solved some bugs in computing offset
 =======
         #self.coordpath = QLineEdit('/mnt/c/Users/gabri/Documents/GitHub/mapmaking/2012_data/')
+<<<<<<< HEAD
         self.coordpath = QLineEdit('/mnt/d/xystage/')
 >>>>>>> 02b0274... Added KIDs sync and XY Stage Coordinate System
+=======
+        self.coordpath = QLineEdit('/mnt/d/data/etc/mole.lnk')
+>>>>>>> 30ad9b0... Final version with sync
         self.coordpathlabel = QLabel("Coordinate Path:")
         self.coordpathlabel.setBuddy(self.coordpath)
 
@@ -1476,6 +1491,7 @@ class ParamMapTab(QWidget):
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
         self.startframe = QLineEdit('')
         self.endframe = QLineEdit('')
 =======
@@ -1490,6 +1506,10 @@ class ParamMapTab(QWidget):
         self.startframe = QLineEdit('21600')
         self.endframe = QLineEdit('42070')
 >>>>>>> 02b0274... Added KIDs sync and XY Stage Coordinate System
+=======
+        self.startframe = QLineEdit('9200')
+        self.endframe = QLineEdit('9500')
+>>>>>>> 30ad9b0... Final version with sync
         self.numberframelabel = QLabel('Starting and Ending Frames')
         self.numberframelabel.setBuddy(self.startframe)
 
@@ -1642,7 +1662,6 @@ class ParamMapTab(QWidget):
             self.aHWPconv.setVisible
             self.bHWPconv.setVisible
         else:
-            print('TEST')
             self.HWPtypelabel.setVisible(False)
             self.HWPtype.setVisible(False)
             self.HWPfreqlabel.setVisible(False)
@@ -2353,9 +2372,13 @@ class ParamMapTab(QWidget):
 
             del self.det_data
             gc.collect()
+<<<<<<< HEAD
 
 >>>>>>> d11dfe9... Solved pointing, multidetectors stacking and loading bugs
             if self.DirConvCheckBox.isChecked:
+=======
+            if self.DirConvCheckBox.isChecked():
+>>>>>>> 30ad9b0... Final version with sync
                 self.dirfile_conversion(correction = correction, LSTconv = LSTconv, \
                                         LATconv = LATconv)
             else:
@@ -2644,7 +2667,7 @@ class BeamTab(ParamMapTab):
 
         super(QWidget, self).__init__(parent)
 
-        self.beammaps = MapPlotsGroup(checkbox=checkbox, data=None, ctype=ctype)
+        self.beammaps = MapPlotsGroup(checkbox=checkbox, data=None)
 
         self.table = QTableWidget()
 
@@ -2694,6 +2717,7 @@ class MapPlotsGroup(QWidget):
             self.DECoffset.setText(str(self.offset_angle[1]))
 
 <<<<<<< HEAD
+<<<<<<< HEAD
         elif self.ctype == 'AZ and EL':
             self.AZoffset.setText(str(self.offset_angle[0]))
             self.ELoffset.setText(str(self.offset_angle[1]))
@@ -2706,6 +2730,34 @@ class MapPlotsGroup(QWidget):
 >>>>>>> 26b52b6... Solved projections in plotting and add plotting functions
 
     def load_func(self):
+=======
+    def __init__(self, data, checkbox, parent=None):
+
+        super(QWidget, self).__init__(parent)
+
+        self.tabs = QTabWidget()
+        self.tab1 = QWidget()
+        self.tab2 = QWidget()
+        self.tab3 = QWidget()
+
+        
+        self.data = data
+        self.checkbox = checkbox
+        self.cutout = None
+
+        self.tabvisible()
+
+        self.tabs.addTab(self.tab1,"I Map")
+        self.ImapTab()
+        self.QmapTab()
+        self.UmapTab()
+
+        self.checkbox.toggled.connect(self.tabvisible)
+        
+        self.layout = QVBoxLayout()
+        self.layout.addWidget(self.tabs)
+        self.setLayout(self.layout)
+>>>>>>> 30ad9b0... Final version with sync
 
 
         '''
@@ -3330,7 +3382,8 @@ class MapPlotsGroup(QWidget):
 
         self.tab3.setLayout(mainlayout)
 
-    def updateTab(self, data, coord1, coord2, crval, pixnum, telcoord=False, cdelt=None, crpix=None, projection=None, full_map=False):
+    def updateTab(self, data, coord1, coord2, crval, ctype, pixnum, telcoord=False, cdelt=None, crpix=None, \
+                  projection=None, xystage=False):
 
         '''
         Function to updates the I, Q and U plots when the 
@@ -3341,14 +3394,14 @@ class MapPlotsGroup(QWidget):
             idx_list = ['I', 'Q', 'U']
 
             for i in range(len(idx_list)):
-                self.map2d(data=data[i], coord1=coord1, coord2=coord2, crval=crval, pixnum=pixnum, idx=idx_list[i],\
-                           telcoord=telcoord, cdelt=cdelt, crpix=crpix, projection=projection)
+                self.map2d(data=data[i], coord1=coord1, coord2=coord2, crval=crval, ctype=ctype, pixnum=pixnum, idx=idx_list[i],\
+                           telcoord=telcoord, cdelt=cdelt, crpix=crpix, projection=projection, xystage=xystage)
         else:
-            self.map2d(data=data, coord1=coord1, coord2=coord2, crval=crval, pixnum=pixnum, telcoord=telcoord, cdelt=cdelt, crpix=crpix, \
-                       projection=projection,full_map=full_map)
+            self.map2d(data=data, coord1=coord1, coord2=coord2, crval=crval, ctype= ctype, pixnum=pixnum, telcoord=telcoord, cdelt=cdelt, crpix=crpix, \
+                       projection=projection,xystage=xystage)
 
-    def map2d(self, data=None, coord1=None, coord2=None, crval=None, pixnum=None, idx='I', telcoord=False, cdelt=None, \
-              crpix=None, projection=None, full_map=False):
+    def map2d(self, data=None, coord1=None, coord2=None, crval=None, ctype=None, pixnum=None, idx='I', telcoord=False, cdelt=None, \
+              crpix=None, projection=None, xystage=False):
 
         '''
         Function to generate the map plots (I,Q and U) 
@@ -3357,83 +3410,124 @@ class MapPlotsGroup(QWidget):
 
         intervals = 3   
 
-        if full_map is True:
-            masked = np.ma.array(data, mask=(np.abs(data)<1))
-            self.mapdata = masked
-            proj = projection
-        else:
-            if telcoord is False:
+        if telcoord is False:        
+            if xystage is False:
                 position = SkyCoord(crval[0], crval[1], unit='deg', frame='icrs')
 
                 size = (pixnum[1], pixnum[0])     # pixels
 
                 cutout = Cutout2D(data, position, size, wcs=projection)
                 proj = cutout.wcs
-
+                print('PROJ', proj)
                 self.mapdata = cutout.data
-
             else:
-                idx_xmin = crval[0]-cdelt*pixnum[0]/2   
-                idx_xmax = crval[0]+cdelt*pixnum[0]/2
-                idx_ymin = crval[1]-cdelt*pixnum[1]/2
-                idx_ymax = crval[1]+cdelt*pixnum[1]/2
+                masked = np.ma.array(data, mask=(np.abs(data)<1))
+                self.mapdata = masked
+                proj = 'rectilinear'
 
-                proj = None
+        else:
+            idx_xmin = crval[0]-cdelt*pixnum[0]/2   
+            idx_xmax = crval[0]+cdelt*pixnum[0]/2
+            idx_ymin = crval[1]-cdelt*pixnum[1]/2
+            idx_ymax = crval[1]+cdelt*pixnum[1]/2
 
-                idx_xmin = np.amax(np.array([np.ceil(crpix[0]-1-pixnum[0]/2), 0.], dtype=int))
-                idx_xmax = np.amin(np.array([np.ceil(crpix[0]-1+pixnum[0]/2), np.shape(data)[1]], dtype=int))
+            proj = None
 
-                if np.abs(idx_xmax-idx_xmin) != pixnum[0]:
-                    if idx_xmin != 0 and idx_xmax == np.shape(data)[1]:
-                        idx_xmin = np.amax(np.array([0., np.shape(data)[1]-pixnum[0]], dtype=int))
-                    if idx_xmin == 0 and idx_xmax != np.shape(data)[1]:
-                        idx_xmax = np.amin(np.array([pixnum[0], np.shape(data)[1]], dtype=int))
+            idx_xmin = np.amax(np.array([np.ceil(crpix[0]-1-pixnum[0]/2), 0.], dtype=int))
+            idx_xmax = np.amin(np.array([np.ceil(crpix[0]-1+pixnum[0]/2), np.shape(data)[1]], dtype=int))
 
-                idx_ymin = np.amax(np.array([np.ceil(crpix[1]-1-pixnum[1]/2), 0.], dtype=int))
-                idx_ymax = np.amin(np.array([np.ceil(crpix[1]-1+pixnum[1]/2), np.shape(data)[0]], dtype=int))
+            if np.abs(idx_xmax-idx_xmin) != pixnum[0]:
+                if idx_xmin != 0 and idx_xmax == np.shape(data)[1]:
+                    idx_xmin = np.amax(np.array([0., np.shape(data)[1]-pixnum[0]], dtype=int))
+                if idx_xmin == 0 and idx_xmax != np.shape(data)[1]:
+                    idx_xmax = np.amin(np.array([pixnum[0], np.shape(data)[1]], dtype=int))
 
-                if np.abs(idx_ymax-idx_ymin) != pixnum[1]:
-                    if idx_ymin != 0 and idx_ymax == np.shape(data)[0]:
-                        idx_ymin = np.amax(np.array([0., np.shape(data)[0]-pixnum[1]], dtype=int))
-                    if idx_ymin == 0 and idx_ymax != np.shape(data)[0]:
-                        idx_ymax = np.amin(np.array([pixnum[1], np.shape(data)[0]], dtype=int))
+            idx_ymin = np.amax(np.array([np.ceil(crpix[1]-1-pixnum[1]/2), 0.], dtype=int))
+            idx_ymax = np.amin(np.array([np.ceil(crpix[1]-1+pixnum[1]/2), np.shape(data)[0]], dtype=int))
 
-                self.mapdata = data[idx_ymin:idx_ymax, idx_xmin:idx_xmax]
-                crpix[0] -= idx_xmin
-                crpix[1] -= idx_ymin
+            if np.abs(idx_ymax-idx_ymin) != pixnum[1]:
+                if idx_ymin != 0 and idx_ymax == np.shape(data)[0]:
+                    idx_ymin = np.amax(np.array([0., np.shape(data)[0]-pixnum[1]], dtype=int))
+                if idx_ymin == 0 and idx_ymax != np.shape(data)[0]:
+                    idx_ymax = np.amin(np.array([pixnum[1], np.shape(data)[0]], dtype=int))
 
-                w = wcs.WCS(naxis=2)
-                w.wcs.crpix = crpix
-                w.wcs.cdelt = cdelt
-                w.wcs.crval = crval
-                w.wcs.ctype = ["TLON-TAN", "TLAT-TAN"]
-                proj = w
+            self.mapdata = data[idx_ymin:idx_ymax, idx_xmin:idx_xmax]
+            crpix[0] -= idx_xmin
+            crpix[1] -= idx_ymin
+
+            w = wcs.WCS(naxis=2)
+            w.wcs.crpix = crpix
+            w.wcs.cdelt = cdelt
+            w.wcs.crval = crval
+            w.wcs.ctype = ["TLON-TAN", "TLAT-TAN"]
+            proj = w
 
         levels = np.linspace(0.5, 1, intervals)*np.amax(self.mapdata)
-
+        print('CTYPE', ctype)
         if idx == 'I':
             self.matplotlibWidget_Imap.figure.clear()
-            self.axis_Imap = (self.matplotlibWidget_Imap.figure.add_subplot(111, \
-                              projection=proj))
+            fig = self.matplotlibWidget_Imap.figure
+            if ctype == 'XY Stage':
+                self.axis_Imap = fig.add_subplot(111, projection='rectilinear')
+            else:
+                self.axis_Imap = fig.add_subplot(111, projection=proj)
             axis = self.axis_Imap
         elif idx == 'Q':
             self.matplotlibWidget_Qmap.figure.clear()
-            self.axis_Qmap = (self.matplotlibWidget_Qmap.figure.add_subplot(111, \
-                              projection=proj))
+            fig = self.matplotlibWidget_Qmap.figure
+            self.axis_Qmap = fig.add_subplot(111, projection=proj)
             axis = self.axis_Qmap
         elif idx == 'U':
             self.matplotlibWidget_Umap.figure.clear()
-            self.axis_Umap = (self.matplotlibWidget_Umap.figure.add_subplot(111, \
-                              projection=proj))
+            fig = self.matplotlibWidget_Umap.figure
+            self.axis_Umap = fig.add_subplot(111, projection=proj)
 
             axis = self.axis_Umap
+
+        if telcoord is False:
+            if ctype == 'RA and DEC':
+                ra = axis.coords[0]
+                dec = axis.coords[1]
+                ra.set_axislabel('RA (deg)')
+                dec.set_axislabel('Dec (deg)')
+                dec.set_major_formatter('d.ddd')
+                ra.set_major_formatter('d.ddd')
+            
+            elif ctype == 'AZ and EL':
+                az = axis.coords[0]
+                el = axis.coords[1]
+                az.set_axislabel('AZ (deg)')
+                el.set_axislabel('EL (deg)')
+                az.set_major_formatter('d.ddd')
+                el.set_major_formatter('d.ddd')
+            
+            elif ctype == 'CROSS-EL and EL':
+                xel = axis.coords[0]
+                el = axis.coords[1]
+                xel.set_axislabel('xEL (deg)')
+                el.set_axislabel('EL (deg)')
+                xel.set_major_formatter('d.ddd')
+                el.set_major_formatter('d.ddd')
+
+            elif ctype == 'XY Stage':
+                axis.set_title('XY Stage')
+                axis.set_xlabel('X')
+                axis.set_ylabel('Y')
+
+        else:
+            ra_tel = axis.coords[0]
+            dec_tel = axis.coords[1]
+            ra_tel.set_axislabel('YAW (deg)')
+            dec_tel.set_axislabel('PITCH (deg)')
+            ra_tel.set_major_formatter('d.ddd')
+            dec_tel.set_major_formatter('d.ddd')
 
         img = axis.images
         if np.size(img) > 0:
             cb = img[-1].colorbar
             cb.remove()
-
         axis.set_axis_on()
+
         if telcoord is False:
             im = axis.imshow(self.mapdata, origin='lower', cmap=plt.cm.viridis)
             axis.contour(self.mapdata, levels=levels, colors='white', alpha=0.5)
@@ -3441,34 +3535,15 @@ class MapPlotsGroup(QWidget):
             im = axis.imshow(self.mapdata, origin='lower', cmap=plt.cm.viridis)
             axis.contour(self.mapdata, levels=levels, colors='white', alpha=0.5)
         plt.colorbar(im, ax=axis)
-
-        if self.ctype == 'RA and DEC':
-            #if telcoord is False:
-            ra = axis.coords[0]
-            dec = axis.coords[1]
-            ra.set_axislabel('RA (deg)')
-            dec.set_axislabel('Dec (deg)')
-            dec.set_major_formatter('d.ddd')
-            ra.set_major_formatter('d.ddd')
-            # else:
-            #     axis.set_xlabel('RA (deg)')
-            #     axis.set_ylabel('Dec (deg)')
-
-        # elif self.ctype == 'AZ and EL':
-        #     axis.set_xlabel('Azimuth (deg)')
-        #     axis.set_ylabel('Elevation (deg)')
-        # elif self.ctype == 'CROSS-EL and EL':
-        #     axis.set_xlabel('Cross Elevation (deg)')
-        #     axis.set_ylabel('Elevation (deg)')
-
-        self.matplotlibWidget_Imap.canvas.draw()
+        #axis.set_axis_on()
+        
 
         if idx == 'I':
-            self.matplotlibWidget_Imap.canvas.draw()
+            fig.canvas.draw()       
         elif idx == 'Q':
-            self.matplotlibWidget_Qmap.canvas.draw()
+            fig.canvas.draw()
         elif idx == 'U':
-            self.matplotlibWidget_Umap.canvas.draw()
+            fig.canvas.draw()
 
 class MatplotlibWidget(QWidget):
 
