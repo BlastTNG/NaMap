@@ -5,19 +5,7 @@ import sys
 
 def main():
     app = QApplication(sys.argv)
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-    ex = gui.MainWindow()
-=======
-    ex = gui.App()
->>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
-=======
-    ex = gui.App()
->>>>>>> fbc01b1... Gui updated with polarizarion maps tabs
-=======
     ex = gui.AppWindow()
->>>>>>> 1531050... Added option to choose beam fitting parameters
     ex.show()
     sys.exit(app.exec_())
 
