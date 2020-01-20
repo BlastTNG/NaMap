@@ -1,3 +1,9 @@
 {
+<<<<<<< HEAD
     "python.pythonPath": "/home/gabrielecoppi/anaconda3/bin/python"
+=======
+    "python.pythonPath": "/anaconda3/bin/python",
+    "python.linting.pylintEnabled": true,
+    "python.linting.enabled": true
+>>>>>>> c2f9e18a58705b8f7b3979aa1ee2eb19c9939d72
 }
