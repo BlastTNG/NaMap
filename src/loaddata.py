@@ -291,7 +291,7 @@ class frame_zoom_sync():
 
         return coord1_int(time_det), coord2_int(time_det)
 
-    def sync_data(self):
+    def sync_data(self, telemetry=True):
 
         '''
         Wrapper for the previous functions to return the slices of the detector and coordinates TODs,  
@@ -304,19 +304,16 @@ class frame_zoom_sync():
             first_frame = self.startframe-self.bufferframe
             num_frames = self.endframe-self.startframe+2*self.bufferframe
             interval = self.endframe-self.startframe
-            print('FRAMES', first_frame, num_frames, interval)
+
             ctime_mcp = d.getdata('time', first_frame=first_frame, num_frames=num_frames)
             ctime_usec = d.getdata('time_usec', first_frame=first_frame, num_frames=num_frames)
-            framecount_100hz = d.getdata('mcp_100hz_framecount', first_frame=first_frame, num_frames=num_frames)
-            print('LEN', len(ctime_mcp), len(ctime_usec), len(framecount_100hz))
+
             if self.xystage is True:
                 #frequency_ctime = 100
                 sample_ctime = 100
             else:
                 #frequency_ctime = self.coord_fs
                 sample_ctime = self.coord_sample_frame
-            #ctime_start_temp = ctime_mcp[0]+ctime_usec[0]/1e6+0.2
-            #ctime_mcp = ctime_start_temp + (framecount_100hz-framecount_100hz[0])/frequency_ctime
             ctime_start = ctime_mcp+ctime_usec/1e6+0.2
             ctime_mcp = ctime_mcp[self.bufferframe*sample_ctime:self.bufferframe*sample_ctime+interval*sample_ctime]
  
@@ -344,32 +341,40 @@ class frame_zoom_sync():
                     coord1time = ctime_mcp.copy()
                     coord2time = ctime_mcp.copy()
 
-            print(coord1, len(self.coord1_data), len(coord1), len(coord1time))
+            if telemetry:
 
-            kidutils = det.kidsutils()
-            
-            start_det_frame = self.startframe-self.bufferframe
-            end_det_frame = self.endframe+self.bufferframe
+                kidutils = det.kidsutils()
+                
+                start_det_frame = self.startframe-self.bufferframe
+                end_det_frame = self.endframe+self.bufferframe
 
-            frames = np.array([start_det_frame, end_det_frame], dtype='int')
+                frames = np.array([start_det_frame, end_det_frame], dtype='int')
 
-            dettime, pps_bins = kidutils.det_time(self.roach_pps_path, self.roach_number, frames, \
-                                                  ctime_start, ctime_mcp[-1], self.det_fs)
+                dettime, pps_bins = kidutils.det_time(self.roach_pps_path, self.roach_number, frames, \
+                                                      ctime_start, ctime_mcp[-1], self.det_fs)
 
-            coord1int = interp1d(coord1time, coord1, kind='linear')
-            coord2int = interp1d(coord2time, coord2, kind= 'linear')
+                coord1int = interp1d(coord1time, coord1, kind='linear')
+                coord2int = interp1d(coord2time, coord2, kind= 'linear')
 
-            idx_roach_start, = np.where(np.abs(dettime-ctime_start) == np.amin(np.abs(dettime-ctime_start)))
-            idx_roach_end, = np.where(np.abs(dettime-ctime_end) == np.amin(np.abs(dettime-ctime_end)))
+                idx_roach_start, = np.where(np.abs(dettime-ctime_start) == np.amin(np.abs(dettime-ctime_start)))
+                idx_roach_end, = np.where(np.abs(dettime-ctime_end) == np.amin(np.abs(dettime-ctime_end)))
 
-            if len(np.shape(self.det_data)) == 1:
-                self.det_data = kidutils.interpolation_roach(self.det_data, pps_bins[pps_bins>350], self.det_fs)
+                if len(np.shape(self.det_data)) == 1:
+                    self.det_data = kidutils.interpolation_roach(self.det_data, pps_bins[pps_bins>350], self.det_fs)
+                    self.det_data = self.det_data[idx_roach_start[0]:idx_roach_end[0]]
+                else:
+                    for i in range(len(self.det_data)):
+                        self.det_data[i] = kidutils.interpolation_roach(self.det_data[i], pps_bins[pps_bins>350], self.det_fs)
+                        self.det_data[i] = self.det_data[i, idx_roach_start[0]:idx_roach_end[0]]
+                
+                dettime = dettime[idx_roach_start[0]:idx_roach_end[0]]
+                
             else:
-                for i in range(len(self.det_data)):
-                    self.det_data[i] = kidutils.interpolation_roach(self.det_data[i], pps_bins[pps_bins>350], self.det_fs)
-            
-            dettime = dettime[idx_roach_start[0]:idx_roach_end[0]]
-            self.det_data = self.det_data[idx_roach_start[0]:idx_roach_end[0]]
+                if len(np.shape(self.det_data)) == 1:
+                    dettime = ctime_start+np.append(0, np.cumsum(np.repeat(1/self.det_fs, len(self.det_data))))
+                else:
+                    dettime = ctime_start+np.append(0, np.cumsum(np.repeat(1/self.det_fs, len(self.det_data[0]))))
+
 
             index1, = np.where(np.abs(dettime-coord1time[0]) == np.amin(np.abs(dettime-coord1time[0])))
             index2, = np.where(np.abs(dettime-coord1time[-1]) == np.amin(np.abs(dettime-coord1time[-1])))
@@ -377,8 +382,6 @@ class frame_zoom_sync():
             coord1_inter = coord1int(dettime[index1[0]+200:index2[0]-200])
             coord2_inter = coord2int(dettime[index1[0]+200:index2[0]-200])
             dettime = dettime[index1[0]+200:index2[0]-200]
-
-            print('COORDINATES', np.amin(coord2_inter), np.amax(coord2_inter), len(coord2_inter))
 
             if len(np.shape(self.det_data)) == 1:
                 self.det_data = self.det_data[index1[0]+200:index2[0]-200]

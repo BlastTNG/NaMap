@@ -1661,7 +1661,8 @@ class ParamMapTab(QWidget):
                                         LATconv = LATconv)
             else:
                 if self.HWPCheckBox.isChecked():
-                    self.hwp_slice = (self.hwp_slice-0.451)*(-360.)
+                    if self.experiment.currentText().lower() == 'blastpol':
+                        self.hwpslice = (self.hwpslice-0.451)*(-360.)
 
             if self.DettableCheckBox.isChecked():
                 dettable = ld.det_table(self.det_list, self.experiment.currentText(), self.dettablepath.text())
@@ -1705,7 +1706,7 @@ class ParamMapTab(QWidget):
                                        self.lstslice, self.latslice)
                         self.parallactic = tel.parallactic_angle()
                     else:
-                        for i in range(np.size(np.shape(self.data))):
+                        for i in range(np.size(np.shape(self.detslice))):
                             tel = pt.utils(self.coord1slice[i]/15., self.coord2slice[i], \
                                            self.lstslice, self.latslice)
                             self.parallactic[i,:] = tel.parallactic_angle()
@@ -1716,7 +1717,7 @@ class ParamMapTab(QWidget):
                     if np.size(np.shape(self.coord1slice)) == 1:
                         self.parallactic = 0.
                     else:
-                        self.parallactic = np.zeros_like(self.data)
+                        self.parallactic = np.zeros_like(self.detslice)
             del self.coord1_data
             del self.coord2_data 
             del zoomsyncdata
@@ -1783,8 +1784,8 @@ class ParamMapTab(QWidget):
                                           float(self.bHWPconv.text()))
 
             hwp_conv.conversion()
-
-            self.hwpslice = (hwp_conv.data-0.451)*(-360.)
+            if self.experiment.currentText().lower() == 'blastpol':
+                self.hwpslice = (hwp_conv.data-0.451)*(-360.)
             
     def mapvalues(self, data):
 
