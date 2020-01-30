@@ -15,7 +15,7 @@ class data_value():
     def __init__(self, det_path, det_name, coord_path, coord1_name, \
                  coord2_name, det_file_type, coord1_file_type, coord2_file_type, \
                  experiment, lst_file_type, lat_file_type, hwp_file_type, startframe,\
-                 endframe):
+                 endframe, roach_number=None, telemetry=False):
 
         '''
         For BLAST-TNG the detector name is given as kid_# where # is 1,2,3,4,5
@@ -45,6 +45,9 @@ class data_value():
             self.bufferframe = int(0)                      #Buffer frames to be loaded before and after the starting and ending frame
         else:
             self.bufferframe = int(100)
+
+        self.telemetry = telemetry
+        self.roach_number = roach_number
 
     def conversion_type(self, file_type):
 
@@ -108,21 +111,21 @@ class data_value():
         Function to return the timestreams for detector and coordinates
         '''
         if self.experiment.lower() == 'blast-tng':
- 
-            list_conv = [['A', 'B'], ['D', 'E'], ['G', 'H'], ['K', 'I'], ['M', 'N']]
             kid_num  = int(self.det_name[-1])
-
-            try:
+            if self.telemetry:
+                list_conv = [['A', 'B'], ['D', 'E'], ['G', 'H'], ['K', 'I'], ['M', 'N']]
+                
                 det_I_string = 'kid'+list_conv[kid_num-1][0]+'_roachN'
                 det_Q_string = 'kid'+list_conv[kid_num-1][1]+'_roachN'
                 I_data = self.load(self.det_path, det_I_string, self.det_file_type)
                 Q_data = self.load(self.det_path, det_Q_string, self.det_file_type)
-            except:
+            else:
                 val = str(kid_num)
-                det_I_string = 'i_kid000'+val+'_roach3'
-                det_Q_string = 'q_kid000'+val+'_roach3'
+                det_I_string = 'I_kid'+val+'_roach'+int(self.roach_number)
+                det_Q_string = 'Q_kid'+val+'_roach'+int(self.roach_number)
                 I_data = self.load(self.det_path, det_I_string, self.det_file_type)
                 Q_data = self.load(self.det_path, det_Q_string, self.det_file_type)
+
 
             kidutils = det.kidsutils()
 

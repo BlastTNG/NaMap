@@ -219,7 +219,8 @@ Repogroup.add_argument('-dp', '--detector_path', metavar = '', action='store', t
 Repogroup.add_argument('-cp', '--coordinates_path', metavar = '', action='store', type=str, help='Path for coordinates data')
 Repogroup.add_argument('-d', '--detector', metavar = '', action='store', type=str, nargs='*', help='Detector name to be analyzed. \
                        Can be a single detector, a list of detector or and entire array. For this option just ask for ###_array, where \
-                       ### is the wavelenght of the array to be analyzed')
+                       ### is the wavelenght of the array to be analyzed. For telemetry data detector use a number between 1 to 5. \
+                       For hard drive data use the real detector number, e.g. 0002 or 0964.')
 Repogroup.add_argument('-r', '--roach_number', metavar = '', action='store', type=int, nargs='+', \
                        help='Roach number corrispondent to the detector(s) to be analyzed. \
                        For a full map from the 250um all the three roaches are required')
@@ -317,6 +318,8 @@ if parameters['coordinates_path'] is not None:
 
 if parameters['roach_number'] is not None:
     roach_number = parameters['roach_number']
+else:
+    roach_number = None
 
 if parameters['detector_table'] is not None:
     detector_table = parameters['detector_table'].copy()
@@ -648,7 +651,7 @@ else:
                              coord1, coord2, datatype_detectors, \
                              datatype_coord[0], datatype_coord[1], \
                              experiment, datatype_lst, datatype_lat, datatype_hwp, 
-                             frames[0], frames[1])
+                             frames[0], frames[1], roach_number=roach_number, telemetry=telemetry)
 
     if (correction and coord1.lower() == 'ra') or telescope_coordinate:
         det_data, coord1_data, coord2_data, hwp_data, lst_data, lat_data = dataload.values()
