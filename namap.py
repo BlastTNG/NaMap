@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 from astropy import wcs 
 from astropy.nddata import Cutout2D
 from astropy.coordinates import SkyCoord
+from mpi4py import MPI
 
 import numpy as np
 import os
@@ -476,8 +477,19 @@ else:
     despike_bool = True
 
 if coadd_detectors is False:
+    
+    comm = MPI.COMM_WORLD
 
-    for i in range(len(det_list)):
+    rank = comm.Get_rank()
+    size = comm.Get_size()
+
+    #Number of detectors to be computed
+    D = len(det_list)
+
+    #Number of parallel loops
+    N = D // size + (D % size > rank) 
+
+    for i in range(D):
 
         print('Load data, current progress', i/len(det_list))
 
