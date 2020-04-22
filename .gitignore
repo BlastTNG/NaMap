@@ -2,4 +2,4 @@
 *.pkl
 /pickles_object
 #Ignore .pyc file
-*.pyc
+**.pyc
