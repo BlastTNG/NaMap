@@ -88,7 +88,7 @@ class utils(object):
     def parallactic_angle(self):
 
         '''
-        Compute the parallactic angle which is returned in degrees
+        Compute the parallactic angle which is returned in degrees  
         '''
 
         hour_angle = np.radians((self.ra2ha())*15)
@@ -219,7 +219,7 @@ class apply_offset(object):
             
                 el_corrected[i, :] = self.coord2+self.xsc_offset[1]+self.det_offset[i, 1]
 
-                az_corrected[i, :] = (self.coord1*np.cos(self.coord2)+self.xsc_offset[i]-\
+                az_corrected[i, :] = (self.coord1*np.cos(self.coord2)-self.xsc_offset[i]-\
                                       self.det_offset[i, 0])/np.cos(el_corrected)
 
             return az_corrected, el_corrected
@@ -231,7 +231,7 @@ class apply_offset(object):
 
             for i in range(int(np.size(self.det_offset)/2)):
 
-                xel_corrected[i, :] = self.coord1+self.xsc_offset[0]+self.det_offset[i, 0]
+                xel_corrected[i, :] = self.coord1-self.xsc_offset[0]-self.det_offset[i, 0]
                 el_corrected[i, :] = self.coord2+self.xsc_offset[1]+self.det_offset[i, 1]
 
 
@@ -260,10 +260,10 @@ class compute_offset(object):
         '''
 
         maxval = np.max(self.map_data)
-        minval = np.min(self.map_data)
+        #minval = np.min(self.map_data)
         y_max, x_max = np.where(self.map_data == maxval)
 
-        lt_inds = np.where(self.map_data < threshold*maxval)
+        #lt_inds = np.where(self.map_data < threshold*maxval)
         gt_inds = np.where(self.map_data > threshold*maxval)
 
         weight = np.zeros((self.map_data.shape[0], self.map_data.shape[1]))
@@ -324,7 +324,7 @@ class compute_offset(object):
 
         xel_ref = az_ref*np.cos(np.radians(el_ref))
 
-        return xel_centr-xel_ref, el_ref-el_centr
+        return xel_centr-xel_ref, el_ref+el_centr
 
 
 

@@ -18,7 +18,7 @@ import configparser
 import gc
 import copy
 
-import src.detTOD as tod
+import src.detector as tod
 import src.loaddata as ld
 import src.mapmaker as mp
 import src.beam as bm
@@ -67,7 +67,6 @@ class AppWindow(QMainWindow):
         refpoint.triggered.connect(self.refpoint_func)
 
     def current_name(self):
-
         self.experiment_name = self.TabLayout.experiment_name
 
     @pyqtSlot()
@@ -113,15 +112,25 @@ class AppWindow(QMainWindow):
             pass
 
         try:
-            if self.TabLayout.todpolynomialvalue is not None:
+            if self.TabLayout.sigmavalue is not None:
                 dialog.sigmavalue.setText(str(self.TabLayout.todsigmavalue))
             else:
                 dialog.sigmavalue.setText('5')
         except AttributeError:
             pass
 
+        try:
+            if self.TabLayout.todprominencevalue is not None:
+                dialog.prominencevalue.setText(str(self.TabLayout.todprominencevalue))
+            else:
+                dialog.prominencevalue.setText('5')
+        except AttributeError:
+            pass
+        
         dialog.polynomialordersignal.connect(self.connection_tod_polynomial)
         dialog.sigmasignal.connect(self.connection_tod_sigma)
+        dialog.prominencesignal.connect(self.connection_tod_prominence)
+        dialog.despikesignal.connect(self.connection_tod_despike)
         dialog.exec_()
 
     @pyqtSlot()
@@ -145,6 +154,14 @@ class AppWindow(QMainWindow):
     @pyqtSlot(int)
     def connection_tod_sigma(self, val):
         self.TabLayout.todsigmavalue = copy.copy(val)
+
+    @pyqtSlot(int)
+    def connection_tod_prominence(self, val):
+        self.TabLayout.todprominencevalue = copy.copy(val)
+
+    @pyqtSlot(bool)
+    def connection_tod_despike(self, val):
+        self.TabLayout.toddespikevalue = copy.copy(val)
 
     @pyqtSlot(str)
     def connection_LST_type(self, val):
@@ -173,7 +190,6 @@ class AppWindow(QMainWindow):
     @pyqtSlot(np.ndarray)
     def connection_ref_point(self, val):
         self.TabLayout.refpoint = val.copy()    
-
 
     def closeEvent(self,event):
 
@@ -416,6 +432,34 @@ class BeamFitParamWindow(QDialog):
         self.fitparam = values.copy()
         self.fitparamsignal.emit(values)
 
+class ProgressBarWindow(QDialog):
+
+    def __init__(self, parent = None):
+        super(ProgressBarWindow, self).__init__(parent)
+        self.setGeometry(150, 150, 300, 100)
+        self.setWindowTitle('Current Progress')
+
+        self.progress = QProgressBar()
+        
+        self.strstatus = 'Current Status   '
+        self.currentstatus = QLabel(self.strstatus)
+
+        layout = QGridLayout(self)
+
+        layout.addWidget(self.currentstatus)
+        layout.addWidget(self.progress)
+
+        self.setLayout(layout)
+
+        self.show()
+
+    def setValue(self, val): 
+        self.progress.setValue(val)
+
+    def setCurrentAction(self, action):
+        string = self.strstatus+action
+        self.currentstatus.setText(string)
+
 class TODoffsetWindow(QDialog):
 
     '''
@@ -457,6 +501,8 @@ class TOD_processing(QDialog):
 
     polynomialordersignal = pyqtSignal(int)
     sigmasignal = pyqtSignal(int)
+    prominencesignal = pyqtSignal(int)
+    despikesignal = pyqtSignal(bool)
 
     def __init__(self, parent = None):
         super(QDialog, self).__init__(parent)
@@ -464,10 +510,15 @@ class TOD_processing(QDialog):
         self.setWindowTitle('TOD Processing Parameters')
 
         self.polynomialorder = QLineEdit('')
-        self.polynomialorderlabel = QLabel('Order of the trend line to be removed')
+        self.polynomialorderlabel = QLabel('Order of the trend polynomial to be removed. If 0 no removal is performed')
+
+        self.despikebox = QCheckBox('Apply Despiking')
 
         self.sigma = QLineEdit('')
-        self.sigmalabel = QLabel('Heigth of a peak in unit of sigma')
+        self.sigmalabel = QLabel('Height of a peak in unit of sigma')
+
+        self.prominence = QLineEdit('')
+        self.prominencelabel = QLabel('Prominence of a peak in unit of sigma')
 
         self.savebutton = QPushButton('Write Parameters')
 
@@ -475,8 +526,11 @@ class TOD_processing(QDialog):
 
         layout.addWidget(self.polynomialorderlabel, 0, 0)
         layout.addWidget(self.polynomialorder, 0, 1)
-        layout.addWidget(self.sigmalabel, 1, 0)
-        layout.addWidget(self.sigma, 1, 1)
+        layout.addWidget(self.despikebox, 1, 0)
+        layout.addWidget(self.sigmalabel, 2, 0)
+        layout.addWidget(self.sigma, 2, 1)
+        layout.addWidget(self.prominencelabel, 3, 0)
+        layout.addWidget(self.prominence, 3, 1)
         layout.addWidget(self.savebutton)
 
         self.setLayout(layout)
@@ -484,18 +538,27 @@ class TOD_processing(QDialog):
         self.savebutton.clicked.connect(self.updateParamValues)
 
     def updateParamValues(self):
-
-        if np.size(self.polynomialorder.text().strip()) == 0:
-            self.polynomialvalue = 5
-        else:
-            self.polynomialvalue = int(self.polynomialorder.text())
         
-        if np.size(self.sigma.text().strip()) == 0:
-            self.sigmavalue = 5
-        else:
-            self.sigmavalue = int(self.sigma.text())
+        try:
+            self.polynomialvalue = int(self.polynomialorder.text())
+        except ValueError:
+            self.polynomialvalue = 5
 
-        self.polynomiaordersignal.emit(self.polynomialvalue)
+        try:
+            self.sigmavalue = int(self.sigma.text())
+        except ValueError:
+            self.sigmavalue = 5
+
+        try:
+            self.prominencevalue = int(self.prominence.text())
+        except ValueError:
+            self.prominencevalue = 5
+        
+        self.despikebool = self.despikebox.isChecked()
+
+        self.despikesignal.emit(self.despikebool)
+        self.prominencesignal.emit(self.prominencevalue)
+        self.polynomialordersignal.emit(self.polynomialvalue)
         self.sigmasignal.emit(self.sigmavalue)
         self.close()
 
@@ -525,6 +588,8 @@ class MainWindowTab(QTabWidget):
         self.todoffsetvalue = None 
         self.todpolynomialvalue = 5
         self.todsigmavalue = 5
+        self.todprominencevalue = 5
+        self.toddespikevalue = True
 
         #LAT and LST parameters
         self.LSTtype = None
@@ -540,7 +605,6 @@ class MainWindowTab(QTabWidget):
         self.addTab(self.tab3, "Beam")
 
         self.tab1.plotbutton.clicked.connect(self.updatedata)
-        # self.tab1.plotbutton.clicked.connect(self.emitdetlist)
         self.tab1.fitsbutton.clicked.connect(self.save2fits)
 
         self.tab2.detcombolist.activated[str].connect(self.drawdetTOD)
@@ -558,35 +622,44 @@ class MainWindowTab(QTabWidget):
             correction = True
         else:
             correction = False
-
+        pb =  ProgressBarWindow()
+        pb.setCurrentAction('Loading Data')
+        pb.setValue(0)
         #functions to compute the updated values
+
         self.tab1.load_func(offset = self.todoffsetvalue, correction = correction, \
                             LSTtype=self.LSTtype, LATtype=self.LATtype,\
                             LSTconv=self.LSTconv, LATconv=self.LATconv, \
                             lstlatfreq=self.lstlatfreq, lstlatsample = self.lstlatsampleframe, \
-                            polynomialorder = int(self.todpolynomialvalue), sigma = int(self.todsigmavalue))
+                            polynomialorder = int(self.todpolynomialvalue), despike = self.toddespikevalue, \
+                            sigma = int(self.todsigmavalue), prominence=int(self.todprominencevalue))
 
         self.data = self.tab1.detslice
         self.lst = self.tab1.lstslice
         self.lat = self.tab1.latslice
 
-        print('TAB',self.tab1.det_list)
+        pb.setCurrentAction('Processing Data')
+        pb.setValue(25)
 
         self.cleandata = self.tab1.cleaned_data
 
         self.tab2.detlist_selection(self.tab1.det_list)
 
+        pb.setCurrentAction('Drawing TOD')
+        pb.setValue(50)
+
         if np.size(np.shape(self.data)) == 1:
-            print('SIZE',np.size(np.shape(self.tab1.det_list)))
             self.tab2.draw_TOD(self.data)
             self.tab2.draw_cleaned_TOD(self.cleandata)
         else:
-            print('DATA',self.data[0])
             self.tab2.draw_TOD(self.data[0])
             self.tab2.draw_cleaned_TOD(self.cleandata[0])
 
+        pb.setCurrentAction('Drawing Maps')
+        pb.setValue(75)
+
         try:
-            print('TEST_MAPS')
+            
             self.tab1.mapvalues(self.cleandata)
 
             #Update Maps
@@ -594,21 +667,20 @@ class MainWindowTab(QTabWidget):
             mp_ini = self.tab1.createMapPlotGroup
             if np.size(self.tab1.det_list) == 1:
                 x_min_map = np.floor(np.amin(self.tab1.w[:,0]))
-                x_max_map = np.floor(np.amax(self.tab1.w[:,0])) 
+                # x_max_map = np.floor(np.amax(self.tab1.w[:,0])) 
                 y_min_map = np.floor(np.amin(self.tab1.w[:,1]))
-                y_max_map = np.floor(np.amax(self.tab1.w[:,1]))
+                # y_max_map = np.floor(np.amax(self.tab1.w[:,1]))
                 index1, = np.where(self.tab1.w[:,0]<0)
                 index2, = np.where(self.tab1.w[:,1]<0)
             else:
                 x_min_map = np.floor(np.amin(self.tab1.w[:,:,0]))
-                x_max_map = np.floor(np.amax(self.tab1.w[:,:,0])) 
+                # x_max_map = np.floor(np.amax(self.tab1.w[:,:,0])) 
                 y_min_map = np.floor(np.amin(self.tab1.w[:,:,1]))
-                y_max_map = np.floor(np.amax(self.tab1.w[:,:,1]))
+                # y_max_map = np.floor(np.amax(self.tab1.w[:,:,1]))
                 index1, = np.where(self.tab1.w[0,:,0]<0)
                 index2, = np.where(self.tab1.w[0,:,1]<0)
  
             if np.size(index1) > 1:
-                print('IDX', x_min_map)
                 crpix1_new  = (self.tab1.crpix[0]-x_min_map)
             else:
                 crpix1_new = copy.copy(self.tab1.crpix[0])
@@ -620,25 +692,30 @@ class MainWindowTab(QTabWidget):
 
             crpix_new = np.array([crpix1_new, crpix2_new])
 
-            print('CRPIX', self.tab1.crpix, crpix_new)
             wcsworld = mp.wcs_world(self.tab1.ctype, crpix_new, self.tab1.cdelt, self.tab1.crval)
 
-            coord_test, self.proj_new = wcsworld.world(np.reshape(self.tab1.crval, (1,2)))
+            coord_test, self.proj_new = wcsworld.world(np.reshape(self.tab1.crval, (1,2)), self.tab1.parallactic)
+            # if crpix_new[0]*2 < x_max_map:
+            #     x_sel = np.array([crpix_new[0]-self.tab1.pixnum[0]/2, crpix_new[0]+self.tab1.pixnum[0]/2], dtype=int)
+            # else:
+            #     x_sel = np.array([x_max_map-self.tab1.pixnum[0],x_max_map], dtype=int)
 
-            if crpix_new[0]*2 < x_max_map:
-                x_sel = np.array([crpix_new[0]-self.tab1.pixnum[0]/2, crpix_new[0]+self.tab1.pixnum[0]/2], dtype=int)
+            # if crpix_new[1]*2 < y_max_map:
+            #     y_sel = np.array([crpix_new[1]-self.tab1.pixnum[1]/2, crpix_new[1]+self.tab1.pixnum[1]/2], dtype=int)
+            # else:
+            #     y_sel = np.array([y_max_map-self.tab1.pixnum[1],y_max_map], dtype=int)
+
+            if self.tab1.coordchoice.currentText() == 'XY Stage':
+                xystagebool = True
             else:
-                x_sel = np.array([x_max_map-self.tab1.pixnum[0],x_max_map], dtype=int)
-
-            if crpix_new[1]*2 < y_max_map:
-                y_sel = np.array([crpix_new[1]-self.tab1.pixnum[1]/2, crpix_new[1]+self.tab1.pixnum[1]/2], dtype=int)
-            else:
-                y_sel = np.array([y_max_map-self.tab1.pixnum[1],y_max_map], dtype=int)
-
-            mp_ini.updateTab(data=maps, coord1 = self.tab1.coord1slice, coord2 = self.tab1.coord2slice, \
-                             crval = self.tab1.crval, pixnum = self.tab1.pixnum, telcoord = self.tab1.telescopecoordinateCheckBox.isChecked(),\
-                             crpix = crpix_new, cdelt = self.tab1.cdelt, projection = self.proj_new)
+                xystagebool = False
             
+            ctype = self.tab1.coordchoice.currentText()
+            print('CTYPE_1', ctype)
+            mp_ini.updateTab(data=maps, coord1 = self.tab1.coord1slice, coord2 = self.tab1.coord2slice, \
+                             crval = self.tab1.crval, ctype = ctype, pixnum = self.tab1.pixnum, \
+                             telcoord = self.tab1.telescopecoordinateCheckBox.isChecked(),\
+                             crpix = crpix_new, cdelt = self.tab1.cdelt, projection = self.proj_new, xystage=xystagebool)
             # cutout = mp_ini.cutout
 
             # self.proj_new = cutout.wcs
@@ -677,18 +754,18 @@ class MainWindowTab(QTabWidget):
 
                 else:
                     beams.updateTab(data=beam_map[0], coord1 = self.tab1.coord1slice, coord2 = self.tab1.coord2slice, \
-                                    crval = self.tab1.crval, pixnum = self.tab1.pixnum, telcoord = self.tab1.telescopecoordinateCheckBox.isChecked(),\
-                                    crpix = crpix_new, cdelt = self.tab1.cdelt, projection = self.proj_new)
+                                    crval = self.tab1.crval, ctype=ctype, pixnum = self.tab1.pixnum, telcoord = self.tab1.telescopecoordinateCheckBox.isChecked(),\
+                                    crpix = crpix_new, cdelt = self.tab1.cdelt, projection = self.proj_new, xystage=xystagebool)
                     self.tab3.updateTable(param)
 
         except AttributeError:
             pass
-    
+        
+        pb.close()
+
     def drawdetTOD(self):
         
         index = self.tab2.detcombolist.currentIndex()
-
-        print('Index', index)
 
         if np.size(np.shape(self.data)) == 1:
             self.tab2.draw_TOD(self.data)
@@ -702,7 +779,6 @@ class MainWindowTab(QTabWidget):
         hdr = self.tab1.proj.to_header() #grabs the projection information for header
         maps = self.tab1.map_value #grabs the actual map for the fits img
         hdu = fits.PrimaryHDU(maps, header = hdr)
-        print('FITS')
         hdu.writeto('./'+self.tab1.fitsname.text())
 
 class ParamMapTab(QWidget):
@@ -722,6 +798,12 @@ class ParamMapTab(QWidget):
         self.proj = None                     #WCS projection of the map
         self.map_value = np.array([])        #Final map values
 
+        self.experiment = QComboBox()
+        self.experiment.addItem('BLAST-TNG')
+        self.experiment.addItem('BLASTPol')
+        self.experimentLabel = QLabel("Experiment:")
+        self.experimentLabel.setBuddy(self.experiment)
+
         self.createAstroGroup()
         self.createExperimentGroup()
         self.createDataRepository()
@@ -731,28 +813,31 @@ class ParamMapTab(QWidget):
 
         self.createOffsetGroup()
         mainlayout = QGridLayout(self)
-        self.createMapPlotGroup = (MapPlotsGroup(checkbox=self.ICheckBox, ctype=self.coordchoice.currentText(), \
-                                   data=self.map_value))
+
+        self.createMapPlotGroup = MapPlotsGroup(checkbox=self.ICheckBox, data=self.map_value)
 
         self.fitsname = QLineEdit('')
         self.fitsnamelabel = QLabel("FITS name")
         self.fitsnamelabel.setBuddy(self.fitsname)
 
-        scroll = QScrollArea()
-        scroll.setWidget(self.ExperimentGroup)
-        scroll.setWidgetResizable(True)
-        scroll.setFixedHeight(200)
+        scroll2 = QScrollArea()
+        scroll2.setWidget(self.ExperimentGroup)
+        scroll2.setWidgetResizable(True)
+        scroll2.setFixedHeight(200)
 
         ExperimentGroup_Scroll = QGroupBox("Experiment Parameters")
+        ExperimentGroup_Scroll.setFlat(True)
         ExperimentGroup_Scroll.setLayout(QVBoxLayout())
-        ExperimentGroup_Scroll.layout().addWidget(scroll)
-        mainlayout.addWidget(self.DataRepository, 0, 0)
-        mainlayout.addWidget(self.AstroGroup, 1, 0)
-        mainlayout.addWidget(ExperimentGroup_Scroll, 2, 0)
-        mainlayout.addWidget(self.plotbutton, 3, 0)
-        mainlayout.addWidget(self.createMapPlotGroup, 0, 1, 2, 1)
-        mainlayout.addWidget(self.OffsetGroup, 2, 1)
-        mainlayout.addWidget(self.fitsbutton,3,1)
+        ExperimentGroup_Scroll.layout().addWidget(scroll2)
+        mainlayout.addWidget(self.experimentLabel, 0, 0)
+        mainlayout.addWidget(self.experiment, 0, 1)
+        mainlayout.addWidget(self.DataRepository, 1, 0, 1, 2)
+        mainlayout.addWidget(self.AstroGroup, 2, 0, 1, 2)
+        mainlayout.addWidget(scroll2, 3, 0, 1, 2)
+        mainlayout.addWidget(self.plotbutton, 4, 0, 1, 2)
+        mainlayout.addWidget(self.createMapPlotGroup, 0, 2, 3, 2)
+        mainlayout.addWidget(self.OffsetGroup, 3, 2)
+        mainlayout.addWidget(self.fitsbutton,4,2)
         mainlayout.addWidget(self.fitsname)
         mainlayout.addWidget(self.fitsnamelabel)
         
@@ -771,21 +856,23 @@ class ParamMapTab(QWidget):
 
         self.DataRepository = QGroupBox("Data Repository")
         
-        self.detpath = QLineEdit('/mnt/c/Users/gabri/Documents/GitHub/mapmaking/2012_data/bolo_data/')
+        #self.detpath = QLineEdit('/mnt/c/Users/gabri/Documents/GitHub/mapmaking/2012_data/bolo_data/')
+        self.detpath = QLineEdit('/mnt/d/data/etc/mole.lnk')
         self.detpathlabel = QLabel("Detector Path:")
         self.detpathlabel.setBuddy(self.detpath)
 
-        self.detname = QLineEdit('n23c13')
+        self.detname = QLineEdit('3')
         self.detnamelabel = QLabel("Detector Name:")
         self.detnamelabel.setBuddy(self.detname)
 
         self.detvalue = np.array([])
 
-        self.roachnumber = QLineEdit('')
+        self.roachnumber = QLineEdit('3')
         self.roachnumberlabel = QLabel("Roach Number:")
         self.roachnumberlabel.setBuddy(self.roachnumber)
 
-        self.coordpath = QLineEdit('/mnt/c/Users/gabri/Documents/GitHub/mapmaking/2012_data/')
+        #self.coordpath = QLineEdit('/mnt/c/Users/gabri/Documents/GitHub/mapmaking/2012_data/')
+        self.coordpath = QLineEdit('/mnt/d/data/etc/mole.lnk')
         self.coordpathlabel = QLabel("Coordinate Path:")
         self.coordpathlabel.setBuddy(self.coordpath)
 
@@ -850,6 +937,7 @@ class ParamMapTab(QWidget):
         self.coordchoice.addItem('RA and DEC')
         self.coordchoice.addItem('AZ and EL')
         self.coordchoice.addItem('CROSS-EL and EL')
+        self.coordchoice.addItem('XY Stage')
         coordLabel = QLabel("Coordinates System:")
         coordLabel.setBuddy(self.coordchoice)
         self.telescopecoordinateCheckBox = QCheckBox('Use Telescope Coordinates')
@@ -896,34 +984,34 @@ class ParamMapTab(QWidget):
         self.convchoice.activated[str].connect(self.updateGaussian)
         self.coordchoice.activated[str].connect(self.configuration_update)
            
-        self.layout = QGridLayout()
-        self.layout.addWidget(coordLabel, 0, 0)
-        self.layout.addWidget(self.coordchoice, 0, 1, 1, 2)
-        self.layout.addWidget(self.telescopecoordinateCheckBox, 1, 0)
-        self.layout.addWidget(convLabel, 2, 0)
-        self.layout.addWidget(self.convchoice, 2, 1, 1, 2)
-        self.layout.addWidget(self.gaussianLabel, 3, 1)
-        self.layout.addWidget(self.GaussianSTD, 3, 2)
-        self.layout.addWidget(self.crpixlabel, 4, 0)
-        self.layout.addWidget(self.crpix1, 4, 1)
-        self.layout.addWidget(self.crpix2, 4, 2)
-        self.layout.addWidget(self.cdeltlabel, 5, 0)
-        self.layout.addWidget(self.cdelt1, 5, 1)
-        self.layout.addWidget(self.cdelt2, 5, 2)
-        self.layout.addWidget(self.crvallabel, 6, 0)
-        self.layout.addWidget(self.crval1, 6, 1)
-        self.layout.addWidget(self.crval2, 6, 2)
-        self.layout.addWidget(self.pixnumlabel, 7, 0)
-        self.layout.addWidget(self.pixnum1, 7, 1)
-        self.layout.addWidget(self.pixnum2, 7, 2)
-        self.layout.addWidget(self.ICheckBox, 8, 0)
-        self.layout.addWidget(self.BeamCheckBox, 9, 0)
-        self.layout.addWidget(self.PointingOffsetCalculationCheckBox, 10, 0)
+        layout = QGridLayout()
+        layout.addWidget(coordLabel, 0, 0)
+        layout.addWidget(self.coordchoice, 0, 1, 1, 2)
+        layout.addWidget(self.telescopecoordinateCheckBox, 1, 0)
+        layout.addWidget(convLabel, 2, 0)
+        layout.addWidget(self.convchoice, 2, 1, 1, 2)
+        layout.addWidget(self.gaussianLabel, 3, 1)
+        layout.addWidget(self.GaussianSTD, 3, 2)
+        layout.addWidget(self.crpixlabel, 4, 0)
+        layout.addWidget(self.crpix1, 4, 1)
+        layout.addWidget(self.crpix2, 4, 2)
+        layout.addWidget(self.cdeltlabel, 5, 0)
+        layout.addWidget(self.cdelt1, 5, 1)
+        layout.addWidget(self.cdelt2, 5, 2)
+        layout.addWidget(self.crvallabel, 6, 0)
+        layout.addWidget(self.crval1, 6, 1)
+        layout.addWidget(self.crval2, 6, 2)
+        layout.addWidget(self.pixnumlabel, 7, 0)
+        layout.addWidget(self.pixnum1, 7, 1)
+        layout.addWidget(self.pixnum2, 7, 2)
+        layout.addWidget(self.ICheckBox, 8, 0)
+        layout.addWidget(self.BeamCheckBox, 9, 0)
+        layout.addWidget(self.PointingOffsetCalculationCheckBox, 10, 0)
 
         self.GaussianSTD.setVisible(False)
         self.gaussianLabel.setVisible(False)
         
-        self.AstroGroup.setLayout(self.layout)
+        self.AstroGroup.setLayout(layout)
 
     def updateGaussian(self, text=None):
 
@@ -961,12 +1049,7 @@ class ParamMapTab(QWidget):
         '''
 
         self.ExperimentGroup = QGroupBox()
-
-        self.experiment = QComboBox()
-        self.experiment.addItem('BLASTPol')
-        self.experiment.addItem('BLAST-TNG')
-        self.experimentLabel = QLabel("Experiment:")
-        self.experimentLabel.setBuddy(self.experiment)
+        self.ExperimentGroup.setFlat(True)
 
         self.detfreq = QLineEdit('')
         self.detfreqlabel = QLabel("Detector Frequency Sample")
@@ -986,8 +1069,8 @@ class ParamMapTab(QWidget):
         self.acsframelabel = QLabel("ACS Sample Samples per Frame")
         self.acsframelabel.setBuddy(self.acsframe)
 
-        self.startframe = QLineEdit('1918381')
-        self.endframe = QLineEdit('1922092')
+        self.startframe = QLineEdit('9200')
+        self.endframe = QLineEdit('9500')
         self.numberframelabel = QLabel('Starting and Ending Frames')
         self.numberframelabel.setBuddy(self.startframe)
 
@@ -1002,7 +1085,7 @@ class ParamMapTab(QWidget):
         self.coord2typelabel.setBuddy(self.coord2type)
 
         self.DirConvCheckBox = QCheckBox("DIRFILE Conversion factors")
-        self.DirConvCheckBox.setChecked(True)
+        self.DirConvCheckBox.setChecked(False)
 
         self.adetconv = QLineEdit('')
         self.bdetconv = QLineEdit('')
@@ -1020,7 +1103,7 @@ class ParamMapTab(QWidget):
         self.coord2conv.setBuddy(self.acoord2conv)
 
         self.HWPCheckBox = QCheckBox("USE HWP")
-        self.HWPCheckBox.setChecked(True)
+        self.HWPCheckBox.setChecked(False)
 
         self.HWPtype = QLineEdit('')      
         self.HWPtypelabel = QLabel("HWP DIRFILE data type")
@@ -1065,8 +1148,6 @@ class ParamMapTab(QWidget):
         self.DirConvCheckBox.toggled.connect(self.bcoord2conv.setVisible)
 
         self.layout = QGridLayout()
-        self.layout.addWidget(self.experimentLabel, 0, 0)
-        self.layout.addWidget(self.experiment, 0, 1, 1, 3)
         self.layout.addWidget(self.detfreqlabel, 1, 0)
         self.layout.addWidget(self.detfreq, 1, 1, 1, 3)
         self.layout.addWidget(self.acsfreqlabel, 2, 0)
@@ -1118,7 +1199,49 @@ class ParamMapTab(QWidget):
         self.layout.addWidget(self.aHWPconv, 18, 2)
         self.layout.addWidget(self.bHWPconv, 18, 3)
 
-        self.ExperimentGroup.setContentsMargins(5, 5, 5, 5)
+        if self.HWPCheckBox.isChecked() is True:
+            self.HWPtypelabel.setVisible
+            self.HWPtype.setVisible
+            self.HWPfreqlabel.setVisible
+            self.HWPfreq.setVisible
+            self.HWPframelabel.setVisible
+            self.HWPframe.setVisible
+            self.HWPconv.setVisible
+            self.aHWPconv.setVisible
+            self.bHWPconv.setVisible
+        else:
+            self.HWPtypelabel.setVisible(False)
+            self.HWPtype.setVisible(False)
+            self.HWPfreqlabel.setVisible(False)
+            self.HWPfreq.setVisible(False)
+            self.HWPframelabel.setVisible(False)
+            self.HWPframe.setVisible(False)
+            self.HWPconv.setVisible(False)
+            self.aHWPconv.setVisible(False)
+            self.bHWPconv.setVisible(False)
+
+        if self.DirConvCheckBox.isChecked():
+            self.detconv.setVisible
+            self.adetconv.setVisible
+            self.bdetconv.setVisible
+            self.coord1conv.setVisible
+            self.acoord1conv.setVisible
+            self.bcoord1conv.setVisible
+            self.coord2conv.setVisible
+            self.acoord2conv.setVisible
+            self.bcoord2conv.setVisible
+        else:
+            self.detconv.setVisible(False)
+            self.adetconv.setVisible(False)
+            self.bdetconv.setVisible(False)
+            self.coord1conv.setVisible(False)
+            self.acoord1conv.setVisible(False)
+            self.bcoord1conv.setVisible(False)
+            self.coord2conv.setVisible(False)
+            self.acoord2conv.setVisible(False)
+            self.bcoord2conv.setVisible(False)
+
+        #self.ExperimentGroup.setContentsMargins(5, 5, 5, 5)
 
         self.ExperimentGroup.setLayout(self.layout)
 
@@ -1170,7 +1293,7 @@ class ParamMapTab(QWidget):
                     pass
 
             elif section.lower() == 'az_el parameters':
-                if coord_text.lower() == 'ra and dec':
+                if coord_text.lower() == 'ra and dec' or coord_text.lower() == 'xy stage':
                     pass
                 else:
                     self.acsfreq_config = float(model.get(section, 'ACSFREQ').split('#')[0])
@@ -1182,12 +1305,25 @@ class ParamMapTab(QWidget):
                     self.coord1type_config = model.get(section,'COOR1_FILE_TYPE').split('#')[0].strip()
                     self.coord2type_config = model.get(section,'COOR2_FILE_TYPE').split('#')[0].strip()
 
+            elif section.lower() == 'xy_stage parameters':
+                if coord_text.lower() == 'xy stage':
+                    self.acsfreq_config = float(model.get(section, 'ACSFREQ').split('#')[0])
+                    coor1_dir_conv = model.get(section,'COOR1_DIR_CONV').split('#')[0].strip()
+                    self.coord1conv_config = np.array(coor1_dir_conv.split(',')).astype(float)
+                    coor2_dir_conv = model.get(section,'COOR2_DIR_CONV').split('#')[0].strip()
+                    self.coord2conv_config = np.array(coor2_dir_conv.split(',')).astype(float)
+                    self.acsframe_config = float(model.get(section, 'ACS_SAMP_FRAME').split('#')[0])
+                    self.coord1type_config = model.get(section,'COOR1_FILE_TYPE').split('#')[0].strip()
+                    self.coord2type_config = model.get(section,'COOR2_FILE_TYPE').split('#')[0].strip()
+                else:
+                    pass
+
             elif section.lower() == 'hwp parameters':
-                    self.HWPfreq_config = float(model.get(section, 'HWPFREQ').split('#')[0])
-                    hwp_dir_conv = model.get(section,'HWP_DIR_CONV').split('#')[0].strip()
-                    self.HWPconv_config = np.array(hwp_dir_conv.split(',')).astype(float)
-                    self.HWPframe_config = float(model.get(section, 'HWP_SAMP_FRAME').split('#')[0])
-                    self.HWPtype_config = model.get(section,'HWP_FILE_TYPE').split('#')[0].strip()
+                self.HWPfreq_config = float(model.get(section, 'HWPFREQ').split('#')[0])
+                hwp_dir_conv = model.get(section,'HWP_DIR_CONV').split('#')[0].strip()
+                self.HWPconv_config = np.array(hwp_dir_conv.split(',')).astype(float)
+                self.HWPframe_config = float(model.get(section, 'HWP_SAMP_FRAME').split('#')[0])
+                self.HWPtype_config = model.get(section,'HWP_FILE_TYPE').split('#')[0].strip()
 
             
         self.detfreq.setText(str(self.detfreq_config))
@@ -1278,7 +1414,7 @@ class ParamMapTab(QWidget):
 
     def load_func(self, offset = None, correction=False, LSTtype=None, LATtype=None,\
                   LSTconv=None, LATconv=None, lstlatfreq=None, lstlatsample = None, 
-                  polynomialorder=int(5), sigma=int(5)):
+                  polynomialorder=int(5), despike=True, sigma=int(5), prominence=int(5)):
 
 
         '''
@@ -1300,16 +1436,30 @@ class ParamMapTab(QWidget):
         elif coord_type == 'CROSS-EL and EL':
             self.coord1 = str('CROSS-EL')
             self.coord2 = str('EL')
+        elif coord_type == 'XY Stage':
+            self.coord1 = str('X')
+            self.coord2 = str('Y')
         
         self.det_list = list(map(str.strip, self.detname.text().split(',')))
         
         for i in range(np.size(self.det_list)):
-            try:
-                os.stat(self.detpath.text()+'/'+self.det_list[i])
-            except OSError:
-                label = self.detpathlabel.text()[:-1]+':'+self.det_list[i]
-                label_final.append(label)
-        
+            if self.experiment.currentText().lower() == 'blast-tng':
+                try:
+                    list_conv = [['A', 'B'], ['D', 'E'], ['G', 'H'], ['K', 'I'], ['M', 'N']]
+                    kid_num  = int(self.det_list[i])
+                    det_I_string = 'kid'+list_conv[kid_num-1][0]+'_roachN'
+                    print('DET', det_I_string)
+                    os.stat(self.detpath.text()+'/'+det_I_string)
+                except OSError:
+                    label = self.detpathlabel.text()[:-1]+':'+self.det_list[i]
+                    label_final.append(label)
+            else:
+                try:
+                    os.stat(self.detpath.text()+'/'+self.det_list[i])
+                except OSError:
+                    label = self.detpathlabel.text()[:-1]+':'+self.det_list[i]
+                    label_final.append(label)
+
         if self.experiment.currentText().lower() == 'blast-tng':    
             try:
                 os.stat(self.coordpath.text())
@@ -1440,17 +1590,20 @@ class ParamMapTab(QWidget):
                 dataload = ld.data_value(self.detpath.text(), self.det_list, self.coordpath.text(), \
                                          self.coord1, self.coord2, self.dettype.text(), \
                                          self.coord1type.text(), self.coord2type.text(), \
-                                         self.experiment.currentText(), lst_file_type, lat_file_type, hwptype)
+                                         self.experiment.currentText(), lst_file_type, lat_file_type, hwptype, 
+                                         self.startframe.text(), self.endframe.text())
 
                 if (correction and self.coord1.lower() == 'ra') or self.telescopecoordinateCheckBox.isChecked():
-                    self.det_data, self.coord1_data, self.coord2_data, self.hwp_data, self.lst_data, self.lat_data = dataload.values()
+                    (self.det_data, self.coord1_data, self.coord2_data, self.hwp_data, \
+                     self.lst_data, self.lat_data) = dataload.values()
+
                     pickle.dump(self.lst_data, open(lst_path_pickle, 'wb'))
                     pickle.dump(self.lat_data, open(lat_path_pickle, 'wb'))
                 else:
                     self.det_data, self.coord1_data, self.coord2_data, self.hwp_data = dataload.values()
                     self.lst_data = None
                     self.lat_data = None
-                print('ARRAY SIZE', self.det_data.nbytes)
+
                 for i in range(np.size(self.det_list)):
                     if np.size(np.shape(self.det_data)) > 1:
 
@@ -1468,6 +1621,10 @@ class ParamMapTab(QWidget):
                 gc.collect()
 
             if self.experiment.currentText().lower() == 'blast-tng':
+                if coord_type == 'XY Stage':
+                    xystage = True
+                else:
+                    xystage = False
                 zoomsyncdata = ld.frame_zoom_sync(self.det_data, self.detfreq.text(), \
                                                   self.detframe.text(), self.coord1_data, \
                                                   self.coord2_data, self.acsfreq.text(), 
@@ -1476,7 +1633,7 @@ class ParamMapTab(QWidget):
                                                   self.lst_data, self.lat_data, lstlatfreq, \
                                                   lstlatsample, offset=offset, \
                                                   roach_number = self.roachnumber.text(), \
-                                                  roach_pps_path = self.coordpath.text())
+                                                  roach_pps_path = self.detpath.text(), xystage=xystage)
             elif self.experiment.currentText().lower() == 'blastpol':
                 zoomsyncdata = ld.frame_zoom_sync(self.det_data, self.detfreq.text(), \
                                                   self.detframe.text(), self.coord1_data, \
@@ -1499,8 +1656,7 @@ class ParamMapTab(QWidget):
 
             del self.det_data
             gc.collect()
-
-            if self.DirConvCheckBox.isChecked:
+            if self.DirConvCheckBox.isChecked():
                 self.dirfile_conversion(correction = correction, LSTconv = LSTconv, \
                                         LATconv = LATconv)
             else:
@@ -1510,13 +1666,12 @@ class ParamMapTab(QWidget):
             if self.DettableCheckBox.isChecked():
                 dettable = ld.det_table(self.det_list, self.experiment.currentText(), self.dettablepath.text())
                 self.det_off, self.noise_det, self.grid_angle, self.pol_angle_offset, self.resp = dettable.loadtable()
-                
             else:
                 self.det_off = np.zeros((np.size(self.det_list),2))
                 self.noise_det = np.ones(np.size(self.det_list))
                 self.grid_angle = np.zeros(np.size(self.det_list))
                 self.pol_angle_offset = np.zeros(np.size(self.det_list))
-                self.resp = -1.*np.ones(np.size(self.det_list))
+                self.resp = np.ones(np.size(self.det_list))
                         
             if self.coord1.lower() == 'cross-el':
                 self.coord1slice = self.coord1slice*np.cos(np.radians(self.coord2slice))
@@ -1567,21 +1722,27 @@ class ParamMapTab(QWidget):
             del zoomsyncdata
             gc.collect()
 
-            self.clean_func(polynomialorder, sigma)
+            self.clean_func(polynomialorder, despike, sigma, prominence)
 
-    def clean_func(self, polynomialorder, sigma):
+    def clean_func(self, polynomialorder, despike, sigma, prominence):
 
         '''
         Function to compute the cleaned detector TOD
         '''
 
         det_tod = tod.data_cleaned(self.detslice, self.detfreq.text(), self.highpassfreq.text(), self.det_list,
-                                   polynomialorder, sigma)
+                                   polynomialorder, despike, sigma, prominence)
         self.cleaned_data = det_tod.data_clean()
         if np.size(self.resp) > 1:
-            self.cleaned_data = np.multiply(self.cleaned_data, np.reshape(self.resp, (np.size(self.resp), 1)))
+            if self.experiment.currentText().lower() == 'blast-tng':
+                self.cleaned_data = np.multiply(self.cleaned_data, np.reshape(1/self.resp, (np.size(1/self.resp), 1)))
+            else:
+                self.cleaned_data = np.multiply(self.cleaned_data, np.reshape(self.resp, (np.size(self.resp), 1)))
         else:
-            self.cleaned_data *= self.resp
+            if self.experiment.currentText().lower() == 'blast-tng':
+                self.cleaned_data /= self.resp
+            else:
+                self.cleaned_data *= self.resp
 
     def dirfile_conversion(self, correction=False, LSTconv=None, LATconv=None):
 
@@ -1654,6 +1815,8 @@ class ParamMapTab(QWidget):
         
         if np.size(self.det_list) == 1:
             self.pol_angle = np.radians(self.parallactic+2*self.hwpslice+(self.grid_angle-2*self.pol_angle_offset))
+            if np.size(np.shape(self.coord1slice)) != 1:
+                self.pol_angle = np.reshape(self.pol_angle, np.size(self.pol_angle))
         else:
             self.pol_angle = np.zeros_like(data)
             for i in range(np.size(self.det_list)):
@@ -1782,7 +1945,7 @@ class BeamTab(ParamMapTab):
 
         super(QWidget, self).__init__(parent)
 
-        self.beammaps = MapPlotsGroup(checkbox=checkbox, data=None, ctype=ctype)
+        self.beammaps = MapPlotsGroup(checkbox=checkbox, data=None)
 
         self.table = QTableWidget()
 
@@ -1829,7 +1992,7 @@ class MapPlotsGroup(QWidget):
     This class is used for plotting both the maps and the beams 
     '''
 
-    def __init__(self, data, checkbox, ctype = None, parent=None):
+    def __init__(self, data, checkbox, parent=None):
 
         super(QWidget, self).__init__(parent)
 
@@ -1841,7 +2004,6 @@ class MapPlotsGroup(QWidget):
         
         self.data = data
         self.checkbox = checkbox
-        self.ctype = ctype
         self.cutout = None
 
         self.tabvisible()
@@ -1916,7 +2078,8 @@ class MapPlotsGroup(QWidget):
 
         self.tab3.setLayout(mainlayout)
 
-    def updateTab(self, data, coord1, coord2, crval, pixnum, telcoord=False, cdelt=None, crpix=None, projection=None):
+    def updateTab(self, data, coord1, coord2, crval, ctype, pixnum, telcoord=False, cdelt=None, crpix=None, \
+                  projection=None, xystage=False):
 
         '''
         Function to updates the I, Q and U plots when the 
@@ -1927,12 +2090,14 @@ class MapPlotsGroup(QWidget):
             idx_list = ['I', 'Q', 'U']
 
             for i in range(len(idx_list)):
-                self.map2d(data=data[i], coord1=coord1, coord2=coord2, crval=crval, pixnum=pixnum, idx=idx_list[i],\
-                           telcoord=telcoord, cdelt=cdelt, crpix=crpix, projection=projection)
+                self.map2d(data=data[i], coord1=coord1, coord2=coord2, crval=crval, ctype=ctype, pixnum=pixnum, idx=idx_list[i],\
+                           telcoord=telcoord, cdelt=cdelt, crpix=crpix, projection=projection, xystage=xystage)
         else:
-            self.map2d(data=data, coord1=coord1, coord2=coord2, crval=crval, pixnum=pixnum, telcoord=telcoord, cdelt=cdelt, crpix=crpix, projection=projection)
+            self.map2d(data=data, coord1=coord1, coord2=coord2, crval=crval, ctype= ctype, pixnum=pixnum, telcoord=telcoord, cdelt=cdelt, crpix=crpix, \
+                       projection=projection,xystage=xystage)
 
-    def map2d(self, data=None, coord1=None, coord2=None, crval=None, pixnum=None, idx='I', telcoord=False, cdelt=None, crpix=None, projection=None):
+    def map2d(self, data=None, coord1=None, coord2=None, crval=None, ctype=None, pixnum=None, idx='I', telcoord=False, cdelt=None, \
+              crpix=None, projection=None, xystage=False):
 
         '''
         Function to generate the map plots (I,Q and U) 
@@ -1941,16 +2106,21 @@ class MapPlotsGroup(QWidget):
 
         intervals = 3   
 
-        if telcoord is False:
-            position = SkyCoord(crval[0], crval[1], unit='deg', frame='icrs')
-            
-            size = (pixnum[1], pixnum[0])     # pixels
-            
-            cutout = Cutout2D(data, position, size, wcs=projection)
-            proj = cutout.wcs
+        if telcoord is False:        
+            if xystage is False:
+                position = SkyCoord(crval[0], crval[1], unit='deg', frame='icrs')
 
-            self.mapdata = cutout.data
-       
+                size = (pixnum[1], pixnum[0])     # pixels
+
+                cutout = Cutout2D(data, position, size, wcs=projection)
+                proj = cutout.wcs
+                print('PROJ', proj)
+                self.mapdata = cutout.data
+            else:
+                masked = np.ma.array(data, mask=(np.abs(data)<1))
+                self.mapdata = masked
+                proj = 'rectilinear'
+
         else:
             idx_xmin = crval[0]-cdelt*pixnum[0]/2   
             idx_xmax = crval[0]+cdelt*pixnum[0]/2
@@ -1961,16 +2131,16 @@ class MapPlotsGroup(QWidget):
 
             idx_xmin = np.amax(np.array([np.ceil(crpix[0]-1-pixnum[0]/2), 0.], dtype=int))
             idx_xmax = np.amin(np.array([np.ceil(crpix[0]-1+pixnum[0]/2), np.shape(data)[1]], dtype=int))
-            
+
             if np.abs(idx_xmax-idx_xmin) != pixnum[0]:
                 if idx_xmin != 0 and idx_xmax == np.shape(data)[1]:
                     idx_xmin = np.amax(np.array([0., np.shape(data)[1]-pixnum[0]], dtype=int))
                 if idx_xmin == 0 and idx_xmax != np.shape(data)[1]:
                     idx_xmax = np.amin(np.array([pixnum[0], np.shape(data)[1]], dtype=int))
-            
+
             idx_ymin = np.amax(np.array([np.ceil(crpix[1]-1-pixnum[1]/2), 0.], dtype=int))
             idx_ymax = np.amin(np.array([np.ceil(crpix[1]-1+pixnum[1]/2), np.shape(data)[0]], dtype=int))
-            
+
             if np.abs(idx_ymax-idx_ymin) != pixnum[1]:
                 if idx_ymin != 0 and idx_ymax == np.shape(data)[0]:
                     idx_ymin = np.amax(np.array([0., np.shape(data)[0]-pixnum[1]], dtype=int))
@@ -1989,30 +2159,71 @@ class MapPlotsGroup(QWidget):
             proj = w
 
         levels = np.linspace(0.5, 1, intervals)*np.amax(self.mapdata)
-
+        print('CTYPE', ctype)
         if idx == 'I':
             self.matplotlibWidget_Imap.figure.clear()
-            self.axis_Imap = (self.matplotlibWidget_Imap.figure.add_subplot(111, \
-                              projection=proj))
+            fig = self.matplotlibWidget_Imap.figure
+            if ctype == 'XY Stage':
+                self.axis_Imap = fig.add_subplot(111, projection='rectilinear')
+            else:
+                self.axis_Imap = fig.add_subplot(111, projection=proj)
             axis = self.axis_Imap
         elif idx == 'Q':
             self.matplotlibWidget_Qmap.figure.clear()
-            self.axis_Qmap = (self.matplotlibWidget_Qmap.figure.add_subplot(111, \
-                              projection=proj))
+            fig = self.matplotlibWidget_Qmap.figure
+            self.axis_Qmap = fig.add_subplot(111, projection=proj)
             axis = self.axis_Qmap
         elif idx == 'U':
             self.matplotlibWidget_Umap.figure.clear()
-            self.axis_Umap = (self.matplotlibWidget_Umap.figure.add_subplot(111, \
-                              projection=proj))
+            fig = self.matplotlibWidget_Umap.figure
+            self.axis_Umap = fig.add_subplot(111, projection=proj)
 
             axis = self.axis_Umap
+
+        if telcoord is False:
+            if ctype == 'RA and DEC':
+                ra = axis.coords[0]
+                dec = axis.coords[1]
+                ra.set_axislabel('RA (deg)')
+                dec.set_axislabel('Dec (deg)')
+                dec.set_major_formatter('d.ddd')
+                ra.set_major_formatter('d.ddd')
+            
+            elif ctype == 'AZ and EL':
+                az = axis.coords[0]
+                el = axis.coords[1]
+                az.set_axislabel('AZ (deg)')
+                el.set_axislabel('EL (deg)')
+                az.set_major_formatter('d.ddd')
+                el.set_major_formatter('d.ddd')
+            
+            elif ctype == 'CROSS-EL and EL':
+                xel = axis.coords[0]
+                el = axis.coords[1]
+                xel.set_axislabel('xEL (deg)')
+                el.set_axislabel('EL (deg)')
+                xel.set_major_formatter('d.ddd')
+                el.set_major_formatter('d.ddd')
+
+            elif ctype == 'XY Stage':
+                axis.set_title('XY Stage')
+                axis.set_xlabel('X')
+                axis.set_ylabel('Y')
+
+        else:
+            ra_tel = axis.coords[0]
+            dec_tel = axis.coords[1]
+            ra_tel.set_axislabel('YAW (deg)')
+            dec_tel.set_axislabel('PITCH (deg)')
+            ra_tel.set_major_formatter('d.ddd')
+            dec_tel.set_major_formatter('d.ddd')
 
         img = axis.images
         if np.size(img) > 0:
             cb = img[-1].colorbar
             cb.remove()
-
         axis.set_axis_on()
+
         if telcoord is False:
             im = axis.imshow(self.mapdata, origin='lower', cmap=plt.cm.viridis)
             axis.contour(self.mapdata, levels=levels, colors='white', alpha=0.5)
@@ -2020,35 +2231,15 @@ class MapPlotsGroup(QWidget):
             im = axis.imshow(self.mapdata, origin='lower', cmap=plt.cm.viridis)
             axis.contour(self.mapdata, levels=levels, colors='white', alpha=0.5)
         plt.colorbar(im, ax=axis)
-
-        if self.ctype == 'RA and DEC':
-            #if telcoord is False:
-            print('TEST_COORD')
-            ra = axis.coords[0]
-            dec = axis.coords[1]
-            ra.set_axislabel('RA (deg)')
-            dec.set_axislabel('Dec (deg)')
-            dec.set_major_formatter('d.ddd')
-            ra.set_major_formatter('d.ddd')
-            # else:
-            #     axis.set_xlabel('RA (deg)')
-            #     axis.set_ylabel('Dec (deg)')
-
-        # elif self.ctype == 'AZ and EL':
-        #     axis.set_xlabel('Azimuth (deg)')
-        #     axis.set_ylabel('Elevation (deg)')
-        # elif self.ctype == 'CROSS-EL and EL':
-        #     axis.set_xlabel('Cross Elevation (deg)')
-        #     axis.set_ylabel('Elevation (deg)')
-
-        self.matplotlibWidget_Imap.canvas.draw()
+        #axis.set_axis_on()
+        
 
         if idx == 'I':
-            self.matplotlibWidget_Imap.canvas.draw()
+            fig.canvas.draw()       
         elif idx == 'Q':
-            self.matplotlibWidget_Qmap.canvas.draw()
+            fig.canvas.draw()
         elif idx == 'U':
-            self.matplotlibWidget_Umap.canvas.draw()
+            fig.canvas.draw()
 
 class MatplotlibWidget(QWidget):
 

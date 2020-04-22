@@ -4,6 +4,8 @@ from scipy.interpolate import interp1d
 import os
 import astropy.table as tb
 
+import src.detector as det
+
 class data_value():
     
     '''
@@ -12,7 +14,15 @@ class data_value():
 
     def __init__(self, det_path, det_name, coord_path, coord1_name, \
                  coord2_name, det_file_type, coord1_file_type, coord2_file_type, \
-                 experiment, lst_file_type, lat_file_type, hwp_file_type):
+                 experiment, lst_file_type, lat_file_type, hwp_file_type, startframe,\
+                 endframe):
+
+        '''
+        For BLAST-TNG the detector name is given as kid_# where # is 1,2,3,4,5
+        The number is then converted to the equivalent letters that are coming from 
+        the telemetry name
+        '''
+
         self.det_path = det_path                    #Path of the detector dirfile
         self.det_name = det_name                    #Detector name to be analyzed
         self.coord_path = coord_path                #Path of the coordinates dirfile
@@ -27,6 +37,14 @@ class data_value():
         self.lat_file_type = lat_file_type          #LAT DIRFILE datatype
 
         self.hwp_file_type = hwp_file_type          #HWP DIRFILE datatype
+
+        self.startframe = int(startframe)           #Starting frame to be analyzed
+        self.endframe = int(endframe)               #Ending frame to be analyzed
+
+        if self.startframe < 100:
+            self.bufferframe = int(0)                      #Buffer frames to be loaded before and after the starting and ending frame
+        else:
+            self.bufferframe = int(100)
 
     def conversion_type(self, file_type):
 
@@ -57,18 +75,23 @@ class data_value():
         '''
         if np.size(file) == 1: 
             d = gd.dirfile(filepath, gd.RDONLY)
-            gdtype = self.conversion_type(file_type)
+            if file_type is not None:
+                gdtype = self.conversion_type(file_type)
+            else:
+                gdtype = gd.FLOAT64
             if self.experiment.lower()=='blast-tng':
-                num = d.eof('MCP_1HZ_FRAMECOUNT')
+                num = self.endframe-self.startframe+2*self.bufferframe
+                first_frame = self.startframe-self.bufferframe
             else:
                 num = d.nframes
+                first_frame = 0
             if isinstance(file, str):
-                values = d.getdata(file, gdtype, num_frames = num-1, first_frame=0)
+                values = d.getdata(file, gdtype, num_frames = num, first_frame=first_frame)
             else:
-                values = d.getdata(file[0], gdtype, num_frames = num-1, first_frame=0)
+                values = d.getdata(file[0], gdtype, num_frames = num, first_frame=first_frame)
             return np.asarray(values)
         else:
-            d = gd.dirfile(filepath, gd.RDWR|gd.UNENCODED)
+            d = gd.dirfile(filepath, gd.RDONLY)
             gdtype = self.conversion_type(file_type)
             values = np.array([])
 
@@ -85,16 +108,68 @@ class data_value():
         Function to return the timestreams for detector and coordinates
         '''
         if self.experiment.lower() == 'blast-tng':
-            # Temporary function 
-            det_data = np.loadtxt(self.det_path+self.det_name)
+ 
+            list_conv = [['A', 'B'], ['D', 'E'], ['G', 'H'], ['K', 'I'], ['M', 'N']]
+            kid_num  = int(self.det_name[-1])
+
+            try:
+                det_I_string = 'kid'+list_conv[kid_num-1][0]+'_roachN'
+                det_Q_string = 'kid'+list_conv[kid_num-1][1]+'_roachN'
+                I_data = self.load(self.det_path, det_I_string, self.det_file_type)
+                Q_data = self.load(self.det_path, det_Q_string, self.det_file_type)
+            except:
+                val = str(kid_num)
+                det_I_string = 'i_kid000'+val+'_roach3'
+                det_Q_string = 'q_kid000'+val+'_roach3'
+                I_data = self.load(self.det_path, det_I_string, self.det_file_type)
+                Q_data = self.load(self.det_path, det_Q_string, self.det_file_type)
+
+            kidutils = det.kidsutils()
+
+            det_data = kidutils.KIDmag(I_data, Q_data)
+
         else:
             det_data = self.load(self.det_path, self.det_name, self.det_file_type)
-        coord2_data = self.load(self.coord_path, self.coord2_name.lower(), self.coord2_file_type)
+        
+        print('COORDINATES', self.coord1_name.lower(), self.coord2_name.lower())
+
+        if self.coord2_name.lower() == 'dec':
+            if self.experiment.lower()=='blast-tng':
+                coord2 = 'DEC'
+                filetype = None
+            else:
+                coord2 = 'dec'
+                filetype = self.coord2_file_type
+            coord2_data = self.load(self.coord_path, coord2, filetype)
+        elif self.coord2_name.lower() == 'y':
+            coord2_data = self.load(self.coord_path, 'y_stage', self.coord2_file_type)
+        else:
+            if self.experiment.lower()=='blast-tng':
+                coord2 = 'EL'
+                filetype = None
+            else:
+                coord2 = 'el'
+                filetype = self.coord2_file_type
+            coord2_data = self.load(self.coord_path, coord2, filetype)
 
         if self.coord1_name.lower() == 'ra':
-            coord1_data = self.load(self.coord_path, self.coord1_name.lower(), self.coord1_file_type)
+            if self.experiment.lower()=='blast-tng':
+                coord1 = 'RA'
+                filetype = None
+            else:
+                coord1 = 'ra'
+                filetype = self.coord1_file_type
+            coord1_data = self.load(self.coord_path, coord1, filetype)
+        elif self.coord1_name.lower() == 'x':
+            coord1_data = self.load(self.coord_path, 'x_stage', self.coord1_file_type)
         else:
-            coord1_data = self.load(self.coord_path, 'az', self.coord1_file_type)
+            if self.experiment.lower()=='blast-tng':
+                coord1 = 'AZ'
+                filetype = None
+            else:
+                coord1 = 'az'
+                filetype = self.coord1_file_type
+            coord1_data = self.load(self.coord_path, coord1, filetype)
 
         if self.hwp_file_type is not None:
             hwp_data = self.load(self.coord_path, 'pot_hwpr', self.hwp_file_type)
@@ -140,7 +215,7 @@ class frame_zoom_sync():
                  startframe, endframe, experiment, \
                  lst_data, lat_data, lstlatfreq, lstlat_sample_frame, \
                  offset =None, roach_number=None, roach_pps_path=None, hwp_data=0., \
-                 hwp_fs=None, hwp_sample_frame=None):
+                 hwp_fs=None, hwp_sample_frame=None, xystage=False):
 
         self.det_data = det_data                                #Detector data timestream
         self.det_fs = float(det_fs)                             #Detector frequency sampling
@@ -163,84 +238,47 @@ class frame_zoom_sync():
         self.roach_pps_path = roach_pps_path                    #Pulse per second of the roach used to sync the data
         self.offset = offset                                    #Time offset between detector data and coordinates
         self.hwp_data = hwp_data
-        self.hwp_fs = float(hwp_fs)
-        self.hwp_sample_frame = float(hwp_sample_frame)
+        if hwp_fs is not None:
+            self.hwp_fs = float(hwp_fs)
+        else:
+            self.hwp_fs = hwp_fs
+        if hwp_sample_frame is not None:
+            self.hwp_sample_frame = float(hwp_sample_frame)
+        else:
+            self.hwp_sample_frame = hwp_sample_frame
+
+        self.xystage=xystage                                   #Flag to check if the coordinates data are coming from an xy stage scan
+
+        if self.startframe < 100:
+            self.bufferframe = int(0)
+        else:
+            self.bufferframe = int(100)
 
     def frame_zoom(self, data, sample_frame, fs, fps, offset = None):
 
         '''
-        Selecting the frames of interest and associate a timestamp for each value
+        Selecting the frames of interest and associate a timestamp for each value.
         '''
+
         frames = fps.copy()
 
         frames[0] = fps[0]*sample_frame
-        frames[1] = fps[1]*sample_frame+1
+        if fps[1] == -1:
+            frames[1] = len(data)*sample_frame
+        else:
+            frames[1] = fps[1]*sample_frame+1
 
         if offset is not None:
-                delay = offset*np.floor(fs)/1000.
-                frames = frames.astype(float)+delay
+            delay = offset*np.floor(fs)/1000.
+            frames = frames.astype(float)+delay
 
         if len(np.shape(data)) == 1:
             time = (np.arange(np.diff(frames))+frames[0])/np.floor(fs)
             return time, data[int(frames[0]):int(frames[1])]
         else:
-            print('TEST', len(data[0, :]))
             time = np.arange(len(data[0, :]))/np.floor(fs)
             time = time[int(frames[0]):int(frames[1])]
-            print('OK')
             return  time, data[:,int(frames[0]):int(frames[1])]
-
-    def det_time(self):
-
-        '''
-        This function is specific for BLAST-TNG only and creates a time array using the PPS data
-        '''
-        
-        d = gd.dirfile(self.roach_pps_path, gd.RDONLY)
-        string = 'pps_count_roach'+str(int(self.roach_number))
-        
-        data = d.getdata(string, gd.UINT32, num_frames = d.nframes-1)
-        tmin = np.amin(data)
-        tmax = np.amax(data)
-
-        time = np.array([])
-        j = 0
-        t0 = float(tmin)
-        
-        index, = np.where(data==tmin)
-        index_switch = index[0]
-        
-        if index_switch == 0:
-            bins_temp = np.bincount(data)
-            bins = bins_temp[int(tmin):].copy()
-            for i in range(tmin, tmax+1, 1):           
-                if bins[j] != 0:
-                    temp = np.arange(t0, t0+1.,1/float(bins[j]))
-                    time = np.append(time, temp)
-                t0 += 1.
-                j += 1
-    
-        else:
-            bins_temp = np.bincount(data[:index_switch])
-            index_bins, = np.where(bins_temp != 0)
-            
-            
-            for i in range(len(index_bins)):
-                temp = index_bins[i]+np.arange(0., bins_temp[index_bins[i]], \
-                                               1.)/bins_temp[index_bins[i]]
-                    
-                time = np.append(time, temp)
-            
-            bins_temp = np.bincount(data[index_switch:])
-            index_bins, = np.where(bins_temp != 0)
-            
-            for i in range(len(index_bins)):
-                temp = index_bins[i]+np.arange(0., bins_temp[index_bins[i]], \
-                                               1.)/bins_temp[index_bins[i]] 
-                    
-                time = np.append(time, temp)
-
-        return time
 
     def coord_int(self, coord1, coord2, time_acs, time_det):
 
@@ -261,49 +299,139 @@ class frame_zoom_sync():
         '''
 
         if self.experiment.lower() == 'blast-tng':
+            d = gd.dirfile(self.roach_pps_path)
             
-            sframe = self.startframe*self.det_sample_frame
-            eframe = self.endframe*self.det_sample_frame+1
-            all_time = self.det_time().copy()
+            first_frame = self.startframe-self.bufferframe
+            num_frames = self.endframe-self.startframe+2*self.bufferframe
+            interval = self.endframe-self.startframe
+            print('FRAMES', first_frame, num_frames, interval)
+            ctime_mcp = d.getdata('time', first_frame=first_frame, num_frames=num_frames)
+            ctime_usec = d.getdata('time_usec', first_frame=first_frame, num_frames=num_frames)
+            framecount_100hz = d.getdata('mcp_100hz_framecount', first_frame=first_frame, num_frames=num_frames)
+            print('LEN', len(ctime_mcp), len(ctime_usec), len(framecount_100hz))
+            if self.xystage is True:
+                #frequency_ctime = 100
+                sample_ctime = 100
+            else:
+                #frequency_ctime = self.coord_fs
+                sample_ctime = self.coord_sample_frame
+            #ctime_start_temp = ctime_mcp[0]+ctime_usec[0]/1e6+0.2
+            #ctime_mcp = ctime_start_temp + (framecount_100hz-framecount_100hz[0])/frequency_ctime
+            ctime_start = ctime_mcp+ctime_usec/1e6+0.2
+            ctime_mcp = ctime_mcp[self.bufferframe*sample_ctime:self.bufferframe*sample_ctime+interval*sample_ctime]
+ 
+            if self.offset is not None:
+                ctime_mcp += self.offset/1000.
 
-            dettime = all_time[sframe:eframe]
-            self.det_data = self.det_data[sframe:eframe]
+            ctime_start = ctime_mcp[0]
+            ctime_end = ctime_mcp[-1]
+            
+            coord1 = self.coord1_data[self.bufferframe*self.coord_sample_frame:self.bufferframe*self.coord_sample_frame+\
+                                      interval*self.coord_sample_frame]
+            coord2 = self.coord2_data[self.bufferframe*self.coord_sample_frame:self.bufferframe*self.coord_sample_frame+\
+                                      interval*self.coord_sample_frame]
+                                    
+            if self.xystage is True:
+                freq_array = np.append(0, np.cumsum(np.repeat(1/self.coord_sample_frame, self.coord_sample_frame*interval-1)))
+                coord1time = ctime_start+freq_array
+                coord2time = coord1time.copy()
+            else:
+                if self.coord_sample_frame != 100:
+                    freq_array = np.append(0, np.cumsum(np.repeat(1/self.coord_sample_frame, self.coord_sample_frame*interval-1)))
+                    coord1time = ctime_start+freq_array
+                    coord2time = coord1time.copy()
+                else:
+                    coord1time = ctime_mcp.copy()
+                    coord2time = ctime_mcp.copy()
+
+            print(coord1, len(self.coord1_data), len(coord1), len(coord1time))
+
+            kidutils = det.kidsutils()
+            
+            start_det_frame = self.startframe-self.bufferframe
+            end_det_frame = self.endframe+self.bufferframe
+
+            frames = np.array([start_det_frame, end_det_frame], dtype='int')
+
+            dettime, pps_bins = kidutils.det_time(self.roach_pps_path, self.roach_number, frames, \
+                                                  ctime_start, ctime_mcp[-1], self.det_fs)
+
+            coord1int = interp1d(coord1time, coord1, kind='linear')
+            coord2int = interp1d(coord2time, coord2, kind= 'linear')
+
+            idx_roach_start, = np.where(np.abs(dettime-ctime_start) == np.amin(np.abs(dettime-ctime_start)))
+            idx_roach_end, = np.where(np.abs(dettime-ctime_end) == np.amin(np.abs(dettime-ctime_end)))
+
+            if len(np.shape(self.det_data)) == 1:
+                self.det_data = kidutils.interpolation_roach(self.det_data, pps_bins[pps_bins>350], self.det_fs)
+            else:
+                for i in range(len(self.det_data)):
+                    self.det_data[i] = kidutils.interpolation_roach(self.det_data[i], pps_bins[pps_bins>350], self.det_fs)
+            
+            dettime = dettime[idx_roach_start[0]:idx_roach_end[0]]
+            self.det_data = self.det_data[idx_roach_start[0]:idx_roach_end[0]]
+
+            index1, = np.where(np.abs(dettime-coord1time[0]) == np.amin(np.abs(dettime-coord1time[0])))
+            index2, = np.where(np.abs(dettime-coord1time[-1]) == np.amin(np.abs(dettime-coord1time[-1])))
+
+            coord1_inter = coord1int(dettime[index1[0]+200:index2[0]-200])
+            coord2_inter = coord2int(dettime[index1[0]+200:index2[0]-200])
+            dettime = dettime[index1[0]+200:index2[0]-200]
+
+            print('COORDINATES', np.amin(coord2_inter), np.amax(coord2_inter), len(coord2_inter))
+
+            if len(np.shape(self.det_data)) == 1:
+                self.det_data = self.det_data[index1[0]+200:index2[0]-200]
+            else:
+                for i in range(len(self.det_data)):
+                    self.det_data[i] = self.det_data[i, index1[0]+200:index2[0]-200]
 
         elif self.experiment.lower() == 'blastpol':
-            print('data', self.det_data)
             dettime, self.det_data = self.frame_zoom(self.det_data, self.det_sample_frame, \
                                                      self.det_fs, np.array([self.startframe,self.endframe]), \
                                                      self.offset)
+            coord1time, coord1 = self.frame_zoom(self.coord1_data, self.coord_sample_frame, \
+                                                 self.coord_fs, np.array([self.startframe,self.endframe]))
 
-        print('TEST_2')
-        coord1time, coord1 = self.frame_zoom(self.coord1_data, self.coord_sample_frame, \
-                                             self.coord_fs, np.array([self.startframe,self.endframe]))
+            coord2time, coord2 = self.frame_zoom(self.coord2_data, self.coord_sample_frame, \
+                                                 self.coord_fs, np.array([self.startframe,self.endframe]))
 
-        coord2time, coord2 = self.frame_zoom(self.coord2_data, self.coord_sample_frame, \
-                                             self.coord_fs, np.array([self.startframe,self.endframe]))
+            dettime = dettime-dettime[0]
+            coord1time = coord1time-coord1time[0]
 
-        dettime = dettime-dettime[0]
-        coord1time = coord1time-coord1time[0]
-        index1, = np.where(np.abs(dettime-coord1time[0]) == np.amin(np.abs(dettime-coord1time[0])))
-        index2, = np.where(np.abs(dettime-coord1time[-1]) == np.amin(np.abs(dettime-coord1time[-1])))
+            index1, = np.where(np.abs(dettime-coord1time[0]) == np.amin(np.abs(dettime-coord1time[0])))
+            index2, = np.where(np.abs(dettime-coord1time[-1]) == np.amin(np.abs(dettime-coord1time[-1])))
 
-        coord1_inter, coord2_inter = self.coord_int(coord1, coord2, \
-                                                    coord1time, dettime[index1[0]+10:index2[0]-10])
+            coord1_inter, coord2_inter = self.coord_int(coord1, coord2, \
+                                                        coord1time, dettime[index1[0]+10:index2[0]-10])
+
+            dettime = dettime[index1[0]+10:index2[0]-10]
+            self.det_data = self.det_data[:,index1[0]+10:index2[0]-10]
 
         if isinstance(self.hwp_data, np.ndarray):
-            print('HWP_data', self.hwp_data)
-            print(self.hwp_sample_frame, type(self.hwp_sample_frame))
-            print(self.hwp_fs, type(self.hwp_fs))
-            hwptime, hwp = self.frame_zoom(self.hwp_data, self.hwp_sample_frame, \
-                                           self.hwp_fs, np.array([self.startframe,self.endframe]))
-            
-            hwptime = hwptime - hwptime[0]
-            index1, = np.where(np.abs(dettime-hwptime[0]) == np.amin(np.abs(dettime-hwptime[0])))
-            index2, = np.where(np.abs(dettime-hwptime[-1]) == np.amin(np.abs(dettime-hwptime[-1])))
 
-            hwp_interpolation = interp1d(hwptime, hwp, kind='linear')
-            hwp_inter = hwp_interpolation(dettime[index1[0]+10:index2[0]-10])
+            if self.experiment.lower() == 'blastpol':
+                hwptime, hwp = self.frame_zoom(self.hwp_data, self.hwp_sample_frame, \
+                                               self.hwp_fs, np.array([self.startframe,self.endframe]))
+                
+                hwptime = hwptime - hwptime[0]
+                index1, = np.where(np.abs(dettime-hwptime[0]) == np.amin(np.abs(dettime-hwptime[0])))
+                index2, = np.where(np.abs(dettime-hwptime[-1]) == np.amin(np.abs(dettime-hwptime[-1])))
 
+                hwp_interpolation = interp1d(hwptime, hwp, kind='linear')
+                hwp_inter = hwp_interpolation(dettime[index1[0]+10:index2[0]-10])
+
+            else:
+                
+                hwp = self.hwp_data[self.bufferframe*self.coord_sample_frame:self.bufferframe*self.coord_sample_frame+\
+                                    interval*self.coord_sample_frame]
+
+                freq_array = np.append(0, np.cumsum(np.repeat(1/self.hwp_sample_frame, self.hwp_sample_frame*interval-1)))
+                hwptime = ctime_start+freq_array
+
+                hwp_interpolation = interp1d(hwptime, hwp, kind='linear')
+                hwp_inter = hwp_interpolation(dettime)
+ 
             del hwptime
             del hwp
 
@@ -311,43 +439,58 @@ class frame_zoom_sync():
 
             hwp_inter = np.zeros_like(coord1_inter)
 
-
         del coord1time
         del coord2time
         del coord1
         del coord2
 
         if self.lat_data is not None and self.lat_data is not None:
-            print('LST/LAT')
-            lsttime, lst = self.frame_zoom(self.lst_data, self.lstlat_sample_frame, \
-                                           self.lstlatfreq, np.array([self.startframe,self.endframe]))
 
-            lattime, lat = self.frame_zoom(self.lat_data, self.lstlat_sample_frame, \
-                                           self.lstlatfreq, np.array([self.startframe,self.endframe]))
+            if self.experiment.lower() == 'blastpol':
+                lsttime, lst = self.frame_zoom(self.lst_data, self.lstlat_sample_frame, \
+                                               self.lstlatfreq, np.array([self.startframe,self.endframe]))
 
-            lsttime = lsttime-lsttime[0]
-            index1, = np.where(np.abs(dettime-lsttime[0]) == np.amin(np.abs(dettime-lsttime[0])))
-            index2, = np.where(np.abs(dettime-lsttime[-1]) == np.amin(np.abs(dettime-lsttime[-1])))
+                lattime, lat = self.frame_zoom(self.lat_data, self.lstlat_sample_frame, \
+                                               self.lstlatfreq, np.array([self.startframe,self.endframe]))
 
-            lst_inter, lat_inter = self.coord_int(lst, lat, \
-                                                  lsttime, dettime[index1[0]+10:index2[0]-10])
+                lsttime = lsttime-lsttime[0]
+                index1, = np.where(np.abs(dettime-lsttime[0]) == np.amin(np.abs(dettime-lsttime[0])))
+                index2, = np.where(np.abs(dettime-lsttime[-1]) == np.amin(np.abs(dettime-lsttime[-1])))
+
+                lst_inter, lat_inter = self.coord_int(lst, lat, \
+                                                      lsttime, dettime[index1[0]+10:index2[0]-10])
+
+            else:
+                lst = self.lst_data[self.bufferframe*self.coord_sample_frame:self.bufferframe*self.coord_sample_frame+\
+                                    interval*self.coord_sample_frame]
+                lat = self.lat_data[self.bufferframe*self.coord_sample_frame:self.bufferframe*self.coord_sample_frame+\
+                                    interval*self.coord_sample_frame]
+
+                lsttime = ctime_mcp.copy()
+                lattime = ctime_mcp.copy()
+
+                lstint = interp1d(lsttime, lst, kind='linear')
+                latint = interp1d(lattime, lat, kind= 'linear')
+
+                lst_inter = lstint(dettime)
+                lat_inter = latint(dettime)
 
             del lst
             del lat
 
             if np.size(np.shape(self.det_data)) > 1:
-                return (dettime[index1[0]+10:index2[0]-10], self.det_data[:,index1[0]+10:index2[0]-10], \
+                return (dettime, self.det_data, \
                         coord1_inter, coord2_inter, hwp_inter, lst_inter, lat_inter)
             else:
-                return (dettime[index1[0]+10:index2[0]-10], self.det_data[index1[0]+10:index2[0]-10], \
+                return (dettime, self.det_data, \
                         coord1_inter, coord2_inter,  hwp_inter, lst_inter, lat_inter)
         
         else:
             if np.size(np.shape(self.det_data)) > 1:
-                return (dettime[index1[0]+10:index2[0]-10], self.det_data[:,index1[0]+10:index2[0]-10], \
+                return (dettime, self.det_data, \
                         coord1_inter, coord2_inter, hwp_inter)
             else:
-                return (dettime[index1[0]+10:index2[0]-10], self.det_data[index1[0]+10:index2[0]-10], \
+                return (dettime, self.det_data, \
                         coord1_inter, coord2_inter, hwp_inter)
 
 class xsc_offset():
@@ -424,4 +567,5 @@ class det_table():
 
 
             return det_off, noise, grid_angle, pol_angle_offset, resp
+
 
