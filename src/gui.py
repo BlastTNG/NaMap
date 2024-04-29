@@ -857,7 +857,8 @@ class ParamMapTab(QWidget):
         self.DataRepository = QGroupBox("Data Repository")
         
         #self.detpath = QLineEdit('/mnt/c/Users/gabri/Documents/GitHub/mapmaking/2012_data/bolo_data/')
-        self.detpath = QLineEdit('/Users/ian/master_dirfile')
+        #self.coordpath = QLineEdit('/Users/ian/master_dirfile')
+        self.detpath = QLineEdit('/mnt/d/data/etc/mole.lnk')
         self.detpathlabel = QLabel("Detector Path:")
         self.detpathlabel.setBuddy(self.detpath)
 
@@ -872,7 +873,7 @@ class ParamMapTab(QWidget):
         self.roachnumberlabel.setBuddy(self.roachnumber)
 
         #self.coordpath = QLineEdit('/mnt/c/Users/gabri/Documents/GitHub/mapmaking/2012_data/')
-        self.coordpath = QLineEdit('/Users/ian/master_dirfile')
+        self.detpath = QLineEdit('/mnt/d/data/etc/mole.lnk')
         self.coordpathlabel = QLabel("Coordinate Path:")
         self.coordpathlabel.setBuddy(self.coordpath)
 

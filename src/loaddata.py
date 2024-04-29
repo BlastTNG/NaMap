@@ -15,7 +15,7 @@ class data_value():
     def __init__(self, det_path, det_name, coord_path, coord1_name, \
                  coord2_name, det_file_type, coord1_file_type, coord2_file_type, \
                  experiment, lst_file_type, lat_file_type, hwp_file_type, startframe,\
-                 endframe, roach_number=None, telemetry=True):
+                 endframe, roach_number=None, telemetry=False):
 
         '''
         For BLAST-TNG the detector name is given as kid_# where # is 1,2,3,4,5
