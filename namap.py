@@ -492,7 +492,6 @@ if coadd_detectors is False:
     for i in range(D):
 
         print('Load data, current progress', i/len(det_list))
-
         dataload = ld.data_value(detector_path, det_list[i], coordinates_path, \
                                  coord1, coord2, datatype_detectors, \
                                  datatype_coord[0], datatype_coord[1], \

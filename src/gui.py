@@ -857,11 +857,11 @@ class ParamMapTab(QWidget):
         self.DataRepository = QGroupBox("Data Repository")
         
         #self.detpath = QLineEdit('/mnt/c/Users/gabri/Documents/GitHub/mapmaking/2012_data/bolo_data/')
-        self.detpath = QLineEdit('/mnt/d/data/etc/mole.lnk')
+        self.detpath = QLineEdit('/Users/ian/master_dirfile')
         self.detpathlabel = QLabel("Detector Path:")
         self.detpathlabel.setBuddy(self.detpath)
 
-        self.detname = QLineEdit('3')
+        self.detname = QLineEdit('4')
         self.detnamelabel = QLabel("Detector Name:")
         self.detnamelabel.setBuddy(self.detname)
 
@@ -872,7 +872,7 @@ class ParamMapTab(QWidget):
         self.roachnumberlabel.setBuddy(self.roachnumber)
 
         #self.coordpath = QLineEdit('/mnt/c/Users/gabri/Documents/GitHub/mapmaking/2012_data/')
-        self.coordpath = QLineEdit('/mnt/d/data/etc/mole.lnk')
+        self.coordpath = QLineEdit('/Users/ian/master_dirfile')
         self.coordpathlabel = QLabel("Coordinate Path:")
         self.coordpathlabel.setBuddy(self.coordpath)
 
@@ -957,13 +957,13 @@ class ParamMapTab(QWidget):
         self.crpixlabel = QLabel("CRpix of the Map:")
         self.crpixlabel.setBuddy(self.crpix1)
 
-        self.cdelt1 = QLineEdit('0.003')
-        self.cdelt2 = QLineEdit('0.003')
+        self.cdelt1 = QLineEdit('0.1')
+        self.cdelt2 = QLineEdit('0.1')
         self.cdeltlabel = QLabel("Cdelt of the Map in deg:")
         self.cdeltlabel.setBuddy(self.cdelt1)
 
-        self.crval1 = QLineEdit('132.20')
-        self.crval2 = QLineEdit('-42.9')
+        self.crval1 = QLineEdit('230.0')
+        self.crval2 = QLineEdit('-55.79')
         self.crvallabel = QLabel("Cval of the Map in deg:")
         self.crvallabel.setBuddy(self.crval1)
 
@@ -1069,8 +1069,8 @@ class ParamMapTab(QWidget):
         self.acsframelabel = QLabel("ACS Sample Samples per Frame")
         self.acsframelabel.setBuddy(self.acsframe)
 
-        self.startframe = QLineEdit('9200')
-        self.endframe = QLineEdit('9500')
+        self.startframe = QLineEdit('72373')
+        self.endframe = QLineEdit('79556')
         self.numberframelabel = QLabel('Starting and Ending Frames')
         self.numberframelabel.setBuddy(self.startframe)
 

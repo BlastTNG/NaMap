@@ -150,7 +150,7 @@ class despike():
             ledge = np.append(ledge, left_edge[-1])
             redge = np.append(redge, right_edge[-1])
             print('INDEX', i, peaks[i], left_edge, right_edge)
-        print('PEAKS', left_edge, right_edge, peaks[i])
+            print('PEAKS', left_edge, right_edge, peaks[i])
         print(len(peaks), len(ledge), len(redge))
         return param[0].copy(), ledge, redge
 
@@ -413,8 +413,7 @@ class kidsutils():
 
         start = np.append(0, np.cumsum(bins[:-1]))
         end = np.cumsum(bins)
-
-        ln = np.linspace(start, end-1, sampling)
+        ln = np.linspace(start, end-1, int(sampling))
         idx = np.reshape(np.transpose(ln), np.size(ln))
         idx_plus = np.append(idx[:-1]+1, idx[-1])
         

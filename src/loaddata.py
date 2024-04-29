@@ -15,7 +15,7 @@ class data_value():
     def __init__(self, det_path, det_name, coord_path, coord1_name, \
                  coord2_name, det_file_type, coord1_file_type, coord2_file_type, \
                  experiment, lst_file_type, lat_file_type, hwp_file_type, startframe,\
-                 endframe, roach_number=None, telemetry=False):
+                 endframe, roach_number=None, telemetry=True):
 
         '''
         For BLAST-TNG the detector name is given as kid_# where # is 1,2,3,4,5
@@ -318,7 +318,11 @@ class frame_zoom_sync():
                 #frequency_ctime = self.coord_fs
                 sample_ctime = self.coord_sample_frame
             ctime_start = ctime_mcp+ctime_usec/1e6+0.2
+            print(self.bufferframe*sample_ctime)
+            print(self.bufferframe*sample_ctime+interval*sample_ctime)
             ctime_mcp = ctime_mcp[self.bufferframe*sample_ctime:self.bufferframe*sample_ctime+interval*sample_ctime]
+
+            print(len(ctime_mcp))
  
             if self.offset is not None:
                 ctime_mcp += self.offset/1000.
@@ -356,6 +360,8 @@ class frame_zoom_sync():
                 dettime, pps_bins = kidutils.det_time(self.roach_pps_path, self.roach_number, frames, \
                                                       ctime_start, ctime_mcp[-1], self.det_fs)
 
+                print(len(coord1))
+                print(len(coord1time))
                 coord1int = interp1d(coord1time, coord1, kind='linear')
                 coord2int = interp1d(coord2time, coord2, kind= 'linear')
 
@@ -412,7 +418,7 @@ class frame_zoom_sync():
                                                         coord1time, dettime[index1[0]+10:index2[0]-10])
 
             dettime = dettime[index1[0]+10:index2[0]-10]
-            self.det_data = self.det_data[:,index1[0]+10:index2[0]-10]
+            self.det_data = self.det_data[index1[0]+10:index2[0]-10]
 
         if isinstance(self.hwp_data, np.ndarray):
 
